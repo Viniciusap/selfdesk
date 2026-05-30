@@ -34,6 +34,29 @@ public sealed class AgentService : BackgroundService
 
     protected override async Task ExecuteAsync(CancellationToken ct)
     {
+        var retryDelay = TimeSpan.FromSeconds(2);
+
+        while (!ct.IsCancellationRequested)
+        {
+            try
+            {
+                await RunSessionAsync(ct);
+                retryDelay = TimeSpan.FromSeconds(2);
+            }
+            catch (OperationCanceledException) { break; }
+            catch (Exception ex)
+            {
+                _log.LogWarning(ex, "Sessão encerrada. Reconectando em {Delay}s", retryDelay.TotalSeconds);
+                await Task.Delay(retryDelay, ct);
+                retryDelay = TimeSpan.FromSeconds(Math.Min(retryDelay.TotalSeconds * 2, 60));
+            }
+        }
+
+        _log.LogInformation("AgentService encerrando");
+    }
+
+    private async Task RunSessionAsync(CancellationToken ct)
+    {
         var interval = TimeSpan.FromSeconds(1.0 / _cfg.TargetFps);
 
         await using var conn = new BrokerConnection(_cfg, _log);
@@ -94,6 +117,5 @@ public sealed class AgentService : BackgroundService
         }, ct);
 
         await Task.WhenAny(producer, consumer, heartbeat, recvLoop);
-        _log.LogInformation("AgentService encerrando");
     }
 }

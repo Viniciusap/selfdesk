@@ -16,6 +16,7 @@ export function createServer(
       key:                tlsMaterial.key,
       requestCert:        false,
       rejectUnauthorized: false,
+      minVersion:         'TLSv1.3',
     },
     (socket) => {
       const conn = new Connection(socket, cfg.sharedSecret, cfg.allowedSenders, log);

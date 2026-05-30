@@ -33,33 +33,47 @@ public sealed class ViewerService : BackgroundService
 
     protected override async Task ExecuteAsync(CancellationToken ct)
     {
+        var retryDelay = TimeSpan.FromSeconds(2);
+
+        while (!ct.IsCancellationRequested)
+        {
+            try
+            {
+                await RunSessionAsync(ct);
+                retryDelay = TimeSpan.FromSeconds(2);
+            }
+            catch (OperationCanceledException) { break; }
+            catch (Exception ex)
+            {
+                _log.LogWarning(ex, "Sessão encerrada. Reconectando em {Delay}s", retryDelay.TotalSeconds);
+                Application.Current?.Dispatcher.Invoke(() =>
+                {
+                    _vm.IsConnected      = false;
+                    _vm.ConnectionStatus = $"Reconectando em {retryDelay.TotalSeconds:0}s…";
+                    _vm.Senders.Clear();
+                });
+                await Task.Delay(retryDelay, ct);
+                retryDelay = TimeSpan.FromSeconds(Math.Min(retryDelay.TotalSeconds * 2, 60));
+            }
+        }
+    }
+
+    private async Task RunSessionAsync(CancellationToken ct)
+    {
         await using var conn = new BrokerConnection(_cfg, _log);
 
         conn.MessageReceived += (type, peerId, payload) =>
             OnMessage(type, peerId, payload);
 
-        try
+        await conn.ConnectAndAuthAsync(ct);
+        Application.Current?.Dispatcher.Invoke(() =>
         {
-            await conn.ConnectAndAuthAsync(ct);
-            Application.Current?.Dispatcher.Invoke(() =>
-            {
-                _vm.IsConnected      = true;
-                _vm.ConnectionStatus = "Conectado";
-            });
+            _vm.IsConnected      = true;
+            _vm.ConnectionStatus = "Conectado";
+        });
 
-            _ = conn.StartHeartbeatAsync(ct);
-            await conn.RunReceiveLoopAsync(ct);
-        }
-        catch (OperationCanceledException) { }
-        catch (Exception ex)
-        {
-            _log.LogError(ex, "Erro no ViewerService");
-            Application.Current?.Dispatcher.Invoke(() =>
-            {
-                _vm.ConnectionStatus = "Erro de conexão";
-                _vm.IsConnected      = false;
-            });
-        }
+        _ = conn.StartHeartbeatAsync(ct);
+        await conn.RunReceiveLoopAsync(ct);
     }
 
     private void OnMessage(byte type, string peerId, ReadOnlyMemory<byte> payload)
