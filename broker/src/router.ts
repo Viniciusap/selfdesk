@@ -58,6 +58,12 @@ export class Router {
       receiver.send(buildEnvelope(header.type, agentId, payload));
       return;
     }
+    if (header.type === MessageType.CLIPBOARD) {
+      const receiver = this.registry.getReceiver();
+      if (!receiver) return;
+      receiver.send(buildEnvelope(header.type, agentId, payload));
+      return;
+    }
     this.log.debug({ type: header.type, agentId }, 'mensagem de sender ignorada');
   }
 
@@ -70,6 +76,18 @@ export class Router {
         return;
       }
       sender.send(buildEnvelope(header.type, targetId, payload));
+      return;
+    }
+    if (header.type === MessageType.CLIPBOARD) {
+      const targetId = header.peerId;
+      const sender   = targetId ? this.registry.getSender(targetId) : undefined;
+      if (sender) {
+        sender.send(buildEnvelope(header.type, targetId, payload));
+      } else {
+        for (const id of this.registry.getSenderIds()) {
+          this.registry.getSender(id)?.send(buildEnvelope(header.type, id, payload));
+        }
+      }
       return;
     }
     this.log.debug({ type: header.type }, 'mensagem de receiver ignorada');

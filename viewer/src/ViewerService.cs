@@ -1,4 +1,5 @@
 using System.Buffers.Binary;
+using System.Text;
 using System.Windows;
 using System.Windows.Media;
 using System.Windows.Media.Imaging;
@@ -61,9 +62,24 @@ public sealed class ViewerService : BackgroundService
     private async Task RunSessionAsync(CancellationToken ct)
     {
         await using var conn = new BrokerConnection(_cfg, _log);
+        string _lastClipboard = string.Empty;
 
         conn.MessageReceived += (type, peerId, payload) =>
+        {
+            if (type == MessageType.Clipboard)
+            {
+                var text = Encoding.UTF8.GetString(payload.Span);
+                if (text == _lastClipboard) return;
+                _lastClipboard = text;
+                Application.Current?.Dispatcher.Invoke(() =>
+                {
+                    try { System.Windows.Clipboard.SetText(text); }
+                    catch { }
+                });
+                return;
+            }
             OnMessage(type, peerId, payload);
+        };
 
         await conn.ConnectAndAuthAsync(ct);
         Application.Current?.Dispatcher.Invoke(() =>
@@ -73,7 +89,30 @@ public sealed class ViewerService : BackgroundService
         });
 
         _ = conn.StartHeartbeatAsync(ct);
-        await conn.RunReceiveLoopAsync(ct);
+        var recvLoop = conn.RunReceiveLoopAsync(ct);
+
+        var clipboardLoop = Task.Run(async () =>
+        {
+            using var timer = new PeriodicTimer(TimeSpan.FromMilliseconds(500));
+            while (await timer.WaitForNextTickAsync(ct))
+            {
+                string? text = null;
+                Application.Current?.Dispatcher.Invoke(() =>
+                {
+                    try { text = System.Windows.Clipboard.ContainsText()
+                        ? System.Windows.Clipboard.GetText() : null; }
+                    catch { text = null; }
+                });
+                if (text is null || text == _lastClipboard) continue;
+                _lastClipboard = text;
+                var targetId = _vm.SelectedSender?.AgentId ?? string.Empty;
+                var msg = WireProtocol.BuildClipboard(Encoding.UTF8.GetBytes(text), targetId);
+                try { await conn.SendAsync(msg, ct); }
+                catch { break; }
+            }
+        }, ct);
+
+        await Task.WhenAny(recvLoop, clipboardLoop);
     }
 
     private void OnMessage(byte type, string peerId, ReadOnlyMemory<byte> payload)

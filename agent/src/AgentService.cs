@@ -3,6 +3,7 @@ using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using SelfDesk.Agent.Capture;
+using SelfDesk.Agent.Clipboard;
 using SelfDesk.Agent.Encode;
 using SelfDesk.Agent.Inject;
 using SelfDesk.Agent.Network;
@@ -69,14 +70,19 @@ public sealed class AgentService : BackgroundService
             SingleWriter = true,
         });
 
+        var clipboard = new ClipboardService(conn, _log);
+
         conn.MessageReceived += (type, payload) =>
         {
             if (type == MessageType.InputEvent)
                 _injector.Inject(payload.Span);
+            else if (type == MessageType.Clipboard)
+                clipboard.OnRemoteClipboard(payload);
         };
 
-        var heartbeat = conn.StartHeartbeatAsync(ct);
-        var recvLoop  = conn.RunReceiveLoopAsync(ct);
+        var heartbeat      = conn.StartHeartbeatAsync(ct);
+        var recvLoop       = conn.RunReceiveLoopAsync(ct);
+        var clipboardLoop  = clipboard.MonitorAsync(_cfg.AgentId, ct);
 
         var producer = Task.Run(async () =>
         {
@@ -116,6 +122,6 @@ public sealed class AgentService : BackgroundService
             }
         }, ct);
 
-        await Task.WhenAny(producer, consumer, heartbeat, recvLoop);
+        await Task.WhenAny(producer, consumer, heartbeat, recvLoop, clipboardLoop);
     }
 }

@@ -15,6 +15,7 @@ export const MessageType = {
   PING:        0x40,
   PONG:        0x41,
   BYE:         0x50,
+  CLIPBOARD:   0x61,
 } as const;
 
 export type MessageTypeValue = (typeof MessageType)[keyof typeof MessageType];

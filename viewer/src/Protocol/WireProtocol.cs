@@ -101,4 +101,7 @@ public static class WireProtocol
 
     public static byte[] BuildBye() =>
         BuildEnvelope(MessageType.Bye, string.Empty, ReadOnlySpan<byte>.Empty);
+
+    public static byte[] BuildClipboard(ReadOnlySpan<byte> utf8Text, string targetPeerId = "") =>
+        BuildEnvelope(MessageType.Clipboard, targetPeerId, utf8Text);
 }

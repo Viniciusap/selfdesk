@@ -6,6 +6,7 @@
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+    <UseWindowsForms>true</UseWindowsForms>
     <RootNamespace>SelfDesk.Agent</RootNamespace>
     <AssemblyName>SelfDesk.Agent</AssemblyName>
     <Optimize>true</Optimize>

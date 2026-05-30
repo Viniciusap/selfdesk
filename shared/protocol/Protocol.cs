@@ -23,6 +23,7 @@ public static class MessageType
     public const byte Ping       = 0x40;
     public const byte Pong       = 0x41;
     public const byte Bye        = 0x50;
+    public const byte Clipboard  = 0x61;
 }
 
 public static class ProtocolSizes

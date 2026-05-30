@@ -99,4 +99,7 @@ public static class WireProtocol
         if (payload.Length == 0) throw new InvalidDataException("INPUT_EVENT payload vazio");
         return (payload.Span[0], payload[1..]);
     }
+
+    public static byte[] BuildClipboard(ReadOnlySpan<byte> utf8Text, string agentId) =>
+        BuildEnvelope(MessageType.Clipboard, agentId, utf8Text);
 }
