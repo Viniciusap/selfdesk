@@ -101,9 +101,17 @@ function New-Certs {
     Write-Host "OK. Distribua '$caCert' para as máquinas sender/receiver (pinning via TLS_CA_PATH)."
 }
 
+# Detecta se estamos num release pré-compilado (exe ao lado de scripts/) ou no source tree
+$Prebuilt = (Test-Path (Join-Path $Root 'SelfDesk.Agent.exe')) -or
+            (Test-Path (Join-Path $Root 'SelfDesk.Viewer.exe')) -or
+            (Test-Path (Join-Path $Root 'dist' 'index.js'))
+
 switch ($Role) {
     'broker' {
-        $out = Join-Path $Root 'broker' '.env'
+        # Pré-compilado: .env fica em $Root (ao lado de dist/); source: em broker/
+        $out     = if ($Prebuilt) { Join-Path $Root '.env' } else { Join-Path $Root 'broker' '.env' }
+        $certRel = if ($Prebuilt) { 'certs/server-cert.pem' } else { '../certs/server-cert.pem' }
+        $keyRel  = if ($Prebuilt) { 'certs/server-key.pem'  } else { '../certs/server-key.pem'  }
         Confirm-Overwrite $out
 
         $listenPort     = Prompt-Value -Question 'Porta de escuta do broker' -Default '7000'
@@ -112,16 +120,18 @@ switch ($Role) {
         New-Certs
 
         $secret = New-RandomSecret
-        $dir = Join-Path $Root 'broker'
-        if (-not (Test-Path $dir)) { New-Item -ItemType Directory -Path $dir | Out-Null }
+        if (-not $Prebuilt) {
+            $dir = Join-Path $Root 'broker'
+            if (-not (Test-Path $dir)) { New-Item -ItemType Directory -Path $dir | Out-Null }
+        }
 
         @"
 ROLE=broker
 SHARED_SECRET=$secret
 LISTEN_PORT=$listenPort
 ALLOWED_SENDERS=$allowedSenders
-TLS_CERT_PATH=../certs/server-cert.pem
-TLS_KEY_PATH=../certs/server-key.pem
+TLS_CERT_PATH=$certRel
+TLS_KEY_PATH=$keyRel
 LOG_LEVEL=info
 "@ | Set-Content -Path $out -Encoding UTF8
 
@@ -133,19 +143,25 @@ LOG_LEVEL=info
     }
 
     'sender' {
-        $out = Join-Path $Root 'agent' '.env'
+        # Pré-compilado: .env fica em $Root (ao lado do exe); source: em agent/
+        $out    = if ($Prebuilt) { Join-Path $Root '.env' } else { Join-Path $Root 'agent' '.env' }
+        $caPath = if ($Prebuilt) {
+            Prompt-Value -Question 'Caminho para ca-cert.pem (copiado do broker)' -Default (Join-Path $Root 'ca-cert.pem')
+        } else { '../certs/ca-cert.pem' }
         Confirm-Overwrite $out
 
-        $agentId      = Prompt-Value -Question 'ID único deste emissor' -Default 'laptop-01'
-        $brokerHost   = Prompt-Value -Question 'IP/hostname do broker'
-        $brokerPort   = Prompt-Value -Question 'Porta do broker' -Default '7000'
-        $secret       = Prompt-Value -Question 'SHARED_SECRET (idêntico ao do broker)'
-        $targetFps    = Prompt-Value -Question 'FPS alvo' -Default '30'
-        $encoder      = Prompt-Value -Question 'Encoder (jpeg|qsv|nvenc)' -Default 'jpeg'
-        $jpegQuality  = Prompt-Value -Question 'Qualidade JPEG (1-100)' -Default '75'
+        $agentId     = Prompt-Value -Question 'ID único deste emissor' -Default 'laptop-01'
+        $brokerHost  = Prompt-Value -Question 'IP/hostname do broker'
+        $brokerPort  = Prompt-Value -Question 'Porta do broker' -Default '7000'
+        $secret      = Prompt-Value -Question 'SHARED_SECRET (idêntico ao do broker)'
+        $targetFps   = Prompt-Value -Question 'FPS alvo' -Default '30'
+        $encoder     = Prompt-Value -Question 'Encoder (jpeg|qsv|nvenc)' -Default 'jpeg'
+        $jpegQuality = Prompt-Value -Question 'Qualidade JPEG (1-100)' -Default '75'
 
-        $dir = Join-Path $Root 'agent'
-        if (-not (Test-Path $dir)) { New-Item -ItemType Directory -Path $dir | Out-Null }
+        if (-not $Prebuilt) {
+            $dir = Join-Path $Root 'agent'
+            if (-not (Test-Path $dir)) { New-Item -ItemType Directory -Path $dir | Out-Null }
+        }
 
         @"
 ROLE=sender
@@ -153,7 +169,7 @@ AGENT_ID=$agentId
 SHARED_SECRET=$secret
 BROKER_HOST=$brokerHost
 BROKER_PORT=$brokerPort
-TLS_CA_PATH=../certs/ca-cert.pem
+TLS_CA_PATH=$caPath
 TARGET_FPS=$targetFps
 ENCODER=$encoder
 JPEG_QUALITY=$jpegQuality
@@ -161,30 +177,44 @@ JPEG_QUALITY=$jpegQuality
 
         Write-Host ''
         Write-Host "Gerado: $out"
-        Write-Host "Lembre-se de copiar certs/ca-cert.pem do broker para esta máquina."
+        if ($Prebuilt) {
+            Write-Host "Copie ca-cert.pem do broker para: $caPath"
+        } else {
+            Write-Host "Lembre-se de copiar certs/ca-cert.pem do broker para esta máquina."
+        }
     }
 
     'receiver' {
-        $out = Join-Path $Root 'viewer' '.env'
+        # Pré-compilado: .env fica em $Root (ao lado do exe); source: em viewer/
+        $out    = if ($Prebuilt) { Join-Path $Root '.env' } else { Join-Path $Root 'viewer' '.env' }
+        $caPath = if ($Prebuilt) {
+            Prompt-Value -Question 'Caminho para ca-cert.pem (copiado do broker)' -Default (Join-Path $Root 'ca-cert.pem')
+        } else { '../certs/ca-cert.pem' }
         Confirm-Overwrite $out
 
         $brokerHost = Prompt-Value -Question 'IP/hostname do broker'
         $brokerPort = Prompt-Value -Question 'Porta do broker' -Default '7000'
         $secret     = Prompt-Value -Question 'SHARED_SECRET (idêntico ao do broker)'
 
-        $dir = Join-Path $Root 'viewer'
-        if (-not (Test-Path $dir)) { New-Item -ItemType Directory -Path $dir | Out-Null }
+        if (-not $Prebuilt) {
+            $dir = Join-Path $Root 'viewer'
+            if (-not (Test-Path $dir)) { New-Item -ItemType Directory -Path $dir | Out-Null }
+        }
 
         @"
 ROLE=receiver
 SHARED_SECRET=$secret
 BROKER_HOST=$brokerHost
 BROKER_PORT=$brokerPort
-TLS_CA_PATH=../certs/ca-cert.pem
+TLS_CA_PATH=$caPath
 "@ | Set-Content -Path $out -Encoding UTF8
 
         Write-Host ''
         Write-Host "Gerado: $out"
-        Write-Host "Lembre-se de copiar certs/ca-cert.pem do broker para esta máquina."
+        if ($Prebuilt) {
+            Write-Host "Copie ca-cert.pem do broker para: $caPath"
+        } else {
+            Write-Host "Lembre-se de copiar certs/ca-cert.pem do broker para esta máquina."
+        }
     }
 }
