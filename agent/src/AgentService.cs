@@ -5,6 +5,7 @@ using Microsoft.Extensions.Options;
 using SelfDesk.Agent.Capture;
 using SelfDesk.Agent.Clipboard;
 using SelfDesk.Agent.Encode;
+using SelfDesk.Agent.FileTransfer;
 using SelfDesk.Agent.Inject;
 using SelfDesk.Agent.Network;
 using SelfDesk.Agent.Protocol;
@@ -71,13 +72,19 @@ public sealed class AgentService : BackgroundService
         });
 
         var clipboard = new ClipboardService(conn, _log);
+        var fileRx    = new FileTransferReceiver(_log);
 
         conn.MessageReceived += (type, payload) =>
         {
-            if (type == MessageType.InputEvent)
-                _injector.Inject(payload.Span);
-            else if (type == MessageType.Clipboard)
-                clipboard.OnRemoteClipboard(payload);
+            switch (type)
+            {
+                case MessageType.InputEvent:  _injector.Inject(payload.Span); break;
+                case MessageType.Clipboard:   clipboard.OnRemoteClipboard(payload); break;
+                case MessageType.FileHeader:  fileRx.OnFileHeader(payload); break;
+                case MessageType.FileChunk:   fileRx.OnFileChunk(payload); break;
+                case MessageType.FileDone:    fileRx.OnFileDone(payload); break;
+                case MessageType.FileError:   fileRx.OnFileError(payload); break;
+            }
         };
 
         var heartbeat      = conn.StartHeartbeatAsync(ct);

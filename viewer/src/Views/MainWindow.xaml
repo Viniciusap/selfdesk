@@ -142,7 +142,8 @@
                           VerticalAlignment="Stretch"/>
 
             <!-- Video surface -->
-            <Border Grid.Column="2" Background="{StaticResource BrushVideoBackground}">
+            <Border Grid.Column="2" Background="{StaticResource BrushVideoBackground}"
+                    AllowDrop="True" x:Name="VideoBorder">
                 <Image x:Name="VideoImage"
                        Source="{Binding VideoFrame}"
                        Stretch="Uniform"
@@ -155,11 +156,22 @@
         <!-- StatusBar -->
         <Border Grid.Row="2" Background="{StaticResource BrushBase}"
                 BorderBrush="{StaticResource BrushBorderSubtle}" BorderThickness="0,1,0,0">
-            <StackPanel Orientation="Horizontal" VerticalAlignment="Center" Margin="12,0">
+            <Grid Margin="12,0">
                 <TextBlock Text="{Binding StatusBarText}"
                            FontSize="11"
-                           Foreground="{StaticResource BrushTextMuted}"/>
-            </StackPanel>
+                           Foreground="{StaticResource BrushTextMuted}"
+                           VerticalAlignment="Center"/>
+                <ProgressBar x:Name="TransferBar"
+                             Height="4"
+                             VerticalAlignment="Bottom"
+                             Minimum="0" Maximum="100"
+                             Value="{Binding TransferProgress}"
+                             Foreground="{StaticResource BrushAccent}"
+                             Background="Transparent"
+                             BorderThickness="0"
+                             Visibility="{Binding TransferProgress,
+                                Converter={StaticResource ProgressVisibilityConverter}}"/>
+            </Grid>
         </Border>
     </Grid>
 </Window>

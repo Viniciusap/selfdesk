@@ -10,15 +10,19 @@ public sealed partial class MainWindowViewModel : ObservableObject
     [ObservableProperty] private string           _connectionStatus = "Desconectado";
     [ObservableProperty] private bool             _isConnected;
     [ObservableProperty] private WriteableBitmap? _videoFrame;
+    [ObservableProperty] private int              _transferProgress = -1;
+    [ObservableProperty] private string           _transferStatus   = string.Empty;
 
     public ObservableCollection<SenderViewModel> Senders { get; } = [];
 
     public string StatusBarText =>
-        SelectedSender is null
-            ? "Aguardando conexão..."
-            : $"{SelectedSender.AgentId} · {SelectedSender.ResolutionDisplay}" +
-              $" · {SelectedSender.Codec}" +
-              (SelectedSender.LastRttMs >= 0 ? $" · RTT {SelectedSender.LastRttMs}ms" : string.Empty);
+        TransferProgress >= 0
+            ? TransferStatus
+            : SelectedSender is null
+                ? "Aguardando conexão..."
+                : $"{SelectedSender.AgentId} · {SelectedSender.ResolutionDisplay}" +
+                  $" · {SelectedSender.Codec}" +
+                  (SelectedSender.LastRttMs >= 0 ? $" · RTT {SelectedSender.LastRttMs}ms" : string.Empty);
 
     partial void OnSelectedSenderChanged(SenderViewModel? value) =>
         OnPropertyChanged(nameof(StatusBarText));

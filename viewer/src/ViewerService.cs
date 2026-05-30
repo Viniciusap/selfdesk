@@ -1,4 +1,5 @@
 using System.Buffers.Binary;
+using System.IO;
 using System.Text;
 using System.Windows;
 using System.Windows.Media;
@@ -88,6 +89,11 @@ public sealed class ViewerService : BackgroundService
             _vm.ConnectionStatus = "Conectado";
         });
 
+        // Conecta drag & drop da janela
+        var window = Application.Current?.MainWindow as SelfDesk.Viewer.Views.MainWindow;
+        if (window is not null)
+            window.FileDropped += files => _ = SendFilesAsync(files, conn, ct);
+
         _ = conn.StartHeartbeatAsync(ct);
         var recvLoop = conn.RunReceiveLoopAsync(ct);
 
@@ -113,6 +119,70 @@ public sealed class ViewerService : BackgroundService
         }, ct);
 
         await Task.WhenAny(recvLoop, clipboardLoop);
+    }
+
+    private static uint _transferIdCounter;
+    private const int ChunkSize = 512 * 1024;
+
+    private async Task SendFilesAsync(string[] paths, BrokerConnection conn, CancellationToken ct)
+    {
+        foreach (var path in paths)
+        {
+            if (!File.Exists(path)) continue;
+            var targetId = _vm.SelectedSender?.AgentId ?? string.Empty;
+            if (string.IsNullOrEmpty(targetId)) continue;
+
+            var id       = ++_transferIdCounter;
+            var fileName = Path.GetFileName(path);
+            var info     = new FileInfo(path);
+            long total   = info.Length;
+            long sent    = 0;
+
+            Application.Current?.Dispatcher.Invoke(() =>
+            {
+                _vm.TransferProgress = 0;
+                _vm.TransferStatus   = $"Enviando {fileName}…";
+                _vm.NotifyStatusBarChanged();
+            });
+
+            try
+            {
+                await conn.SendAsync(WireProtocol.BuildFileHeader(id, total, fileName, targetId), ct);
+
+                await using var fs = new FileStream(path, FileMode.Open, FileAccess.Read, FileShare.Read);
+                var buf = new byte[ChunkSize];
+                int read;
+                while ((read = await fs.ReadAsync(buf.AsMemory(0, ChunkSize), ct)) > 0)
+                {
+                    await conn.SendAsync(WireProtocol.BuildFileChunk(id, buf.AsSpan(0, read), targetId), ct);
+                    sent += read;
+                    var pct = (int)(sent * 100 / total);
+                    Application.Current?.Dispatcher.Invoke(() =>
+                    {
+                        _vm.TransferProgress = pct;
+                        _vm.TransferStatus   = $"Enviando {fileName} — {pct}%";
+                        _vm.NotifyStatusBarChanged();
+                    });
+                }
+
+                await conn.SendAsync(WireProtocol.BuildFileDone(id, targetId), ct);
+                _log.LogInformation("Arquivo enviado: {Name}", fileName);
+            }
+            catch (Exception ex)
+            {
+                _log.LogWarning(ex, "Falha ao enviar {Name}", fileName);
+                try { await conn.SendAsync(WireProtocol.BuildFileError(id, targetId), ct); } catch { }
+            }
+            finally
+            {
+                Application.Current?.Dispatcher.Invoke(() =>
+                {
+                    _vm.TransferProgress = -1;
+                    _vm.TransferStatus   = string.Empty;
+                    _vm.NotifyStatusBarChanged();
+                });
+            }
+        }
     }
 
     private void OnMessage(byte type, string peerId, ReadOnlyMemory<byte> payload)

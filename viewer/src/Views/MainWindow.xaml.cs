@@ -22,9 +22,13 @@ public partial class MainWindow : Window
         VideoImage.Focusable  = true;
         VideoImage.PreviewKeyDown += OnVideoKeyDown;
         VideoImage.PreviewKeyUp   += OnVideoKeyUp;
+
+        VideoBorder.DragOver += OnDragOver;
+        VideoBorder.Drop     += OnDrop;
     }
 
     public event Action<byte[]>? InputSend;
+    public event Action<string[]>? FileDropped;
 
     private (ushort x, ushort y) NormalizePosition(System.Windows.Point p)
     {
@@ -105,6 +109,21 @@ public partial class MainWindow : Window
         var mods = GetMods();
         Send(WireProtocol.BuildKey(_vm.SelectedSender.AgentId, vk, InputEventKind.StateUp, mods));
         e.Handled = true;
+    }
+
+    private void OnDragOver(object sender, DragEventArgs e)
+    {
+        e.Effects = _vm.SelectedSender is not null && e.Data.GetDataPresent(DataFormats.FileDrop)
+            ? DragDropEffects.Copy
+            : DragDropEffects.None;
+        e.Handled = true;
+    }
+
+    private void OnDrop(object sender, DragEventArgs e)
+    {
+        if (_vm.SelectedSender is null) return;
+        if (e.Data.GetData(DataFormats.FileDrop) is string[] files && files.Length > 0)
+            FileDropped?.Invoke(files);
     }
 
     private static byte GetMods()

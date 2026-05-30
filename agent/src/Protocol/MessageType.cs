@@ -19,7 +19,11 @@ public static class MessageType
     public const byte Ping       = 0x40;
     public const byte Pong       = 0x41;
     public const byte Bye        = 0x50;
+    public const byte FileHeader = 0x60;
     public const byte Clipboard  = 0x61;
+    public const byte FileChunk  = 0x62;
+    public const byte FileDone   = 0x63;
+    public const byte FileError  = 0x64;
 }
 
 public static class ProtocolSizes

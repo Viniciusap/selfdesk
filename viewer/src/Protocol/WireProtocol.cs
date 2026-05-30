@@ -104,4 +104,41 @@ public static class WireProtocol
 
     public static byte[] BuildClipboard(ReadOnlySpan<byte> utf8Text, string targetPeerId = "") =>
         BuildEnvelope(MessageType.Clipboard, targetPeerId, utf8Text);
+
+    // FILE_HEADER: [0..3] transfer_id + [4..11] total_size + [12..13] name_len + [14..] filename
+    public static byte[] BuildFileHeader(uint transferId, long totalSize, string fileName, string targetPeerId)
+    {
+        var nameBytes = System.Text.Encoding.UTF8.GetBytes(fileName);
+        var payload   = new byte[4 + 8 + 2 + nameBytes.Length];
+        BinaryPrimitives.WriteUInt32BigEndian(payload, transferId);
+        BinaryPrimitives.WriteInt64BigEndian(payload.AsSpan(4), totalSize);
+        BinaryPrimitives.WriteUInt16BigEndian(payload.AsSpan(12), (ushort)nameBytes.Length);
+        nameBytes.CopyTo(payload, 14);
+        return BuildEnvelope(MessageType.FileHeader, targetPeerId, payload);
+    }
+
+    // FILE_CHUNK: [0..3] transfer_id + data
+    public static byte[] BuildFileChunk(uint transferId, ReadOnlySpan<byte> data, string targetPeerId)
+    {
+        var payload = new byte[4 + data.Length];
+        BinaryPrimitives.WriteUInt32BigEndian(payload, transferId);
+        data.CopyTo(payload.AsSpan(4));
+        return BuildEnvelope(MessageType.FileChunk, targetPeerId, payload);
+    }
+
+    // FILE_DONE: [0..3] transfer_id
+    public static byte[] BuildFileDone(uint transferId, string targetPeerId)
+    {
+        var payload = new byte[4];
+        BinaryPrimitives.WriteUInt32BigEndian(payload, transferId);
+        return BuildEnvelope(MessageType.FileDone, targetPeerId, payload);
+    }
+
+    // FILE_ERROR: [0..3] transfer_id
+    public static byte[] BuildFileError(uint transferId, string targetPeerId)
+    {
+        var payload = new byte[4];
+        BinaryPrimitives.WriteUInt32BigEndian(payload, transferId);
+        return BuildEnvelope(MessageType.FileError, targetPeerId, payload);
+    }
 }

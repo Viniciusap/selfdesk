@@ -19,7 +19,11 @@ export const MessageType = {
   PING:        0x40,
   PONG:        0x41,
   BYE:         0x50,
+  FILE_HEADER: 0x60,
   CLIPBOARD:   0x61,
+  FILE_CHUNK:  0x62,
+  FILE_DONE:   0x63,
+  FILE_ERROR:  0x64,
 } as const;
 
 export type MessageTypeValue = (typeof MessageType)[keyof typeof MessageType];
