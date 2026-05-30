@@ -193,7 +193,8 @@ public sealed class ViewerService : BackgroundService
             {
                 var doc = System.Text.Json.JsonDocument.Parse(payload.ToArray());
                 var id  = doc.RootElement.GetProperty("agentId").GetString() ?? peerId;
-                Application.Current?.Dispatcher.Invoke(() => _vm.AddSender(id));
+                var mac = doc.RootElement.TryGetProperty("mac", out var macEl) ? macEl.GetString() : null;
+                Application.Current?.Dispatcher.Invoke(() => _vm.AddSender(id, mac));
                 break;
             }
             case MessageType.SenderDown:

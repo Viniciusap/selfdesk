@@ -10,6 +10,9 @@ public sealed partial class SenderViewModel : ObservableObject
     [ObservableProperty] private int    _frameWidth;
     [ObservableProperty] private int    _frameHeight;
     [ObservableProperty] private string _codec = string.Empty;
+    [ObservableProperty] private string _macAddress = string.Empty;
+
+    public bool CanWake => !IsConnected && !string.IsNullOrEmpty(MacAddress);
 
     public string DisplayName => AgentId;
 

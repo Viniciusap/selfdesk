@@ -126,9 +126,19 @@
                                                    Foreground="{StaticResource BrushTextMuted}"/>
                                     </StackPanel>
 
-                                    <TextBlock Grid.Column="2" Text="{Binding RttDisplay}" FontSize="11"
-                                               Foreground="{StaticResource BrushTextSecondary}"
-                                               VerticalAlignment="Top"/>
+                                    <StackPanel Grid.Column="2" VerticalAlignment="Top">
+                                        <TextBlock Text="{Binding RttDisplay}" FontSize="11"
+                                                   Foreground="{StaticResource BrushTextSecondary}"/>
+                                        <Button x:Name="WakeBtn"
+                                                Content="Wake"
+                                                FontSize="10"
+                                                Padding="4,1"
+                                                Margin="0,2,0,0"
+                                                Tag="{Binding}"
+                                                Visibility="{Binding CanWake,
+                                                    Converter={StaticResource BoolToVisConverter}}"
+                                                Click="OnWakeClick"/>
+                                    </StackPanel>
                                 </Grid>
                             </DataTemplate>
                         </ListBox.ItemTemplate>

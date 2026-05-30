@@ -1,7 +1,9 @@
 using System.Windows;
+using System.Windows.Controls;
 using System.Windows.Input;
 using SelfDesk.Viewer.Protocol;
 using SelfDesk.Viewer.ViewModels;
+using SelfDesk.Viewer.WakeOnLan;
 
 namespace SelfDesk.Viewer.Views;
 
@@ -109,6 +111,19 @@ public partial class MainWindow : Window
         var mods = GetMods();
         Send(WireProtocol.BuildKey(_vm.SelectedSender.AgentId, vk, InputEventKind.StateUp, mods));
         e.Handled = true;
+    }
+
+    private async void OnWakeClick(object sender, RoutedEventArgs e)
+    {
+        if (sender is Button btn && btn.Tag is SenderViewModel vm && !string.IsNullOrEmpty(vm.MacAddress))
+        {
+            try { await WakeOnLanService.SendMagicPacketAsync(vm.MacAddress); }
+            catch (Exception ex)
+            {
+                MessageBox.Show($"Falha ao enviar magic packet: {ex.Message}", "Wake-on-LAN",
+                    MessageBoxButton.OK, MessageBoxImage.Warning);
+            }
+        }
     }
 
     private void OnDragOver(object sender, DragEventArgs e)

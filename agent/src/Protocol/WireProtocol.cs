@@ -44,11 +44,28 @@ public static class WireProtocol
         return (type, peerId, length);
     }
 
-    public static byte[] BuildHello(string agentId, string role)
+    public static byte[] BuildHello(string agentId, string role, string? mac = null)
     {
-        var json    = JsonSerializer.Serialize(new { version = 1, role, agentId });
+        var json    = JsonSerializer.Serialize(new { version = 1, role, agentId, mac });
         var payload = Encoding.UTF8.GetBytes(json);
         return BuildEnvelope(MessageType.Hello, agentId, payload);
+    }
+
+    public static string GetLocalMac()
+    {
+        try
+        {
+            var iface = System.Net.NetworkInformation.NetworkInterface
+                .GetAllNetworkInterfaces()
+                .FirstOrDefault(n =>
+                    n.OperationalStatus == System.Net.NetworkInformation.OperationalStatus.Up &&
+                    n.NetworkInterfaceType != System.Net.NetworkInformation.NetworkInterfaceType.Loopback &&
+                    n.GetPhysicalAddress().GetAddressBytes().Length == 6);
+            if (iface is null) return string.Empty;
+            var bytes = iface.GetPhysicalAddress().GetAddressBytes();
+            return string.Join(":", bytes.Select(b => b.ToString("X2")));
+        }
+        catch { return string.Empty; }
     }
 
     public static byte[] BuildAuth(ReadOnlySpan<byte> nonce, string sharedSecret)

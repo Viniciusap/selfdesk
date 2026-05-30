@@ -41,20 +41,30 @@ An open-source alternative to AnyDesk and TeamViewer — no third-party cloud, n
 
 ## What is it
 
-SelfDesk connects a **receiver** machine (where you sit) to one or more **sender** machines (the ones you control), through a lightweight **broker** you host yourself. The receiver watches the remote screens and sends mouse and keyboard input; the senders capture the screen and inject the received input.
+SelfDesk connects a **receiver** machine (where you sit) to one or more **sender** machines (the ones you control), through a lightweight **broker** you host yourself. The receiver watches the remote screens and sends mouse and keyboard; the senders capture the screen and inject the received input.
 
-None of the Windows machines open inbound ports. Native RDP (3389) stays closed. Everything travels over TLS with HMAC-SHA256 challenge-response authentication.
+None of the Windows machines open inbound ports. Everything travels over TLS 1.3 with HMAC-SHA256 challenge-response authentication.
+
+## Features
+
+- **Screen capture and remote control** — mouse, keyboard, and scroll wheel
+- **Clipboard sync** — copy on any machine, paste on the other, bidirectional
+- **File transfer** — drag files onto the video surface, progress bar included
+- **Wake-on-LAN** — wake offline machines directly from the viewer sidebar
+- **Hardware H.264** — Quick Sync (Intel) or NVENC (NVIDIA) via FFmpeg, selectable by `.env`
+- **Multiple senders** — control several machines from one viewer, switch with a click
+- **Automatic reconnect** — exponential backoff on broker restart or network hiccup
 
 ---
 
 ## Why
 
 - **Zero inbound ports** on controlled machines — only outbound connections to the broker.
-- **Native RDP (3389) closed** — minimal attack surface.
 - **Fully self-hosted** — your data never passes through a third-party server.
+- **TLS 1.3 + HMAC-SHA256** — no plaintext fallback, ever.
 - **Configuration as code** — everything in `.env`, generated locally, never committed.
 - **Scale from 1 to N senders by config alone** — no code changes needed.
-- **Pluggable codec** — JPEG to get started, hardware H.264 (Quick Sync / NVENC) later.
+- **Pluggable codec** — JPEG to get started, hardware H.264 later, switchable via `ENCODER=`.
 - **Any machine, any role** — the `ROLE` in `.env` defines broker, sender, or receiver.
 
 ---
@@ -353,12 +363,16 @@ selfdesk/
 
 | Phase | Deliverable | Status |
 |-------|-------------|--------|
-| 0 | Skeleton, TLS, HMAC auth, heartbeat, open-source packaging | ✅ Complete |
+| 0 | Skeleton, TLS 1.3, HMAC auth, heartbeat, open-source packaging | ✅ Complete |
 | 1 | MVP: one-way JPEG video + mouse input | ✅ Code complete (hardware gate pending) |
 | 2 | Keyboard + latency tuning + RTT measurement | ✅ Code complete (hardware gate pending) |
 | 3 | Multiple senders + sender selector in viewer | ✅ Code complete (hardware gate pending) |
-| 4 | Hardware codec (Quick Sync / NVENC via FFmpeg) | ✅ Code complete (requires FFmpeg DLLs + hardware to activate) |
+| 4 | Hardware codec (Quick Sync / NVENC via FFmpeg) | ✅ Code complete (requires FFmpeg DLLs + hardware) |
 | 5 | Agent as Windows service (lock screen / UAC) | ✅ Code complete (hardware gate pending) |
+| — | Clipboard sync (bidirectional, 500ms polling) | ✅ Complete |
+| — | File transfer via drag & drop (chunked, progress bar) | ✅ Complete |
+| — | Wake-on-LAN (magic packet from viewer sidebar) | ✅ Complete |
+| — | Security hardening (DoS limits, handshake timeout, reconnect) | ✅ Complete |
 
 ---
 

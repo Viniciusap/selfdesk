@@ -51,7 +51,7 @@ public sealed class BrokerConnection : IAsyncDisposable
             RemoteCertificateValidationCallback = null,
         }, ct);
 
-        await SendRawAsync(WireProtocol.BuildHello(_cfg.AgentId, "sender"), ct);
+        await SendRawAsync(WireProtocol.BuildHello(_cfg.AgentId, "sender", WireProtocol.GetLocalMac()), ct);
 
         var (type, _, _) = await ReadHeaderAsync(ct);
         if (type != MessageType.Challenge)

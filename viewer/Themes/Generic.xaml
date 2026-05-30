@@ -5,4 +5,5 @@
         <ResourceDictionary Source="/Themes/Colors.xaml"/>
     </ResourceDictionary.MergedDictionaries>
     <conv:ProgressVisibilityConverter x:Key="ProgressVisibilityConverter"/>
+    <conv:BoolToVisibilityConverter x:Key="BoolToVisConverter"/>
 </ResourceDictionary>

@@ -28,6 +28,7 @@ export interface HelloPayload {
   version: number;
   role:    Role;
   agentId: string;
+  mac?:    string;
 }
 
 export interface ConnectionEvents {
@@ -42,6 +43,7 @@ export class Connection extends EventEmitter {
   state: ConnState = 'CONNECTING';
   role?: Role;
   agentId?: string;
+  mac?: string;
 
   private readonly socket: tls.TLSSocket;
   private readonly secret: string;
@@ -163,6 +165,7 @@ export class Connection extends EventEmitter {
 
         this.role    = hello.role;
         this.agentId = hello.agentId;
+        this.mac     = hello.mac;
         this.state   = 'HELLO_RECEIVED';
 
         this.nonce = generateNonce();
