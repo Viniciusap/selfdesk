@@ -65,8 +65,20 @@ function New-Certs {
 
     $openssl = Get-Command openssl -ErrorAction SilentlyContinue
     if (-not $openssl) {
-        Write-Warning 'openssl não encontrado no PATH. Instale o OpenSSL for Windows ou gere os certificados no broker Linux e copie certs/ca-cert.pem manualmente.'
-        return
+        Write-Host 'openssl não encontrado. Instalando via winget...'
+        if (-not (Get-Command winget -ErrorAction SilentlyContinue)) {
+            Write-Warning 'winget não disponível. Instale o OpenSSL manualmente (winget install ShiningLight.OpenSSL) ou gere os certificados no broker Linux e copie certs/ca-cert.pem.'
+            return
+        }
+        winget install --id ShiningLight.OpenSSL -e --accept-source-agreements --accept-package-agreements
+        $env:PATH = [System.Environment]::GetEnvironmentVariable('PATH', 'Machine') + ';' +
+                    [System.Environment]::GetEnvironmentVariable('PATH', 'User')
+        $openssl = Get-Command openssl -ErrorAction SilentlyContinue
+        if (-not $openssl) {
+            Write-Warning 'OpenSSL instalado mas não encontrado no PATH desta sessão. Feche e reabra o terminal e rode o bootstrap novamente.'
+            return
+        }
+        Write-Host 'OpenSSL instalado.'
     }
 
     $ip = Prompt-Value -Question 'IP/hostname deste broker (vai no SAN do certificado)' -Default '127.0.0.1'
