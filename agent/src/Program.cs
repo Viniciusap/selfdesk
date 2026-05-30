@@ -1,12 +1,15 @@
 using DotNetEnv;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
+using Microsoft.Extensions.Hosting.WindowsServices;
 using SelfDesk.Agent;
 using SelfDesk.Agent.Capture;
 using SelfDesk.Agent.Encode;
 using SelfDesk.Agent.Inject;
 
-DotNetEnv.Env.Load();
+// Carrega .env se existir (ignorado quando rodando como serviço — usar variáveis de ambiente do serviço)
+if (!WindowsServiceHelpers.IsWindowsService())
+    DotNetEnv.Env.Load();
 
 var builder = Host.CreateApplicationBuilder(args);
 
@@ -22,13 +25,15 @@ builder.Services.Configure<AgentConfig>(cfg =>
     cfg.JpegQuality  = int.TryParse(GetEnv("JPEG_QUALITY", "75"),  out var q) ? q : 75;
 });
 
-var encoder = GetEnv("ENCODER", "jpeg");
 builder.Services.AddSingleton<IScreenCapturer, GdiScreenCapturer>();
 builder.Services.AddSingleton<IFrameEncoder>(_ =>
     (IFrameEncoder)new JpegFrameEncoder(
         int.TryParse(GetEnv("JPEG_QUALITY", "75"), out var q) ? q : 75));
 builder.Services.AddSingleton<IInputInjector, Win32InputInjector>();
 builder.Services.AddHostedService<AgentService>();
+
+// Suporte a Windows Service (Fase 5): dotnet publish + sc.exe create
+builder.Services.AddWindowsService(opts => opts.ServiceName = "SelfDesk.Agent");
 
 await builder.Build().RunAsync();
 
