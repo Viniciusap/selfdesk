@@ -120,16 +120,12 @@ Found a vulnerability? Please report it responsibly via a [private issue](https:
 
 | Component | Requirement |
 |-----------|------------|
-| Broker | Node.js LTS (Linux recommended, but any OS with Node works) |
-| Sender / Receiver | Windows 10/11 with .NET 10 SDK |
-| Cert bootstrap | `openssl` in PATH (on the broker machine) |
+| Broker | Node.js LTS — installed automatically by `install.sh` if missing |
+| Sender / Receiver | Windows 10/11, .NET 10 SDK — installed automatically by `install.ps1` if missing |
+| Cert bootstrap | `openssl` in PATH (broker machine) — installed automatically by `install.sh` |
 | Network | All machines on the same LAN |
 
-Install .NET 10 on Windows:
-
-```powershell
-winget install Microsoft.DotNet.SDK.10
-```
+> **Prerequisites are handled automatically** by the install scripts via `winget` (Windows) and `apt` / NodeSource (Linux). No manual pre-installation needed on a fresh machine.
 
 ---
 
@@ -140,20 +136,30 @@ git clone https://github.com/Viniciusap/selfdesk.git
 cd selfdesk
 ```
 
+The setup is two steps per machine: **install** (deps + build) then **bootstrap** (config + secrets).
+
 ### 1. Broker (Linux)
 
 ```bash
+# Step 1 — install deps and compile (auto-installs Node.js LTS if missing)
+./scripts/install.sh broker
+
+# Step 2 — generate .env, SHARED_SECRET, and TLS certificates
 ./scripts/bootstrap.sh broker
-# Generates broker/.env, SHARED_SECRET, and certificates in certs/.
 # Note the printed SHARED_SECRET and copy certs/ca-cert.pem to your Windows machines.
 
 sudo ufw allow from <YOUR_SUBNET>/24 to any port <LISTEN_PORT> proto tcp
-cd broker && npm install && npm start
+cd broker && npm start
 ```
 
 ### 2. Sender — machine to be controlled (Windows)
 
 ```powershell
+# Step 1 — install deps, compile, and download FFmpeg DLLs for H264 (Phase 4)
+.\scripts\install.ps1 -Role sender
+# Add -SkipFFmpeg to skip FFmpeg download if using ENCODER=jpeg only.
+
+# Step 2 — generate agent/.env
 .\scripts\bootstrap.ps1 -Role sender
 # Prompts for: broker host, SHARED_SECRET, AGENT_ID, encode parameters.
 
@@ -167,6 +173,11 @@ cd agent && dotnet run
 ### 3. Receiver — control machine (Windows)
 
 ```powershell
+# Step 1 — install deps, compile, and download FFmpeg DLLs for H264 (Phase 4)
+.\scripts\install.ps1 -Role receiver
+# Add -SkipFFmpeg to skip FFmpeg download if using ENCODER=jpeg only.
+
+# Step 2 — generate viewer/.env
 .\scripts\bootstrap.ps1 -Role receiver
 # Prompts for: broker host, SHARED_SECRET.
 
