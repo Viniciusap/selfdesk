@@ -39,6 +39,7 @@ public sealed unsafe class H264Encoder : IFrameEncoder
 
     private void Initialize(int width, int height)
     {
+        ffmpeg.RootPath = AppContext.BaseDirectory;
         var codec = ffmpeg.avcodec_find_encoder_by_name(_encoderName);
         if (codec == null)
             throw new InvalidOperationException(

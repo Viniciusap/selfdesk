@@ -51,7 +51,7 @@ gen_certs() {
   echo "Gerando CA e certificado de servidor..."
   openssl req -x509 -newkey rsa:4096 -nodes \
     -keyout "$CERT_DIR/ca-key.pem" -out "$CERT_DIR/ca-cert.pem" \
-    -days 3650 -subj "/CN=selfdesk-lan-ca" >/dev/null 2>&1
+    -days 730 -subj "/CN=selfdesk-lan-ca" >/dev/null 2>&1
   openssl req -newkey rsa:4096 -nodes \
     -keyout "$CERT_DIR/server-key.pem" -out "$CERT_DIR/server.csr" \
     -subj "/CN=$ip" >/dev/null 2>&1
@@ -94,6 +94,11 @@ EOF
     prompt BROKER_HOST  "IP/host do broker" ""
     prompt BROKER_PORT  "Porta do broker" "7000"
     prompt SHARED_SECRET "SHARED_SECRET (idêntico ao do broker)" ""
+    if [ ${#SHARED_SECRET} -lt 32 ]; then
+      echo "  Aviso: SHARED_SECRET parece curto (${#SHARED_SECRET} chars). Certifique-se de copiar o valor completo gerado pelo broker."
+      read -rp "  Continuar mesmo assim? (y/N): " _confirm
+      [[ "$_confirm" == "y" || "$_confirm" == "Y" ]] || { echo "Abortado."; exit 1; }
+    fi
     prompt TARGET_FPS   "FPS alvo" "30"
     prompt ENCODER      "Encoder (jpeg|qsv|nvenc)" "jpeg"
     prompt JPEG_QUALITY "Qualidade JPEG (1-100)" "75"
@@ -119,6 +124,11 @@ EOF
     prompt BROKER_HOST  "IP/host do broker" ""
     prompt BROKER_PORT  "Porta do broker" "7000"
     prompt SHARED_SECRET "SHARED_SECRET (idêntico ao do broker)" ""
+    if [ ${#SHARED_SECRET} -lt 32 ]; then
+      echo "  Aviso: SHARED_SECRET parece curto (${#SHARED_SECRET} chars). Certifique-se de copiar o valor completo gerado pelo broker."
+      read -rp "  Continuar mesmo assim? (y/N): " _confirm
+      [[ "$_confirm" == "y" || "$_confirm" == "Y" ]] || { echo "Abortado."; exit 1; }
+    fi
     mkdir -p "$ROOT/viewer"
     cat > "$OUT" <<EOF
 ROLE=receiver

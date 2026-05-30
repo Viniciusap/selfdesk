@@ -92,7 +92,7 @@ function New-Certs {
     $srvCrt = Join-Path $CertDir 'server-cert.pem'
     $extFile = Join-Path $CertDir 'san.ext'
 
-    & openssl req -x509 -newkey rsa:4096 -nodes -keyout $caKey -out $caCert -days 3650 -subj '/CN=selfdesk-lan-ca' 2>$null
+    & openssl req -x509 -newkey rsa:4096 -nodes -keyout $caKey -out $caCert -days 730 -subj '/CN=selfdesk-lan-ca' 2>$null
     & openssl req -newkey rsa:4096 -nodes -keyout $srvKey -out $srvCsr -subj "/CN=$ip" 2>$null
     Set-Content -Path $extFile -Value "subjectAltName=IP:$ip"
     & openssl x509 -req -in $srvCsr -CA $caCert -CAkey $caKey -CAcreateserial -out $srvCrt -days 825 -extfile $extFile 2>$null
@@ -154,6 +154,11 @@ LOG_LEVEL=info
         $brokerHost  = Prompt-Value -Question 'IP/hostname do broker'
         $brokerPort  = Prompt-Value -Question 'Porta do broker' -Default '7000'
         $secret      = Prompt-Value -Question 'SHARED_SECRET (idêntico ao do broker)'
+        if ($secret.Length -lt 32) {
+            Write-Warning "SHARED_SECRET parece curto ($($secret.Length) chars). Certifique-se de copiar o valor completo gerado pelo broker."
+            $c = Read-Host 'Continuar mesmo assim? (y/N)'
+            if ($c -notin @('y','Y')) { Write-Host 'Abortado.'; exit 1 }
+        }
         $targetFps   = Prompt-Value -Question 'FPS alvo' -Default '30'
         $encoder     = Prompt-Value -Question 'Encoder (jpeg|qsv|nvenc)' -Default 'jpeg'
         $jpegQuality = Prompt-Value -Question 'Qualidade JPEG (1-100)' -Default '75'
@@ -195,6 +200,11 @@ JPEG_QUALITY=$jpegQuality
         $brokerHost = Prompt-Value -Question 'IP/hostname do broker'
         $brokerPort = Prompt-Value -Question 'Porta do broker' -Default '7000'
         $secret     = Prompt-Value -Question 'SHARED_SECRET (idêntico ao do broker)'
+        if ($secret.Length -lt 32) {
+            Write-Warning "SHARED_SECRET parece curto ($($secret.Length) chars). Certifique-se de copiar o valor completo gerado pelo broker."
+            $c = Read-Host 'Continuar mesmo assim? (y/N)'
+            if ($c -notin @('y','Y')) { Write-Host 'Abortado.'; exit 1 }
+        }
 
         if (-not $Prebuilt) {
             $dir = Join-Path $Root 'viewer'

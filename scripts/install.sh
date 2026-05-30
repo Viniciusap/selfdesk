@@ -84,9 +84,41 @@ case "$ROLE" in
     echo ''
     echo '✔ Broker compilado em broker/dist/'
     echo ''
+
+    read -rp '→ Instalar como serviço systemd? (y/N): ' _systemd
+    if [[ "$_systemd" == "y" || "$_systemd" == "Y" ]]; then
+      NODE_BIN="$(command -v node)"
+      UNIT_FILE='/etc/systemd/system/selfdesk-broker.service'
+      sudo tee "$UNIT_FILE" > /dev/null <<EOF
+[Unit]
+Description=SelfDesk Broker
+After=network.target
+
+[Service]
+Type=simple
+WorkingDirectory=$ROOT/broker
+ExecStart=$NODE_BIN dist/index.js
+Restart=always
+RestartSec=5
+EnvironmentFile=$ROOT/broker/.env
+
+[Install]
+WantedBy=multi-user.target
+EOF
+      sudo systemctl daemon-reload
+      sudo systemctl enable selfdesk-broker
+      echo '✔ Serviço selfdesk-broker instalado e habilitado.'
+      echo '  (Execute bootstrap.sh broker antes de iniciar: systemctl start selfdesk-broker)'
+    fi
+
+    echo ''
     echo 'Próximo passo:'
     echo '  ./scripts/bootstrap.sh broker'
-    echo '  cd broker && npm start'
+    if [[ "$_systemd" == "y" || "$_systemd" == "Y" ]]; then
+      echo '  sudo systemctl start selfdesk-broker'
+    else
+      echo '  cd broker && npm start'
+    fi
     ;;
 
   sender|receiver)

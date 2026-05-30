@@ -21,6 +21,7 @@ public sealed unsafe class H264Decoder : IFrameDecoder, IDisposable
 
     public H264Decoder()
     {
+        ffmpeg.RootPath = AppContext.BaseDirectory;
         var codec = ffmpeg.avcodec_find_decoder(AVCodecID.AV_CODEC_ID_H264);
         if (codec == null)
             throw new InvalidOperationException("H264 software decoder (libavcodec) not found.");

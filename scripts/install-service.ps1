@@ -6,11 +6,8 @@
     Requer execução como administrador.
     Uso: .\scripts\install-service.ps1 [-Uninstall]
 
-.NOTES
-    Após instalar, configure as variáveis de ambiente do serviço via:
-    sc.exe config SelfDesk.Agent depend= "" start= auto
-    [Environment]::SetEnvironmentVariable("SHARED_SECRET", "...", "Machine")
-    ... (demais variáveis)
+    Lê agent/.env (ou agent/publish/.env) e configura automaticamente
+    as variáveis de ambiente do serviço em Machine scope.
 #>
 
 param([switch]$Uninstall)
@@ -50,13 +47,43 @@ New-Service -Name $ServiceName `
             -StartupType Automatic
 
 Write-Host "Serviço '$ServiceName' instalado."
+
+# Variáveis relevantes para o serviço (lidas do .env)
+$EnvVarsToSet = @('ROLE','AGENT_ID','SHARED_SECRET','BROKER_HOST','BROKER_PORT',
+                  'TLS_CA_PATH','TARGET_FPS','ENCODER','JPEG_QUALITY')
+
+# Procura o .env: primeiro publish/, depois agent/
+$EnvFile = $null
+foreach ($candidate in @(
+    (Join-Path $PublishDir '.env'),
+    (Join-Path $Root 'agent' '.env')
+)) {
+    if (Test-Path $candidate) { $EnvFile = $candidate; break }
+}
+
+if ($null -eq $EnvFile) {
+    Write-Warning ".env não encontrado. Execute .\scripts\bootstrap.ps1 -Role sender antes de continuar."
+    Write-Warning "Após gerar o .env, rode install-service.ps1 novamente para configurar as variáveis."
+    exit 1
+}
+
 Write-Host ""
-Write-Host "Configure as variáveis de ambiente do serviço (Machine scope):"
-Write-Host '  [Environment]::SetEnvironmentVariable("SHARED_SECRET", "<secret>", "Machine")'
-Write-Host '  [Environment]::SetEnvironmentVariable("BROKER_HOST",   "<ip>",     "Machine")'
-Write-Host '  [Environment]::SetEnvironmentVariable("BROKER_PORT",   "7000",     "Machine")'
-Write-Host '  [Environment]::SetEnvironmentVariable("TLS_CA_PATH",   "<path>",   "Machine")'
-Write-Host '  [Environment]::SetEnvironmentVariable("AGENT_ID",      "laptop-01","Machine")'
+Write-Host "Configurando variáveis de ambiente do serviço a partir de: $EnvFile"
+
+foreach ($line in Get-Content $EnvFile) {
+    $line = $line.Trim()
+    if ($line -match '^\s*#' -or $line -notmatch '=') { continue }
+    $idx = $line.IndexOf('=')
+    $key = $line.Substring(0, $idx).Trim()
+    $val = $line.Substring($idx + 1).Trim()
+    if ($key -notin $EnvVarsToSet) { continue }
+
+    [Environment]::SetEnvironmentVariable($key, $val, 'Machine')
+    $display = if ($key -eq 'SHARED_SECRET') { '***' } else { $val }
+    Write-Host "  $key = $display"
+}
+
 Write-Host ""
-Write-Host "Depois inicie o serviço:"
-Write-Host "  Start-Service -Name $ServiceName"
+Write-Host "Iniciando serviço..."
+Start-Service -Name $ServiceName
+Write-Host "Serviço '$ServiceName' iniciado."
