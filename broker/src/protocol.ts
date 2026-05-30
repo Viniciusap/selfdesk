@@ -25,8 +25,10 @@ export const PEER_ID_SIZE   = 16;
 export const LENGTH_OFFSET  = 18;
 export const NONCE_SIZE     = 32;
 
-export const PING_INTERVAL_MS = 5_000;
-export const PONG_TIMEOUT_MS  = 15_000;
+export const PING_INTERVAL_MS     = 5_000;
+export const PONG_TIMEOUT_MS      = 15_000;
+export const HANDSHAKE_TIMEOUT_MS = 10_000;
+export const MAX_FRAME_BYTES      = 8 * 1024 * 1024; // 8 MB
 
 export interface ParsedHeader {
   version: number;

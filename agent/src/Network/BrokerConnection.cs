@@ -15,6 +15,7 @@ public sealed class BrokerConnection : IAsyncDisposable
     private SslStream?      _ssl;
     private CancellationTokenSource _cts = new();
 
+    private readonly SemaphoreSlim _writeLock = new(1, 1);
     private readonly byte[] _headerBuf = new byte[ProtocolSizes.HeaderSize];
 
     public event Action<byte, ReadOnlyMemory<byte>>? MessageReceived;
@@ -128,8 +129,12 @@ public sealed class BrokerConnection : IAsyncDisposable
         }
     }
 
-    private Task SendRawAsync(byte[] data, CancellationToken ct) =>
-        _ssl!.WriteAsync(data, ct).AsTask();
+    private async Task SendRawAsync(byte[] data, CancellationToken ct)
+    {
+        await _writeLock.WaitAsync(ct);
+        try { await _ssl!.WriteAsync(data, ct); }
+        finally { _writeLock.Release(); }
+    }
 
     private static bool IsSignedBy(X509Certificate2 cert, X509Certificate2 ca)
     {
@@ -149,5 +154,6 @@ public sealed class BrokerConnection : IAsyncDisposable
         _cts.Cancel();
         if (_ssl is not null) await _ssl.DisposeAsync();
         _tcp?.Dispose();
+        _writeLock.Dispose();
     }
 }

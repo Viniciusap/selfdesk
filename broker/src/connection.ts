@@ -1,7 +1,9 @@
 import { EventEmitter } from 'node:events';
 import * as tls from 'node:tls';
 import {
+  HANDSHAKE_TIMEOUT_MS,
   HEADER_SIZE,
+  MAX_FRAME_BYTES,
   PING_INTERVAL_MS,
   PONG_TIMEOUT_MS,
   MessageType,
@@ -50,6 +52,7 @@ export class Connection extends EventEmitter {
   private nonce?: Buffer;
   private pingTimer?: NodeJS.Timeout;
   private pongTimer?: NodeJS.Timeout;
+  private handshakeTimer?: NodeJS.Timeout;
 
   constructor(
     socket: tls.TLSSocket,
@@ -67,6 +70,14 @@ export class Connection extends EventEmitter {
     socket.on('data',  (chunk: Buffer) => this.onData(chunk));
     socket.on('end',   () => this.close());
     socket.on('error', (err) => { this.emit('error', err); this.close(); });
+
+    this.handshakeTimer = setTimeout(() => {
+      if (this.state !== 'ACTIVE' && this.state !== 'CLOSED') {
+        this.log.warn({ id: this.id }, 'handshake timeout — encerrando conexão');
+        this.close();
+      }
+    }, HANDSHAKE_TIMEOUT_MS);
+    this.handshakeTimer.unref?.();
   }
 
   send(buf: Buffer): void {
@@ -78,6 +89,7 @@ export class Connection extends EventEmitter {
   close(): void {
     if (this.state === 'CLOSED') return;
     this.state = 'CLOSED';
+    clearTimeout(this.handshakeTimer);
     clearTimeout(this.pingTimer);
     clearTimeout(this.pongTimer);
     this.socket.destroy();
@@ -92,6 +104,13 @@ export class Connection extends EventEmitter {
   private drainFrames(): void {
     while (this.buf.length >= HEADER_SIZE) {
       const header = parseHeader(this.buf);
+
+      if (header.length > MAX_FRAME_BYTES) {
+        this.log.warn({ id: this.id, length: header.length }, 'frame oversized — encerrando conexão');
+        this.close();
+        return;
+      }
+
       const total  = HEADER_SIZE + header.length;
       if (this.buf.length < total) break;
 
@@ -167,6 +186,7 @@ export class Connection extends EventEmitter {
         }
 
         this.state = 'ACTIVE';
+        clearTimeout(this.handshakeTimer);
         this.send(build.authOk(this.agentId ?? ''));
         this.log.info({ agentId: this.agentId, role: this.role }, 'autenticado');
         this.emit('authenticated', this.role!, this.agentId!);
