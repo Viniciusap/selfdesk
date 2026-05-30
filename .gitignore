@@ -1,0 +1,50 @@
+# ── Segredos e configuração local ──────────────────────────────
+.env
+.env.local
+.env.*.local
+
+# ── Certificados e chaves (nunca commitar) ──────────────────────
+certs/
+*.pem
+*.key
+*.crt
+*.csr
+*.srl
+*.pfx
+*.p12
+
+# ── Documentação de trabalho (só README.md é versionado) ────────
+*.md
+!README.md
+docs/
+
+# ── Build artifacts — Node ───────────────────────────────────────
+node_modules/
+dist/
+coverage/
+.npm/
+
+# ── Build artifacts — .NET ───────────────────────────────────────
+bin/
+obj/
+*.user
+*.suo
+.vs/
+*.userprefs
+TestResults/
+*.trx
+*.coverage
+
+# ── OS / IDEs ────────────────────────────────────────────────────
+.DS_Store
+Thumbs.db
+desktop.ini
+*.swp
+*.swo
+.vscode/
+.idea/
+*.orig
+
+# ── Pacotes NuGet ────────────────────────────────────────────────
+*.nupkg
+packages/

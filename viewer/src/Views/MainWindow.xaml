@@ -1,0 +1,166 @@
+<Window x:Class="SelfDesk.Viewer.Views.MainWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:vm="clr-namespace:SelfDesk.Viewer.ViewModels"
+        Title="SelfDesk"
+        Width="1280" Height="800"
+        MinWidth="800" MinHeight="500"
+        Background="{StaticResource BrushBase}"
+        WindowStyle="SingleBorderWindow">
+
+    <Window.Resources>
+        <Style x:Key="SenderItemStyle" TargetType="ListBoxItem">
+            <Setter Property="Padding" Value="12,8"/>
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="Foreground" Value="{StaticResource BrushTextPrimary}"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="ListBoxItem">
+                        <Border x:Name="Bd"
+                                Background="{TemplateBinding Background}"
+                                Padding="{TemplateBinding Padding}">
+                            <ContentPresenter/>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsSelected" Value="True">
+                                <Setter TargetName="Bd" Property="Background"
+                                        Value="{StaticResource BrushAccentSubtle}"/>
+                                <Setter TargetName="Bd" Property="BorderBrush"
+                                        Value="{StaticResource BrushAccent}"/>
+                                <Setter TargetName="Bd" Property="BorderThickness"
+                                        Value="0,0,0,1"/>
+                            </Trigger>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="Bd" Property="Background"
+                                        Value="{StaticResource BrushSurfaceElevated}"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+    </Window.Resources>
+
+    <Grid>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="32"/>
+            <RowDefinition Height="*"/>
+            <RowDefinition Height="24"/>
+        </Grid.RowDefinitions>
+
+        <!-- TitleBar -->
+        <Border Grid.Row="0" Background="{StaticResource BrushSurface}"
+                BorderBrush="{StaticResource BrushBorderSubtle}" BorderThickness="0,0,0,1">
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="Auto"/>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="Auto"/>
+                </Grid.ColumnDefinitions>
+
+                <StackPanel Grid.Column="0" Orientation="Horizontal" Margin="12,0,0,0" VerticalAlignment="Center">
+                    <Ellipse x:Name="StatusIndicator" Width="8" Height="8" Margin="0,0,6,0"
+                             Fill="{StaticResource BrushTextMuted}"/>
+                    <TextBlock Text="SelfDesk" FontSize="13" FontWeight="SemiBold"
+                               Foreground="{StaticResource BrushTextPrimary}" VerticalAlignment="Center"/>
+                </StackPanel>
+
+                <TextBlock Grid.Column="1" x:Name="StatusText"
+                           Text="{Binding ConnectionStatus}"
+                           FontSize="12" Foreground="{StaticResource BrushTextSecondary}"
+                           HorizontalAlignment="Center" VerticalAlignment="Center"/>
+            </Grid>
+        </Border>
+
+        <!-- Main content -->
+        <Grid Grid.Row="1">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="200"/>
+                <ColumnDefinition Width="Auto"/>
+                <ColumnDefinition Width="*"/>
+            </Grid.ColumnDefinitions>
+
+            <!-- Sidebar — sender list -->
+            <Border Grid.Column="0" Background="{StaticResource BrushSurface}"
+                    BorderBrush="{StaticResource BrushBorderSubtle}" BorderThickness="0,0,1,0">
+                <DockPanel>
+                    <Border DockPanel.Dock="Top" Padding="12,8"
+                            BorderBrush="{StaticResource BrushBorderSubtle}" BorderThickness="0,0,0,1">
+                        <TextBlock Text="EMISSORES" FontSize="10" FontWeight="SemiBold"
+                                   Foreground="{StaticResource BrushTextMuted}"/>
+                    </Border>
+
+                    <ListBox x:Name="SenderList"
+                             ItemsSource="{Binding Senders}"
+                             SelectedItem="{Binding SelectedSender, Mode=TwoWay}"
+                             Background="Transparent"
+                             BorderThickness="0"
+                             ItemContainerStyle="{StaticResource SenderItemStyle}">
+                        <ListBox.ItemTemplate>
+                            <DataTemplate DataType="{x:Type vm:SenderViewModel}">
+                                <Grid>
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="Auto"/>
+                                        <ColumnDefinition Width="*"/>
+                                        <ColumnDefinition Width="Auto"/>
+                                    </Grid.ColumnDefinitions>
+
+                                    <Ellipse Grid.Column="0" Width="8" Height="8" Margin="0,0,8,0"
+                                             VerticalAlignment="Center">
+                                        <Ellipse.Style>
+                                            <Style TargetType="Ellipse">
+                                                <Setter Property="Fill" Value="{StaticResource BrushError}"/>
+                                                <Style.Triggers>
+                                                    <DataTrigger Binding="{Binding IsConnected}" Value="True">
+                                                        <Setter Property="Fill" Value="{StaticResource BrushSuccess}"/>
+                                                    </DataTrigger>
+                                                </Style.Triggers>
+                                            </Style>
+                                        </Ellipse.Style>
+                                    </Ellipse>
+
+                                    <StackPanel Grid.Column="1">
+                                        <TextBlock Text="{Binding DisplayName}" FontSize="13"
+                                                   Foreground="{StaticResource BrushTextPrimary}"/>
+                                        <TextBlock Text="{Binding ResolutionDisplay}" FontSize="11"
+                                                   Foreground="{StaticResource BrushTextMuted}"/>
+                                    </StackPanel>
+
+                                    <TextBlock Grid.Column="2" Text="{Binding RttDisplay}" FontSize="11"
+                                               Foreground="{StaticResource BrushTextSecondary}"
+                                               VerticalAlignment="Top"/>
+                                </Grid>
+                            </DataTemplate>
+                        </ListBox.ItemTemplate>
+                    </ListBox>
+                </DockPanel>
+            </Border>
+
+            <GridSplitter Grid.Column="1" Width="4"
+                          Background="{StaticResource BrushBorderSubtle}"
+                          ResizeBehavior="PreviousAndNext"
+                          VerticalAlignment="Stretch"/>
+
+            <!-- Video surface -->
+            <Border Grid.Column="2" Background="{StaticResource BrushVideoBackground}">
+                <Image x:Name="VideoImage"
+                       Source="{Binding VideoFrame}"
+                       Stretch="Uniform"
+                       RenderOptions.BitmapScalingMode="NearestNeighbor"
+                       SnapsToDevicePixels="True"
+                       Cursor="Cross"/>
+            </Border>
+        </Grid>
+
+        <!-- StatusBar -->
+        <Border Grid.Row="2" Background="{StaticResource BrushBase}"
+                BorderBrush="{StaticResource BrushBorderSubtle}" BorderThickness="0,1,0,0">
+            <StackPanel Orientation="Horizontal" VerticalAlignment="Center" Margin="12,0">
+                <TextBlock x:Name="StatusBarText"
+                           Text="Aguardando conexão..."
+                           FontSize="11"
+                           Foreground="{StaticResource BrushTextMuted}"/>
+            </StackPanel>
+        </Border>
+    </Grid>
+</Window>

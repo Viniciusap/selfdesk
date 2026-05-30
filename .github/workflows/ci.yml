@@ -1,0 +1,55 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  broker:
+    name: Broker (Node.js)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: lts/*
+          cache: npm
+          cache-dependency-path: broker/package-lock.json
+
+      - name: Instalar dependências
+        run: npm ci
+        working-directory: broker
+
+      - name: Build (TypeScript)
+        run: npm run build
+        working-directory: broker
+
+      - name: Lint
+        run: npm run lint
+        working-directory: broker
+
+      - name: Testes
+        run: npm test
+        working-directory: broker
+
+  dotnet:
+    name: Agent + Viewer (.NET)
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup .NET 10
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+
+      - name: Restore
+        run: dotnet restore selfdesk.slnx
+
+      - name: Build
+        run: dotnet build selfdesk.slnx --configuration Release --no-restore
+
+      - name: Testes
+        run: dotnet test selfdesk.slnx --configuration Release --no-build --logger "trx;LogFileName=results.trx"

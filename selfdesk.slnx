@@ -1,0 +1,10 @@
+<Solution>
+  <Folder Name="/agent/">
+    <Project Path="agent/Agent.csproj" />
+    <Project Path="agent/Agent.Tests/Agent.Tests.csproj" />
+  </Folder>
+  <Folder Name="/viewer/">
+    <Project Path="viewer/Viewer.csproj" />
+    <Project Path="viewer/Viewer.Tests/Viewer.Tests.csproj" />
+  </Folder>
+</Solution>
