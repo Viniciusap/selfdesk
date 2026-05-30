@@ -114,6 +114,7 @@ public sealed class ViewerService : BackgroundService
                 sender.FrameWidth  = decoded.Width;
                 sender.FrameHeight = decoded.Height;
                 sender.Codec       = "JPEG";
+                _vm.NotifyStatusBarChanged();
             }
 
             if (_vm.SelectedSender?.AgentId != senderId) return;

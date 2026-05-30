@@ -13,7 +13,7 @@ public sealed partial class SenderViewModel : ObservableObject
 
     public string DisplayName => AgentId;
 
-    public string RttDisplay => LastRttMs >= 0 ? $"{LastRttMs}ms" : "--";
+    public string RttDisplay => LastRttMs >= 0 ? $"{LastRttMs} ms" : "--";
 
     public string ResolutionDisplay =>
         FrameWidth > 0 ? $"{FrameWidth}×{FrameHeight}" : string.Empty;

@@ -13,6 +13,18 @@ public sealed partial class MainWindowViewModel : ObservableObject
 
     public ObservableCollection<SenderViewModel> Senders { get; } = [];
 
+    public string StatusBarText =>
+        SelectedSender is null
+            ? "Aguardando conexão..."
+            : $"{SelectedSender.AgentId} · {SelectedSender.ResolutionDisplay}" +
+              $" · {SelectedSender.Codec}" +
+              (SelectedSender.LastRttMs >= 0 ? $" · RTT {SelectedSender.LastRttMs}ms" : string.Empty);
+
+    partial void OnSelectedSenderChanged(SenderViewModel? value) =>
+        OnPropertyChanged(nameof(StatusBarText));
+
+    public void NotifyStatusBarChanged() => OnPropertyChanged(nameof(StatusBarText));
+
     public void AddSender(string agentId)
     {
         var existing = Senders.FirstOrDefault(s => s.AgentId == agentId);

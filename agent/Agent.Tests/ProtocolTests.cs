@@ -186,11 +186,11 @@ public class JpegEncoderTests
 public class CoordinateNormalizationTests
 {
     [Theory]
-    [InlineData(0.0, 0.0, 1920, 1080, 0, 0)]
-    [InlineData(1.0, 1.0, 1920, 1080, 65535, 65535)]
-    [InlineData(0.5, 0.5, 1920, 1080, 32767, 32767)]
-    [InlineData(0.0, 1.0, 1920, 1080, 0, 65535)]
-    public void Normalize_CoversFullRange(double relX, double relY, int frameW, int frameH, ushort expX, ushort expY)
+    [InlineData(0.0, 0.0, 0, 0)]
+    [InlineData(1.0, 1.0, 65535, 65535)]
+    [InlineData(0.5, 0.5, 32767, 32767)]
+    [InlineData(0.0, 1.0, 0, 65535)]
+    public void Normalize_CoversFullRange(double relX, double relY, ushort expX, ushort expY)
     {
         var nx = (ushort)Math.Clamp((int)(relX * 65535), 0, 65535);
         var ny = (ushort)Math.Clamp((int)(relY * 65535), 0, 65535);
