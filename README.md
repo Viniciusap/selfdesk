@@ -138,6 +138,7 @@ Download the latest release from [GitHub Releases](https://github.com/Viniciusap
 | File | Machine |
 |------|---------|
 | `selfdesk-broker-linux-x64.tar.gz` | Broker (Linux) |
+| `selfdesk-broker-win-x64.zip` | Broker (Windows Server) |
 | `selfdesk-agent-win-x64.zip` | Sender (Windows) — includes FFmpeg DLLs for H264 |
 | `selfdesk-viewer-win-x64.zip` | Receiver (Windows) — includes FFmpeg DLLs for H264 |
 

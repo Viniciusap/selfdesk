@@ -34,20 +34,30 @@ jobs:
         run: npm prune --omit=dev
         working-directory: broker
 
-      - name: Empacotar broker
+      - name: Empacotar broker (Linux tar.gz + Windows zip)
         run: |
           mkdir -p staging/selfdesk-broker/scripts
+
           cp -r broker/dist broker/node_modules broker/package.json staging/selfdesk-broker/
           cp broker/.env.example staging/selfdesk-broker/
+
+          # Linux: .sh scripts
           cp scripts/bootstrap.sh staging/selfdesk-broker/scripts/
           cp scripts/install.sh   staging/selfdesk-broker/scripts/
           chmod +x staging/selfdesk-broker/scripts/*.sh
           tar -czf selfdesk-broker-linux-x64.tar.gz -C staging selfdesk-broker
 
+          # Windows: .ps1 scripts (mesmo conteúdo JS, scripts diferentes)
+          cp scripts/bootstrap.ps1 staging/selfdesk-broker/scripts/
+          cp scripts/install.ps1   staging/selfdesk-broker/scripts/
+          cd staging && zip -r ../selfdesk-broker-win-x64.zip selfdesk-broker
+
       - uses: actions/upload-artifact@v7
         with:
           name: broker-tarball
-          path: selfdesk-broker-linux-x64.tar.gz
+          path: |
+            selfdesk-broker-linux-x64.tar.gz
+            selfdesk-broker-win-x64.zip
 
   # ── Agent + Viewer: zips Windows ─────────────────────────────────────────
   windows:
@@ -143,5 +153,6 @@ jobs:
           generate_release_notes: true
           files: |
             selfdesk-broker-linux-x64.tar.gz
+            selfdesk-broker-win-x64.zip
             selfdesk-agent-win-x64.zip
             selfdesk-viewer-win-x64.zip
