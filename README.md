@@ -131,6 +131,20 @@ Found a vulnerability? Please report it responsibly via a [private issue](https:
 
 ## Quick start
 
+### Option A — Pre-built binaries (recommended for most users)
+
+Download the latest release from [GitHub Releases](https://github.com/Viniciusap/selfdesk/releases/latest):
+
+| File | Machine |
+|------|---------|
+| `selfdesk-broker-linux-x64.tar.gz` | Broker (Linux) |
+| `selfdesk-agent-win-x64.zip` | Sender (Windows) — includes FFmpeg DLLs for H264 |
+| `selfdesk-viewer-win-x64.zip` | Receiver (Windows) — includes FFmpeg DLLs for H264 |
+
+Then run `scripts/bootstrap.sh broker` (Linux) or `scripts\bootstrap.ps1 -Role <sender|receiver>` (Windows) from the extracted folder to generate your `.env`.
+
+### Option B — Build from source
+
 ```bash
 git clone https://github.com/Viniciusap/selfdesk.git
 cd selfdesk

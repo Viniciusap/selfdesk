@@ -1,0 +1,147 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v[0-9]+.[0-9]+.[0-9]+'
+
+permissions:
+  contents: write
+
+jobs:
+  # ── Broker: tarball Linux ─────────────────────────────────────────────────
+  broker:
+    name: Broker (Linux tarball)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: lts/*
+          cache: npm
+          cache-dependency-path: broker/package-lock.json
+
+      - name: Instalar todas as dependências
+        run: npm ci
+        working-directory: broker
+
+      - name: Compilar TypeScript
+        run: npm run build
+        working-directory: broker
+
+      - name: Remover devDependencies
+        run: npm prune --omit=dev
+        working-directory: broker
+
+      - name: Empacotar broker
+        run: |
+          mkdir -p staging/selfdesk-broker/scripts
+          cp -r broker/dist broker/node_modules broker/package.json staging/selfdesk-broker/
+          cp broker/.env.example staging/selfdesk-broker/
+          cp scripts/bootstrap.sh staging/selfdesk-broker/scripts/
+          cp scripts/install.sh   staging/selfdesk-broker/scripts/
+          chmod +x staging/selfdesk-broker/scripts/*.sh
+          tar -czf selfdesk-broker-linux-x64.tar.gz -C staging selfdesk-broker
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: broker-tarball
+          path: selfdesk-broker-linux-x64.tar.gz
+
+  # ── Agent + Viewer: zips Windows ─────────────────────────────────────────
+  windows:
+    name: Agent + Viewer (Windows zips)
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+
+      - name: Restore
+        run: dotnet restore selfdesk.slnx
+
+      - name: Publicar Agent (self-contained)
+        run: >
+          dotnet publish agent/Agent.csproj
+          -c Release -r win-x64
+          --self-contained true
+          -o agent/publish
+
+      - name: Publicar Viewer (self-contained)
+        run: >
+          dotnet publish viewer/Viewer.csproj
+          -c Release -r win-x64
+          --self-contained true
+          -o viewer/publish
+
+      - name: Baixar DLLs FFmpeg 7.1 (BtbN shared)
+        shell: pwsh
+        run: |
+          $url = 'https://github.com/BtbN/FFmpeg-Builds/releases/download/latest/ffmpeg-n7.1-latest-win64-gpl-shared-7.1.zip'
+          Write-Host "Baixando FFmpeg..."
+          Invoke-WebRequest -Uri $url -OutFile ffmpeg.zip -UseBasicParsing
+          Expand-Archive -Path ffmpeg.zip -DestinationPath ffmpeg-tmp
+          $binDir = Get-ChildItem -Path ffmpeg-tmp -Recurse -Directory -Filter bin |
+                    Select-Object -First 1
+          if (-not $binDir) { throw "bin/ não encontrado no zip do FFmpeg." }
+          $dlls = Get-ChildItem $binDir.FullName -Filter '*.dll'
+          $dlls | Copy-Item -Destination agent/publish  -Force
+          $dlls | Copy-Item -Destination viewer/publish -Force
+          Write-Host "Copiadas $($dlls.Count) DLLs."
+
+      - name: Incluir scripts e exemplos no Agent
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Path agent/publish/scripts -Force | Out-Null
+          Copy-Item scripts/bootstrap.ps1 agent/publish/scripts/
+          Copy-Item scripts/install.ps1   agent/publish/scripts/
+          Copy-Item agent/.env.example    agent/publish/
+
+      - name: Incluir scripts e exemplos no Viewer
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Path viewer/publish/scripts -Force | Out-Null
+          Copy-Item scripts/bootstrap.ps1 viewer/publish/scripts/
+          Copy-Item scripts/install.ps1   viewer/publish/scripts/
+          Copy-Item viewer/.env.example   viewer/publish/
+
+      - name: Zipar Agent
+        shell: pwsh
+        run: Compress-Archive -Path agent/publish/* -DestinationPath selfdesk-agent-win-x64.zip
+
+      - name: Zipar Viewer
+        shell: pwsh
+        run: Compress-Archive -Path viewer/publish/* -DestinationPath selfdesk-viewer-win-x64.zip
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: windows-zips
+          path: |
+            selfdesk-agent-win-x64.zip
+            selfdesk-viewer-win-x64.zip
+
+  # ── Criar GitHub Release ──────────────────────────────────────────────────
+  release:
+    name: GitHub Release
+    needs: [broker, windows]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: broker-tarball
+
+      - uses: actions/download-artifact@v4
+        with:
+          name: windows-zips
+
+      - name: Criar release e fazer upload dos artefatos
+        uses: softprops/action-gh-release@v2
+        with:
+          generate_release_notes: true
+          files: |
+            selfdesk-broker-linux-x64.tar.gz
+            selfdesk-agent-win-x64.zip
+            selfdesk-viewer-win-x64.zip
