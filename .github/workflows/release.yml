@@ -14,9 +14,9 @@ jobs:
     name: Broker (Linux tarball)
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
 
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v6
         with:
           node-version: lts/*
           cache: npm
@@ -44,7 +44,7 @@ jobs:
           chmod +x staging/selfdesk-broker/scripts/*.sh
           tar -czf selfdesk-broker-linux-x64.tar.gz -C staging selfdesk-broker
 
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: broker-tarball
           path: selfdesk-broker-linux-x64.tar.gz
@@ -54,9 +54,9 @@ jobs:
     name: Agent + Viewer (Windows zips)
     runs-on: windows-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
 
-      - uses: actions/setup-dotnet@v4
+      - uses: actions/setup-dotnet@v5
         with:
           dotnet-version: '10.0.x'
 
@@ -116,7 +116,7 @@ jobs:
         shell: pwsh
         run: Compress-Archive -Path viewer/publish/* -DestinationPath selfdesk-viewer-win-x64.zip
 
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: windows-zips
           path: |
@@ -129,11 +129,11 @@ jobs:
     needs: [broker, windows]
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@v8
         with:
           name: broker-tarball
 
-      - uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@v8
         with:
           name: windows-zips
 
