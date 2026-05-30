@@ -153,3 +153,48 @@ public class FakeEncoderTests
         Assert.Equal(240, encoded.Height);
     }
 }
+
+public class JpegEncoderTests
+{
+    [Fact]
+    public void JpegFrameEncoder_ProducesNonEmptyData()
+    {
+        var encoder = new Encode.JpegFrameEncoder(75);
+        var bgra    = new byte[64 * 64 * 4];
+        new Random(42).NextBytes(bgra);
+        var frame   = new Capture.CapturedFrame(64, 64, bgra, 0L);
+        var encoded = encoder.Encode(frame);
+        Assert.Equal(VideoFrameOffsets.CodecJpeg, encoded.Codec);
+        Assert.NotEmpty(encoded.Data);
+        Assert.Equal(64, encoded.Width);
+        Assert.Equal(64, encoded.Height);
+    }
+
+    [Fact]
+    public void JpegFrameEncoder_HigherQuality_LargerOutput()
+    {
+        var bgra = new byte[64 * 64 * 4];
+        new Random(42).NextBytes(bgra);
+        var frame = new Capture.CapturedFrame(64, 64, bgra, 0L);
+
+        var lo  = new Encode.JpegFrameEncoder(10).Encode(frame);
+        var hi  = new Encode.JpegFrameEncoder(95).Encode(frame);
+        Assert.True(hi.Data.Length > lo.Data.Length, "Q95 deve ser maior que Q10");
+    }
+}
+
+public class CoordinateNormalizationTests
+{
+    [Theory]
+    [InlineData(0.0, 0.0, 1920, 1080, 0, 0)]
+    [InlineData(1.0, 1.0, 1920, 1080, 65535, 65535)]
+    [InlineData(0.5, 0.5, 1920, 1080, 32767, 32767)]
+    [InlineData(0.0, 1.0, 1920, 1080, 0, 65535)]
+    public void Normalize_CoversFullRange(double relX, double relY, int frameW, int frameH, ushort expX, ushort expY)
+    {
+        var nx = (ushort)Math.Clamp((int)(relX * 65535), 0, 65535);
+        var ny = (ushort)Math.Clamp((int)(relY * 65535), 0, 65535);
+        Assert.Equal(expX, nx);
+        Assert.Equal(expY, ny);
+    }
+}

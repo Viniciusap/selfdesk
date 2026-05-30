@@ -22,9 +22,12 @@ builder.Services.Configure<AgentConfig>(cfg =>
     cfg.JpegQuality  = int.TryParse(GetEnv("JPEG_QUALITY", "75"),  out var q) ? q : 75;
 });
 
-builder.Services.AddSingleton<IScreenCapturer, FakeScreenCapturer>();
-builder.Services.AddSingleton<IFrameEncoder,   FakeFrameEncoder>();
-builder.Services.AddSingleton<IInputInjector,  FakeInputInjector>();
+var encoder = GetEnv("ENCODER", "jpeg");
+builder.Services.AddSingleton<IScreenCapturer, GdiScreenCapturer>();
+builder.Services.AddSingleton<IFrameEncoder>(_ =>
+    (IFrameEncoder)new JpegFrameEncoder(
+        int.TryParse(GetEnv("JPEG_QUALITY", "75"), out var q) ? q : 75));
+builder.Services.AddSingleton<IInputInjector, Win32InputInjector>();
 builder.Services.AddHostedService<AgentService>();
 
 await builder.Build().RunAsync();

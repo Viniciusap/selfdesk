@@ -1,7 +1,7 @@
 using System.Windows;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
-using Microsoft.Extensions.Logging;
+using SelfDesk.Viewer.Decode;
 using SelfDesk.Viewer.ViewModels;
 using SelfDesk.Viewer.Views;
 
@@ -26,8 +26,10 @@ public partial class App : Application
                     cfg.BrokerPort   = int.TryParse(GetEnv("BROKER_PORT", "7000"), out var p) ? p : 7000;
                     cfg.TlsCaPath    = GetEnv("TLS_CA_PATH",   string.Empty);
                 });
+                services.AddSingleton<IFrameDecoder, JpegFrameDecoder>();
                 services.AddSingleton<MainWindowViewModel>();
                 services.AddSingleton<MainWindow>();
+                services.AddHostedService<ViewerService>();
             })
             .Build();
 
