@@ -274,7 +274,7 @@ selfdesk/
 | 1 | MVP: one-way JPEG video + mouse input | ✅ Code complete (hardware gate pending) |
 | 2 | Keyboard + latency tuning + RTT measurement | ✅ Code complete (hardware gate pending) |
 | 3 | Multiple senders + sender selector in viewer | ✅ Code complete (hardware gate pending) |
-| 4 | Hardware codec (Quick Sync / NVENC via FFmpeg) | ⚠️ Blocked — requires FFmpeg.AutoGen + hardware |
+| 4 | Hardware codec (Quick Sync / NVENC via FFmpeg) | ✅ Code complete (requires FFmpeg DLLs + hardware to activate) |
 | 5 | Agent as Windows service (lock screen / UAC) | ✅ Code complete (hardware gate pending) |
 
 ---
