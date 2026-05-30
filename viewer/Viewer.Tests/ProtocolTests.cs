@@ -122,4 +122,24 @@ public class ViewModelTests
         vm.RemoveSender("laptop-01");
         Assert.Equal("laptop-02", vm.SelectedSender?.AgentId);
     }
+
+    [Fact]
+    public void MultipleSenders_CanSwitchFocus_ViaSelectedSender()
+    {
+        var vm = new ViewModels.MainWindowViewModel();
+        vm.AddSender("laptop-01");
+        vm.AddSender("laptop-02");
+
+        // Foco inicial no primeiro
+        Assert.Equal("laptop-01", vm.SelectedSender?.AgentId);
+
+        // Alternar para o segundo
+        vm.SelectedSender = vm.Senders.First(s => s.AgentId == "laptop-02");
+        Assert.Equal("laptop-02", vm.SelectedSender?.AgentId);
+
+        // INPUT_EVENT usaria peer_id = laptop-02
+        var inputMsg = Protocol.WireProtocol.BuildMouseMove(vm.SelectedSender!.AgentId, 100, 200);
+        var (_, peerId, _) = Protocol.WireProtocol.ParseHeader(inputMsg);
+        Assert.Equal("laptop-02", peerId);
+    }
 }
