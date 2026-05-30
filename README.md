@@ -2,8 +2,8 @@
 
 # SelfDesk
 
-**Acesso remoto dev-first e self-hosted para sua LAN.**  
-Alternativa open source ao AnyDesk e TeamViewer — sem nuvem de terceiros, sem RDP exposto, sem abrir portas de entrada nas máquinas controladas.
+**Dev-first, self-hosted remote access for your LAN.**  
+An open-source alternative to AnyDesk and TeamViewer — no third-party cloud, no exposed RDP, no inbound ports on controlled machines.
 
 [![CI](https://github.com/Viniciusap/selfdesk/actions/workflows/ci.yml/badge.svg)](https://github.com/Viniciusap/selfdesk/actions/workflows/ci.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
@@ -14,118 +14,118 @@ Alternativa open source ao AnyDesk e TeamViewer — sem nuvem de terceiros, sem 
 
 </div>
 
-> **Escopo:** projetado para LAN / redes confiáveis. Não auditado nem endurecido para exposição direta à internet. Para acesso pela internet, coloque o broker atrás de uma VPN ou túnel.
+> **Scope:** designed for LAN / trusted networks. Not audited or hardened for direct internet exposure. For internet access, place the broker behind a VPN or tunnel.
 
 ---
 
-## Índice
+## Table of Contents
 
-- [O que é](#o-que-é)
-- [Por quê](#por-quê)
-- [Arquitetura](#arquitetura)
-- [Papéis](#papéis)
-- [Modelo de segurança](#modelo-de-segurança)
-- [Requisitos](#requisitos)
-- [Início rápido](#início-rápido)
-- [Referência de configuração](#referência-de-configuração)
-- [Geração do .env (bootstrap)](#geração-do-env-bootstrap)
-- [Certificados TLS](#certificados-tls)
-- [Adicionar mais emissores](#adicionar-mais-emissores)
-- [Estrutura do projeto](#estrutura-do-projeto)
+- [What is it](#what-is-it)
+- [Why](#why)
+- [Architecture](#architecture)
+- [Roles](#roles)
+- [Security model](#security-model)
+- [Requirements](#requirements)
+- [Quick start](#quick-start)
+- [Configuration reference](#configuration-reference)
+- [Generating .env (bootstrap)](#generating-env-bootstrap)
+- [TLS certificates](#tls-certificates)
+- [Adding more senders](#adding-more-senders)
+- [Project structure](#project-structure)
 - [Roadmap](#roadmap)
-- [Contribuindo](#contribuindo)
-- [Uso responsável](#uso-responsável)
-- [Licença](#licença)
+- [Contributing](#contributing)
+- [Responsible use](#responsible-use)
+- [License](#license)
 
 ---
 
-## O que é
+## What is it
 
-SelfDesk conecta uma máquina **receptora** (onde você senta) a uma ou mais máquinas **emissoras** (as que você controla), através de um **broker** leve que você mesmo hospeda. O receptor assiste às telas remotas e envia mouse e teclado; os emissores capturam a tela e injetam o input recebido.
+SelfDesk connects a **receiver** machine (where you sit) to one or more **sender** machines (the ones you control), through a lightweight **broker** you host yourself. The receiver watches the remote screens and sends mouse and keyboard input; the senders capture the screen and inject the received input.
 
-Nenhuma das máquinas Windows abre porta de entrada. O RDP nativo (3389) permanece fechado. Tudo trafega em TLS com autenticação por desafio-resposta HMAC-SHA256.
-
----
-
-## Por quê
-
-- **Zero porta de entrada** nas máquinas controladas — só conexões de saída ao broker.
-- **RDP nativo (3389) fechado** — superfície de ataque mínima.
-- **Self-hosted total** — seus dados nunca passam por servidor de terceiros.
-- **Configuração como código** — tudo no `.env`, gerado localmente, nunca commitado.
-- **Escala de 1 para N emissores só por configuração** — sem mudar código.
-- **Codec plugável** — JPEG para arrancar, H.264 por hardware (Quick Sync / NVENC) depois.
-- **Qualquer máquina, qualquer papel** — o `ROLE` no `.env` define broker, emissor ou receptor.
+None of the Windows machines open inbound ports. Native RDP (3389) stays closed. Everything travels over TLS with HMAC-SHA256 challenge-response authentication.
 
 ---
 
-## Arquitetura
+## Why
+
+- **Zero inbound ports** on controlled machines — only outbound connections to the broker.
+- **Native RDP (3389) closed** — minimal attack surface.
+- **Fully self-hosted** — your data never passes through a third-party server.
+- **Configuration as code** — everything in `.env`, generated locally, never committed.
+- **Scale from 1 to N senders by config alone** — no code changes needed.
+- **Pluggable codec** — JPEG to get started, hardware H.264 (Quick Sync / NVENC) later.
+- **Any machine, any role** — the `ROLE` in `.env` defines broker, sender, or receiver.
+
+---
+
+## Architecture
 
 ```
-  EMISSOR (Agente C#/.NET)            BROKER (Node.js)          RECEPTOR (Viewer C#/WPF)
+  SENDER (C#/.NET Agent)               BROKER (Node.js)          RECEIVER (C#/WPF Viewer)
  ┌──────────────────────┐         ┌──────────────────────┐     ┌──────────────────────────┐
- │ Captura tela (DXGI)  │         │ Autentica conexões   │     │ Renderiza stream(s)       │
- │ Codifica (JPEG/H264) │──TLS──▶ │ Registra por peer_id │◀TLS─│ Seleciona emissor (lista) │
- │ Injeta input         │ (saída) │ Roteia bytes         │(saída│ Captura mouse + teclado   │
- └──────────▲───────────┘         │ (nunca decodifica)   │     └─────────────┬────────────┘
+ │ Screen capture (DXGI)│         │ Authenticates conns  │     │ Renders stream(s)         │
+ │ Encode (JPEG/H264)   │──TLS──▶ │ Registers by peer_id │◀TLS─│ Selects sender (list)     │
+ │ Injects input        │(outbound│ Routes bytes         │outbnd│ Captures mouse + keyboard │
+ └──────────▲───────────┘         │ (never decodes)      │     └─────────────┬────────────┘
             │                      └──────────────────────┘                   │
-            └──────────────── INPUT_EVENT (peer_id = emissor alvo) ───────────┘
+            └──────────────── INPUT_EVENT (peer_id = target sender) ──────────┘
 ```
 
-Cada mensagem carrega um `peer_id` (big-endian, 16 bytes no cabeçalho). O broker é um **cano burro autenticado**: nunca decodifica vídeo, apenas roteia. Adicionar um segundo emissor é só configuração — o código não muda.
+Every message carries a `peer_id` (big-endian, 16 bytes in the header). The broker is a **dumb authenticated pipe**: it never decodes video, only routes bytes. Adding a second sender is pure configuration — no code changes.
 
-### Protocolo de fio (resumo)
+### Wire protocol (summary)
 
-Envelope de 22 bytes fixos em toda mensagem:
+Fixed 22-byte envelope on every message:
 
-| Offset | Bytes | Campo |
+| Offset | Bytes | Field |
 |--------|-------|-------|
 | 0 | 1 | VERSION = `0x01` |
-| 1 | 1 | TYPE (ver tabela) |
-| 2 | 16 | PEER\_ID (UTF-8, padded com `\0`) |
+| 1 | 1 | TYPE (see table) |
+| 2 | 16 | PEER\_ID (UTF-8, padded with `\0`) |
 | 18 | 4 | LENGTH (uint32 big-endian) |
 | 22 | N | PAYLOAD |
 
-Handshake: `HELLO → CHALLENGE (nonce 32B) → AUTH (HMAC-SHA256) → AUTH_OK`. Segredo nunca trafega. Heartbeat PING/PONG a cada 5s; sem PONG em 15s → conexão encerrada.
+Handshake: `HELLO → CHALLENGE (32B nonce) → AUTH (HMAC-SHA256) → AUTH_OK`. The secret never travels over the wire. PING/PONG heartbeat every 5s; no PONG within 15s → connection closed.
 
 ---
 
-## Papéis
+## Roles
 
-| Papel | `ROLE` no `.env` | Plataforma | Direção de conexão |
-|-------|-----------------|------------|-------------------|
-| Broker | `broker` | Linux (Node.js LTS) | escuta a `LISTEN_PORT` |
-| Emissor | `sender` | Windows 10/11 | só saída ao broker |
-| Receptor | `receiver` | Windows 10/11 | só saída ao broker |
+| Role | `ROLE` in `.env` | Platform | Connection direction |
+|------|-----------------|----------|---------------------|
+| Broker | `broker` | Linux (Node.js LTS) | listens on `LISTEN_PORT` |
+| Sender | `sender` | Windows 10/11 | outbound only to broker |
+| Receiver | `receiver` | Windows 10/11 | outbound only to broker |
 
-O mesmo clone do repositório pode ser qualquer papel — basta rodar o bootstrap correspondente.
-
----
-
-## Modelo de segurança
-
-- **TLS em toda conexão** com CA própria de LAN (sem depender de CA pública). O broker apresenta `server-cert.pem`; os clientes pinam a CA via `TLS_CA_PATH`.
-- **Autenticação desafio-resposta (HMAC-SHA256)** — `SHARED_SECRET` nunca trafega pelo fio.
-- **Zero porta de entrada nas máquinas Windows** — somente conexões de saída ao broker.
-- **RDP nativo (3389) desabilitado** como parte do setup.
-- **Nada sensível versionado** — `.env`, chaves e certificados estão no `.gitignore`.
-
-Este projeto pressupõe rede local confiável. Não foi auditado para exposição à internet pública; para esse cenário, use VPN ou túnel antes do broker.
-
-Encontrou uma vulnerabilidade? Por favor reporte de forma responsável via [issue privada](https://github.com/Viniciusap/selfdesk/issues) antes de divulgar publicamente.
+The same repository clone can play any role — just run the corresponding bootstrap.
 
 ---
 
-## Requisitos
+## Security model
 
-| Componente | Requisito |
-|-----------|-----------|
-| Broker | Node.js LTS (Linux recomendado, mas qualquer SO com Node funciona) |
-| Emissor / Receptor | Windows 10/11 com .NET 10 SDK |
-| Bootstrap de certs | `openssl` no PATH (disponível na máquina do broker) |
-| Rede | Todas as máquinas na mesma LAN |
+- **TLS on every connection** with a LAN-local CA (no dependency on a public CA). The broker presents `server-cert.pem`; clients pin the CA via `TLS_CA_PATH`.
+- **Challenge-response authentication (HMAC-SHA256)** — `SHARED_SECRET` never travels over the wire.
+- **Zero inbound ports on Windows machines** — outbound connections to the broker only.
+- **Native RDP (3389) disabled** as part of setup.
+- **No secrets committed** — `.env`, keys, and certificates are in `.gitignore`.
 
-Instalar .NET 10 no Windows:
+This project assumes a trusted local network. It has not been audited for public internet exposure; in that scenario, use a VPN or tunnel in front of the broker.
+
+Found a vulnerability? Please report it responsibly via a [private issue](https://github.com/Viniciusap/selfdesk/issues) before public disclosure.
+
+---
+
+## Requirements
+
+| Component | Requirement |
+|-----------|------------|
+| Broker | Node.js LTS (Linux recommended, but any OS with Node works) |
+| Sender / Receiver | Windows 10/11 with .NET 10 SDK |
+| Cert bootstrap | `openssl` in PATH (on the broker machine) |
+| Network | All machines on the same LAN |
+
+Install .NET 10 on Windows:
 
 ```powershell
 winget install Microsoft.DotNet.SDK.10
@@ -133,7 +133,7 @@ winget install Microsoft.DotNet.SDK.10
 
 ---
 
-## Início rápido
+## Quick start
 
 ```bash
 git clone https://github.com/Viniciusap/selfdesk.git
@@ -144,122 +144,122 @@ cd selfdesk
 
 ```bash
 ./scripts/bootstrap.sh broker
-# Gera broker/.env, SHARED_SECRET e certificados em certs/.
-# Anote o SHARED_SECRET impresso e copie certs/ca-cert.pem para as máquinas Windows.
+# Generates broker/.env, SHARED_SECRET, and certificates in certs/.
+# Note the printed SHARED_SECRET and copy certs/ca-cert.pem to your Windows machines.
 
-sudo ufw allow from <SUA_SUBNET>/24 to any port <LISTEN_PORT> proto tcp
+sudo ufw allow from <YOUR_SUBNET>/24 to any port <LISTEN_PORT> proto tcp
 cd broker && npm install && npm start
 ```
 
-### 2. Emissor — máquina a ser controlada (Windows)
+### 2. Sender — machine to be controlled (Windows)
 
 ```powershell
 .\scripts\bootstrap.ps1 -Role sender
-# Pergunta: host do broker, SHARED_SECRET, AGENT_ID, parâmetros de encode.
+# Prompts for: broker host, SHARED_SECRET, AGENT_ID, encode parameters.
 
-# Fechar RDP nativo (PowerShell como administrador):
+# Disable native RDP (PowerShell as administrator):
 Set-ItemProperty 'HKLM:\System\CurrentControlSet\Control\Terminal Server' fDenyTSConnections 1
 Disable-NetFirewallRule -DisplayGroup "Remote Desktop"
 
 cd agent && dotnet run
 ```
 
-### 3. Receptor — máquina de controle (Windows)
+### 3. Receiver — control machine (Windows)
 
 ```powershell
 .\scripts\bootstrap.ps1 -Role receiver
-# Pergunta: host do broker, SHARED_SECRET.
+# Prompts for: broker host, SHARED_SECRET.
 
 cd viewer && dotnet run
 ```
 
 ---
 
-## Referência de configuração
+## Configuration reference
 
-Cada componente lê um `.env` no seu diretório (`broker/`, `agent/`, `viewer/`). Esses arquivos são **gerados pelo bootstrap** e **nunca commitados** — o repositório versiona apenas os `*.env.example`.
+Each component reads a `.env` in its own directory (`broker/`, `agent/`, `viewer/`). These files are **generated by bootstrap** and **never committed** — the repository only versions the `*.env.example` files.
 
-| Variável | broker | sender | receiver | Descrição |
-|----------|:------:|:------:|:--------:|-----------|
+| Variable | broker | sender | receiver | Description |
+|----------|:------:|:------:|:--------:|-------------|
 | `ROLE` | ✓ | ✓ | ✓ | `broker` \| `sender` \| `receiver` |
-| `SHARED_SECRET` | ✓ | ✓ | ✓ | Idêntico nas três máquinas; gerado no broker |
-| `LISTEN_PORT` | ✓ | | | Porta TLS de escuta do broker |
-| `ALLOWED_SENDERS` | ✓ | | | CSV de `AGENT_ID` permitidos (ex.: `laptop-01,laptop-02`) |
-| `TLS_CERT_PATH` | ✓ | | | Caminho para `server-cert.pem` (broker) |
-| `TLS_KEY_PATH` | ✓ | | | Caminho para `server-key.pem` (broker) |
+| `SHARED_SECRET` | ✓ | ✓ | ✓ | Identical on all three machines; generated at the broker |
+| `LISTEN_PORT` | ✓ | | | TLS listen port for the broker |
+| `ALLOWED_SENDERS` | ✓ | | | CSV of permitted `AGENT_ID`s (e.g. `laptop-01,laptop-02`) |
+| `TLS_CERT_PATH` | ✓ | | | Path to `server-cert.pem` (broker) |
+| `TLS_KEY_PATH` | ✓ | | | Path to `server-key.pem` (broker) |
 | `LOG_LEVEL` | ✓ | | | `debug` \| `info` \| `warn` \| `error` |
-| `AGENT_ID` | | ✓ | | Identificador único do emissor (deve estar em `ALLOWED_SENDERS`) |
-| `BROKER_HOST` | | ✓ | ✓ | IP ou hostname do broker |
-| `BROKER_PORT` | | ✓ | ✓ | Porta do broker |
-| `TLS_CA_PATH` | | ✓ | ✓ | Caminho para `ca-cert.pem` (pinning) |
-| `TARGET_FPS` | | ✓ | | FPS alvo de captura (padrão: `30`) |
+| `AGENT_ID` | | ✓ | | Unique sender identifier (must be in `ALLOWED_SENDERS`) |
+| `BROKER_HOST` | | ✓ | ✓ | Broker IP or hostname |
+| `BROKER_PORT` | | ✓ | ✓ | Broker port |
+| `TLS_CA_PATH` | | ✓ | ✓ | Path to `ca-cert.pem` (pinning) |
+| `TARGET_FPS` | | ✓ | | Target capture FPS (default: `30`) |
 | `ENCODER` | | ✓ | | `jpeg` \| `qsv` \| `nvenc` |
-| `JPEG_QUALITY` | | ✓ | | Qualidade JPEG 1–100 (padrão: `75`) |
+| `JPEG_QUALITY` | | ✓ | | JPEG quality 1–100 (default: `75`) |
 
 ---
 
-## Geração do .env (bootstrap)
+## Generating .env (bootstrap)
 
-Em vez de editar `.env` à mão, use os scripts em `scripts/`. Eles perguntam cada valor com defaults sensíveis e **nunca sobrescrevem** um `.env` existente sem confirmação.
+Instead of editing `.env` by hand, use the scripts in `scripts/`. They prompt for each value with sensible defaults and **never overwrite** an existing `.env` without confirmation.
 
 **Linux / macOS:**
 ```bash
-./scripts/bootstrap.sh broker     # gera broker/.env + SHARED_SECRET + certs/
-./scripts/bootstrap.sh sender     # gera agent/.env
-./scripts/bootstrap.sh receiver   # gera viewer/.env
+./scripts/bootstrap.sh broker     # generates broker/.env + SHARED_SECRET + certs/
+./scripts/bootstrap.sh sender     # generates agent/.env
+./scripts/bootstrap.sh receiver   # generates viewer/.env
 ```
 
 **Windows:**
 ```powershell
-.\scripts\bootstrap.ps1 -Role broker     # gera broker\.env (requer openssl no PATH)
-.\scripts\bootstrap.ps1 -Role sender     # gera agent\.env
-.\scripts\bootstrap.ps1 -Role receiver   # gera viewer\.env
+.\scripts\bootstrap.ps1 -Role broker     # generates broker\.env (requires openssl in PATH)
+.\scripts\bootstrap.ps1 -Role sender     # generates agent\.env
+.\scripts\bootstrap.ps1 -Role receiver   # generates viewer\.env
 ```
 
-O `SHARED_SECRET` é gerado uma vez no broker e deve ser o **mesmo** nos três `.env`. O bootstrap do broker o imprime ao final para você colar nas outras máquinas.
+The `SHARED_SECRET` is generated once at the broker and must be the **same** across all three `.env` files. The broker bootstrap prints it at the end for you to paste into the other machines.
 
 ---
 
-## Certificados TLS
+## TLS certificates
 
-A comunicação usa TLS com uma **CA própria de LAN** (sem CA pública). O bootstrap do broker gera:
+Communication uses TLS with a **LAN-local CA** (no public CA). The broker bootstrap generates:
 
-- `certs/ca-cert.pem` — autoridade da LAN. **Copie para cada máquina emissor/receptor** (usada no pinning via `TLS_CA_PATH`).
-- `certs/server-cert.pem` / `certs/server-key.pem` — par do servidor. A chave **nunca sai do broker**.
+- `certs/ca-cert.pem` — LAN certificate authority. **Copy to every sender/receiver machine** (used for pinning via `TLS_CA_PATH`).
+- `certs/server-cert.pem` / `certs/server-key.pem` — server keypair. The private key **never leaves the broker**.
 
-Toda a pasta `certs/` está no `.gitignore`. Chaves jamais vão para o repositório.
-
----
-
-## Adicionar mais emissores
-
-1. Na nova máquina, rode o bootstrap com role `sender` e escolha um `AGENT_ID` único (ex.: `laptop-02`).
-2. Copie `certs/ca-cert.pem` do broker para a nova máquina.
-3. No broker, acrescente o novo ID em `ALLOWED_SENDERS` (ex.: `laptop-01,laptop-02`) e reinicie.
-
-Nenhuma mudança de código. O receptor exibe automaticamente o novo emissor na lista.
+The entire `certs/` folder is in `.gitignore`. Keys never go to the repository.
 
 ---
 
-## Estrutura do projeto
+## Adding more senders
+
+1. On the new machine, run bootstrap with role `sender` and choose a unique `AGENT_ID` (e.g. `laptop-02`).
+2. Copy `certs/ca-cert.pem` from the broker to the new machine.
+3. On the broker, add the new ID to `ALLOWED_SENDERS` (e.g. `laptop-01,laptop-02`) and restart.
+
+No code changes required. The receiver automatically shows the new sender in the list.
+
+---
+
+## Project structure
 
 ```
 selfdesk/
-├── .github/workflows/ci.yml   # CI: build+testes broker (Ubuntu) + .NET (Windows)
+├── .github/workflows/ci.yml   # CI: broker build+tests (Ubuntu) + .NET (Windows)
 ├── scripts/
-│   ├── bootstrap.sh           # Gera .env + certs (Linux/macOS)
-│   └── bootstrap.ps1          # Gera .env + certs (Windows)
-├── broker/                    # Node.js + TypeScript — relay autenticado
+│   ├── bootstrap.sh           # Generates .env + certs (Linux/macOS)
+│   └── bootstrap.ps1          # Generates .env + certs (Windows)
+├── broker/                    # Node.js + TypeScript — authenticated relay
 │   ├── src/
 │   └── .env.example
-├── agent/                     # C# / .NET 10 — emissor (captura + encode + inject)
+├── agent/                     # C# / .NET 10 — sender (capture + encode + inject)
 │   ├── src/
 │   └── .env.example
-├── viewer/                    # C# / WPF / .NET 10 — receptor (render + input)
+├── viewer/                    # C# / WPF / .NET 10 — receiver (render + input)
 │   ├── src/
 │   └── .env.example
-├── shared/protocol/           # Constantes do protocolo espelhadas em TS e C#
-├── selfdesk.sln               # Solution .NET (agent + viewer + testes)
+├── shared/protocol/           # Protocol constants mirrored in TS and C#
+├── selfdesk.slnx              # .NET solution (agent + viewer + tests)
 ├── LICENSE
 └── README.md
 ```
@@ -268,48 +268,48 @@ selfdesk/
 
 ## Roadmap
 
-| Fase | Entrega | Estado |
-|------|---------|--------|
-| 0 | Esqueleto, TLS, autenticação HMAC, heartbeat, empacotamento open source | Em andamento |
-| 1 | MVP: vídeo JPEG one-way + input de mouse | Pendente |
-| 2 | Teclado + tuning de latência + medição de RTT | Pendente |
-| 3 | Múltiplos emissores + seletor no viewer | Pendente |
-| 4 | Codec de hardware (Quick Sync / NVENC) | Pendente |
-| 5 | Agente como serviço Windows (tela de bloqueio / UAC) | Pendente |
+| Phase | Deliverable | Status |
+|-------|-------------|--------|
+| 0 | Skeleton, TLS, HMAC auth, heartbeat, open-source packaging | ✅ Complete |
+| 1 | MVP: one-way JPEG video + mouse input | ✅ Code complete (hardware gate pending) |
+| 2 | Keyboard + latency tuning + RTT measurement | ✅ Code complete (hardware gate pending) |
+| 3 | Multiple senders + sender selector in viewer | ✅ Code complete (hardware gate pending) |
+| 4 | Hardware codec (Quick Sync / NVENC via FFmpeg) | ⚠️ Blocked — requires FFmpeg.AutoGen + hardware |
+| 5 | Agent as Windows service (lock screen / UAC) | ✅ Code complete (hardware gate pending) |
 
 ---
 
-## Contribuindo
+## Contributing
 
-Contribuições são bem-vindas. Fluxo:
+Contributions are welcome. Workflow:
 
-1. Abra uma issue para discutir mudanças grandes antes de implementar.
-2. Fork + branch descritiva (`feat/nome`, `fix/nome`).
-3. Siga as convenções do projeto:
-   - **Protocolo big-endian** em todo campo multibyte; `shared/protocol/` deve estar sincronizado entre TS e C#.
-   - **Nenhum hardcode** de segredos, IPs ou portas — tudo via `.env`.
-   - **DI + IOptions** nas apps .NET; sem singletons globais manuais.
-   - **Logs estruturados** (`pino` no broker, `ILogger<T>` no .NET).
-   - **TLS obrigatório** em toda conexão; sem fallback em texto puro.
-   - **Interfaces para APIs Windows-only** (`IScreenCapturer`, `IInputInjector`) — testes unitários usam fakes.
-   - **Conflação de vídeo:** Channel de capacidade 1; frame antigo é descartado. Nunca enfileirar.
-4. `npm test` no broker deve estar verde. `dotnet test` na solution deve estar verde.
-5. `git status` após build não deve mostrar `.env`, `.pem`, `.key`, `bin/`, `obj/` ou `node_modules/`.
-6. Mensagens de commit em português, estilo convencional (ex.: `feat: roteamento por peer_id no broker`).
-7. Abra o PR contra `main`.
-
----
-
-## Uso responsável
-
-SelfDesk é uma ferramenta de acesso remoto destinada exclusivamente a máquinas que **o próprio usuário possui ou tem autorização explícita para acessar**.
-
-O uso desta ferramenta para **acesso não autorizado** a sistemas de terceiros, **vigilância não consentida**, ou qualquer forma de invasão de privacidade é expressamente proibido e constitui responsabilidade exclusiva do usuário, podendo configurar crime conforme a legislação aplicável (incluindo a Lei 12.737/2012 — "Lei Carolina Dieckmann" — no Brasil, e legislações equivalentes em outras jurisdições).
-
-Os mantenedores deste projeto **não se responsabilizam** por qualquer uso indevido da ferramenta. Use com ética e respeito à privacidade alheia.
+1. Open an issue to discuss large changes before implementing.
+2. Fork + descriptive branch (`feat/name`, `fix/name`).
+3. Follow project conventions:
+   - **Big-endian protocol** on every multi-byte field; `shared/protocol/` must stay in sync between TS and C#.
+   - **No hardcoded** secrets, IPs, or ports — everything via `.env`.
+   - **DI + IOptions** in .NET apps; no manual global singletons.
+   - **Structured logging** (`pino` in broker, `ILogger<T>` in .NET).
+   - **TLS mandatory** on every connection; no plaintext fallback.
+   - **Interfaces for Windows-only APIs** (`IScreenCapturer`, `IInputInjector`) — unit tests use fakes.
+   - **Video conflation:** Channel capacity 1; old frame is dropped, never queued.
+4. `npm test` in broker must be green. `dotnet test` on the solution must be green.
+5. `git status` after build must not show `.env`, `.pem`, `.key`, `bin/`, `obj/`, or `node_modules/`.
+6. Commit messages in Portuguese, conventional style (e.g. `feat: peer_id routing in broker`).
+7. Open the PR against `main`.
 
 ---
 
-## Licença
+## Responsible use
 
-Distribuído sob a licença MIT. Veja [LICENSE](LICENSE).
+SelfDesk is a remote access tool intended exclusively for machines that **you own or have explicit authorization to access**.
+
+Using this tool for **unauthorized access** to third-party systems, **non-consensual surveillance**, or any form of privacy invasion is expressly prohibited and is the sole responsibility of the user, potentially constituting a criminal offense under applicable law.
+
+The maintainers of this project **accept no liability** for any misuse of the tool. Use it ethically and respect others' privacy.
+
+---
+
+## License
+
+Distributed under the MIT License. See [LICENSE](LICENSE).
