@@ -26,7 +26,11 @@ public partial class App : Application
                     cfg.BrokerPort   = int.TryParse(GetEnv("BROKER_PORT", "7000"), out var p) ? p : 7000;
                     cfg.TlsCaPath    = GetEnv("TLS_CA_PATH",   string.Empty);
                 });
-                services.AddSingleton<IFrameDecoder, JpegFrameDecoder>();
+                var encoderEnv = GetEnv("ENCODER", "jpeg").ToLowerInvariant();
+                if (encoderEnv is "qsv" or "nvenc")
+                    services.AddSingleton<IFrameDecoder, H264Decoder>();
+                else
+                    services.AddSingleton<IFrameDecoder, JpegFrameDecoder>();
                 services.AddSingleton<MainWindowViewModel>();
                 services.AddSingleton<MainWindow>();
                 services.AddHostedService<ViewerService>();

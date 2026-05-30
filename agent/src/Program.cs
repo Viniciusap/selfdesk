@@ -2,6 +2,8 @@ using DotNetEnv;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Hosting.WindowsServices;
+using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
 using SelfDesk.Agent;
 using SelfDesk.Agent.Capture;
 using SelfDesk.Agent.Encode;
@@ -26,9 +28,17 @@ builder.Services.Configure<AgentConfig>(cfg =>
 });
 
 builder.Services.AddSingleton<IScreenCapturer, GdiScreenCapturer>();
-builder.Services.AddSingleton<IFrameEncoder>(_ =>
-    (IFrameEncoder)new JpegFrameEncoder(
-        int.TryParse(GetEnv("JPEG_QUALITY", "75"), out var q) ? q : 75));
+builder.Services.AddSingleton<IFrameEncoder>(sp =>
+{
+    var cfg     = sp.GetRequiredService<IOptions<AgentConfig>>().Value;
+    var logFact = sp.GetRequiredService<ILoggerFactory>();
+    return cfg.Encoder.ToLowerInvariant() switch
+    {
+        "qsv" or "nvenc" => (IFrameEncoder)new H264Encoder(
+            cfg.Encoder, cfg.TargetFps, logFact.CreateLogger<H264Encoder>()),
+        _ => new JpegFrameEncoder(cfg.JpegQuality),
+    };
+});
 builder.Services.AddSingleton<IInputInjector, Win32InputInjector>();
 builder.Services.AddHostedService<AgentService>();
 

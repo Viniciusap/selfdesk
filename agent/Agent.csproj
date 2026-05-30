@@ -23,6 +23,7 @@
     <PackageReference Include="Microsoft.Extensions.Logging.EventLog" Version="10.0.0-preview.4.25258.110" />
     <PackageReference Include="SkiaSharp" Version="2.88.8" />
     <PackageReference Include="SkiaSharp.NativeAssets.Win32" Version="2.88.8" />
+    <PackageReference Include="FFmpeg.AutoGen" Version="7.1.1" />
   </ItemGroup>
 
 </Project>

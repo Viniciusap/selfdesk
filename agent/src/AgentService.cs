@@ -64,6 +64,7 @@ public sealed class AgentService : BackgroundService
                 {
                     var frame   = _capturer.CaptureFrame();
                     var encoded = _encoder.Encode(frame);
+                    if (encoded.Data.Length == 0) continue;
                     await channel.Writer.WriteAsync(encoded, ct);
                 }
                 catch (OperationCanceledException) { break; }

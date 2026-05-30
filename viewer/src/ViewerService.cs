@@ -97,7 +97,7 @@ public sealed class ViewerService : BackgroundService
         var codec  = span[VideoFrameOffsets.Codec];
         var data   = span[VideoFrameOffsets.Data..];
 
-        if (codec != VideoFrameOffsets.CodecJpeg) return;
+        if (codec != VideoFrameOffsets.CodecJpeg && codec != VideoFrameOffsets.CodecH264) return;
 
         DecodedFrame decoded;
         try { decoded = _decoder.Decode(data, width, height, ts); }
@@ -113,7 +113,7 @@ public sealed class ViewerService : BackgroundService
                 sender.LastRttMs   = rtt;
                 sender.FrameWidth  = decoded.Width;
                 sender.FrameHeight = decoded.Height;
-                sender.Codec       = "JPEG";
+                sender.Codec       = codec == VideoFrameOffsets.CodecH264 ? "H264" : "JPEG";
                 _vm.NotifyStatusBarChanged();
             }
 
