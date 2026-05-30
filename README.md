@@ -182,13 +182,6 @@ powershell -ExecutionPolicy Bypass -File scripts\bootstrap.ps1 -Role sender
 # → prompts for broker host, SHARED_SECRET, AGENT_ID, encoder (jpeg / qsv / nvenc)
 ```
 
-Disable native RDP (run PowerShell **as administrator**):
-
-```powershell
-Set-ItemProperty 'HKLM:\System\CurrentControlSet\Control\Terminal Server' fDenyTSConnections 1
-Disable-NetFirewallRule -DisplayGroup "Remote Desktop"
-```
-
 Start the agent:
 
 ```powershell
