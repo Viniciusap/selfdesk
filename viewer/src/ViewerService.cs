@@ -4,9 +4,11 @@ using System.Text;
 using System.Windows;
 using System.Windows.Media;
 using System.Windows.Media.Imaging;
+using Concentus.Structs;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
+using SelfDesk.Viewer.Audio;
 using SelfDesk.Viewer.Decode;
 using SelfDesk.Viewer.Network;
 using SelfDesk.Viewer.Protocol;
@@ -22,19 +24,23 @@ public sealed class ViewerService : BackgroundService
     private readonly MainWindow              _window;
     private readonly ILogger<ViewerService>  _log;
     private readonly IFrameDecoder           _decoder;
+    private readonly IAudioPlayer            _audioPlayer;
+    private          OpusDecoder?            _audioDecoder;
 
     public ViewerService(
         IOptions<ViewerConfig> cfg,
         MainWindowViewModel vm,
         MainWindow window,
         IFrameDecoder decoder,
+        IAudioPlayer audioPlayer,
         ILogger<ViewerService> log)
     {
-        _cfg     = cfg.Value;
-        _vm      = vm;
-        _window  = window;
-        _decoder = decoder;
-        _log     = log;
+        _cfg         = cfg.Value;
+        _vm          = vm;
+        _window      = window;
+        _decoder     = decoder;
+        _audioPlayer = audioPlayer;
+        _log         = log;
     }
 
     protected override async Task ExecuteAsync(CancellationToken ct)
@@ -268,7 +274,29 @@ public sealed class ViewerService : BackgroundService
             case MessageType.VideoFrame:
                 ProcessVideoFrame(peerId, payload);
                 break;
+            case MessageType.AudioFrame:
+                ProcessAudioFrame(payload);
+                break;
         }
+    }
+
+    private void ProcessAudioFrame(ReadOnlyMemory<byte> payload)
+    {
+        const int HeaderSize    = 12;
+        const int FrameSamples  = 960;
+        const int Channels      = 2;
+
+        if (payload.Length <= HeaderSize) return;
+        var opusData = payload.Span[HeaderSize..];
+
+        try
+        {
+            _audioDecoder ??= new OpusDecoder(48000, 2);
+            var pcm = new short[FrameSamples * Channels];
+            _audioDecoder.Decode(opusData, pcm.AsSpan(), FrameSamples, false);
+            _audioPlayer.AddSamples(pcm);
+        }
+        catch (Exception ex) { _log.LogWarning(ex, "Falha ao decodificar frame de áudio"); }
     }
 
     private void ProcessVideoFrame(string senderId, ReadOnlyMemory<byte> payload)

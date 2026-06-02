@@ -3,6 +3,7 @@ using System.Threading.Channels;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
+using SelfDesk.Sender.Audio;
 using SelfDesk.Sender.Capture;
 using SelfDesk.Sender.Clipboard;
 using SelfDesk.Sender.Encode;
@@ -165,6 +166,8 @@ public sealed class SenderService : BackgroundService
             }
         }, ct);
 
-        await Task.WhenAny(producer, consumer, heartbeat, recvLoop, clipboardLoop, rttMonitor);
+        var audioPipeline = AudioPipeline.Start(conn, _cfg.SenderId, _log, ct);
+
+        await Task.WhenAny(producer, consumer, heartbeat, recvLoop, clipboardLoop, rttMonitor, audioPipeline);
     }
 }

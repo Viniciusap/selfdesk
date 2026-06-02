@@ -1,6 +1,7 @@
 using System.Windows;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
+using SelfDesk.Viewer.Audio;
 using SelfDesk.Viewer.Decode;
 using SelfDesk.Viewer.ViewModels;
 using SelfDesk.Viewer.Views;
@@ -31,6 +32,7 @@ public partial class App : Application
                     services.AddSingleton<IFrameDecoder, H264Decoder>();
                 else
                     services.AddSingleton<IFrameDecoder, JpegFrameDecoder>();
+                services.AddSingleton<IAudioPlayer, WasapiAudioPlayer>();
                 services.AddSingleton<MainWindowViewModel>();
                 services.AddSingleton<MainWindow>();
                 services.AddHostedService<ViewerService>();

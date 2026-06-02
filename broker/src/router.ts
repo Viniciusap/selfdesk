@@ -52,7 +52,8 @@ export class Router {
     header: ParsedHeader,
     payload: Buffer,
   ): void {
-    if (header.type === MessageType.VIDEO_FRAME) {
+    if (header.type === MessageType.VIDEO_FRAME ||
+        header.type === MessageType.AUDIO_FRAME) {
       const receiver = this.registry.getReceiver();
       if (!receiver) return;
       receiver.send(buildEnvelope(header.type, agentId, payload));

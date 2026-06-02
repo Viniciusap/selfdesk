@@ -1,9 +1,17 @@
 using System.Buffers.Binary;
 using System.Text;
+using SelfDesk.Viewer.Audio;
 using SelfDesk.Viewer.Protocol;
 using Xunit;
 
 namespace SelfDesk.Viewer.Tests;
+
+file sealed class NullAudioPlayer : IAudioPlayer
+{
+    public bool IsMuted { get; set; }
+    public void AddSamples(short[] pcm) { }
+    public void Dispose() { }
+}
 
 public class WireProtocolTests
 {
@@ -76,7 +84,7 @@ public class ViewModelTests
     [Fact]
     public void AddSender_AddsToCollection()
     {
-        var vm = new ViewModels.MainWindowViewModel();
+        var vm = new ViewModels.MainWindowViewModel(new NullAudioPlayer());
         vm.AddSender("laptop-01");
         Assert.Single(vm.Senders);
         Assert.Equal("laptop-01", vm.Senders[0].AgentId);
@@ -86,7 +94,7 @@ public class ViewModelTests
     [Fact]
     public void AddSender_FirstSender_BecomesSelected()
     {
-        var vm = new ViewModels.MainWindowViewModel();
+        var vm = new ViewModels.MainWindowViewModel(new NullAudioPlayer());
         vm.AddSender("laptop-01");
         Assert.Equal("laptop-01", vm.SelectedSender?.AgentId);
     }
@@ -94,7 +102,7 @@ public class ViewModelTests
     [Fact]
     public void AddSender_DuplicateId_MarksConnected()
     {
-        var vm = new ViewModels.MainWindowViewModel();
+        var vm = new ViewModels.MainWindowViewModel(new NullAudioPlayer());
         vm.AddSender("laptop-01");
         vm.RemoveSender("laptop-01");
         Assert.False(vm.Senders[0].IsConnected);
@@ -106,7 +114,7 @@ public class ViewModelTests
     [Fact]
     public void RemoveSender_MarksDisconnected()
     {
-        var vm = new ViewModels.MainWindowViewModel();
+        var vm = new ViewModels.MainWindowViewModel(new NullAudioPlayer());
         vm.AddSender("laptop-01");
         vm.RemoveSender("laptop-01");
         Assert.False(vm.Senders[0].IsConnected);
@@ -115,7 +123,7 @@ public class ViewModelTests
     [Fact]
     public void RemoveSender_SelectedSender_ChangesToOtherConnected()
     {
-        var vm = new ViewModels.MainWindowViewModel();
+        var vm = new ViewModels.MainWindowViewModel(new NullAudioPlayer());
         vm.AddSender("laptop-01");
         vm.AddSender("laptop-02");
         vm.SelectedSender = vm.Senders[0];
@@ -126,7 +134,7 @@ public class ViewModelTests
     [Fact]
     public void MultipleSenders_CanSwitchFocus_ViaSelectedSender()
     {
-        var vm = new ViewModels.MainWindowViewModel();
+        var vm = new ViewModels.MainWindowViewModel(new NullAudioPlayer());
         vm.AddSender("laptop-01");
         vm.AddSender("laptop-02");
 

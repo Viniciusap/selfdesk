@@ -1,17 +1,28 @@
 using System.Collections.ObjectModel;
 using System.Windows.Media.Imaging;
 using CommunityToolkit.Mvvm.ComponentModel;
+using SelfDesk.Viewer.Audio;
 
 namespace SelfDesk.Viewer.ViewModels;
 
 public sealed partial class MainWindowViewModel : ObservableObject
 {
+    private readonly IAudioPlayer _audioPlayer;
+
+    public MainWindowViewModel(IAudioPlayer audioPlayer)
+    {
+        _audioPlayer = audioPlayer;
+    }
+
     [ObservableProperty] private SenderViewModel? _selectedSender;
     [ObservableProperty] private string           _connectionStatus = "Desconectado";
     [ObservableProperty] private bool             _isConnected;
     [ObservableProperty] private WriteableBitmap? _videoFrame;
     [ObservableProperty] private int              _transferProgress = -1;
     [ObservableProperty] private string           _transferStatus   = string.Empty;
+    [ObservableProperty] private bool             _isMuted          = false;
+
+    partial void OnIsMutedChanged(bool value) => _audioPlayer.IsMuted = value;
 
     public ObservableCollection<SenderViewModel> Senders { get; } = [];
 

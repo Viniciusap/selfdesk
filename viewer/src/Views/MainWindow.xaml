@@ -69,6 +69,18 @@
                            Text="{Binding ConnectionStatus}"
                            FontSize="12" Foreground="{StaticResource BrushTextSecondary}"
                            HorizontalAlignment="Center" VerticalAlignment="Center"/>
+
+                <ToggleButton Grid.Column="2"
+                              IsChecked="{Binding IsMuted, Mode=TwoWay}"
+                              Content="🔇"
+                              FontSize="13"
+                              Padding="8,0"
+                              Margin="0,0,8,0"
+                              VerticalAlignment="Center"
+                              Background="Transparent"
+                              BorderThickness="0"
+                              Foreground="{StaticResource BrushTextSecondary}"
+                              ToolTip="Silenciar / Ativar áudio"/>
             </Grid>
         </Border>
 

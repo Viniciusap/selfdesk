@@ -120,6 +120,20 @@ public static class WireProtocol
     public static byte[] BuildClipboard(ReadOnlySpan<byte> utf8Text, string agentId) =>
         BuildEnvelope(MessageType.Clipboard, agentId, utf8Text);
 
+    public static byte[] BuildAudioFrame(
+        long timestampMs, int channels, ReadOnlySpan<byte> opusData, string agentId)
+    {
+        var header = new byte[12];
+        BinaryPrimitives.WriteInt64BigEndian(header, timestampMs);
+        header[8]  = (byte)channels;
+        header[9]  = 0; // sample rate id: 0 = 48000 Hz
+        BinaryPrimitives.WriteUInt16BigEndian(header.AsSpan(10), 960); // frame samples
+        var payload = new byte[header.Length + opusData.Length];
+        header.CopyTo(payload, 0);
+        opusData.CopyTo(payload.AsSpan(header.Length));
+        return BuildEnvelope(MessageType.AudioFrame, agentId, payload);
+    }
+
     public static byte[] BuildMonitorList(
         IReadOnlyList<SelfDesk.Sender.Capture.MonitorInfo> monitors, string agentId)
     {

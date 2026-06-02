@@ -23,6 +23,7 @@ export const MessageType = {
   FILE_ERROR:      0x64,
   MONITOR_LIST:    0x70,
   SELECT_MONITOR:  0x71,
+  AUDIO_FRAME:     0x80,
 } as const;
 
 export type MessageTypeValue = (typeof MessageType)[keyof typeof MessageType];
