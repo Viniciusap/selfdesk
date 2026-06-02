@@ -72,7 +72,6 @@
 
                 <ToggleButton Grid.Column="2"
                               IsChecked="{Binding IsMuted, Mode=TwoWay}"
-                              Content="🔇"
                               FontSize="13"
                               Padding="8,0"
                               Margin="0,0,8,0"
@@ -80,7 +79,18 @@
                               Background="Transparent"
                               BorderThickness="0"
                               Foreground="{StaticResource BrushTextSecondary}"
-                              ToolTip="Silenciar / Ativar áudio"/>
+                              ToolTip="Silenciar / Ativar áudio">
+                    <ToggleButton.Style>
+                        <Style TargetType="ToggleButton">
+                            <Setter Property="Content" Value="🔊"/>
+                            <Style.Triggers>
+                                <Trigger Property="IsChecked" Value="True">
+                                    <Setter Property="Content" Value="🔇"/>
+                                </Trigger>
+                            </Style.Triggers>
+                        </Style>
+                    </ToggleButton.Style>
+                </ToggleButton>
             </Grid>
         </Border>
 

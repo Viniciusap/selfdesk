@@ -172,8 +172,9 @@ public sealed class SenderService : BackgroundService
             }
         }, ct);
 
-        var audioPipeline = AudioPipeline.Start(conn, _cfg.SenderId, _log, ct);
+        // fire-and-forget: falha de áudio não encerra a sessão de vídeo
+        _ = AudioPipeline.Start(conn, _cfg.SenderId, _log, ct);
 
-        await Task.WhenAny(producer, consumer, heartbeat, recvLoop, clipboardLoop, rttMonitor, audioPipeline);
+        await Task.WhenAny(producer, consumer, heartbeat, recvLoop, clipboardLoop, rttMonitor);
     }
 }
