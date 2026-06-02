@@ -84,7 +84,12 @@ public sealed class SenderService : BackgroundService
             switch (type)
             {
                 case MessageType.InputEvent:  _injector.Inject(payload.Span); break;
-                case MessageType.RequestIdr:  _encoder.RequestKeyframe(); break;
+                case MessageType.RequestIdr:
+                    _encoder.RequestKeyframe();
+                    // Viewer acabou de conectar — reenviar lista de monitores
+                    _ = conn.SendAsync(WireProtocol.BuildMonitorList(
+                        MonitorEnumerator.Enumerate(), _cfg.SenderId), ct);
+                    break;
                 case MessageType.Clipboard:   clipboard.OnRemoteClipboard(payload); break;
                 case MessageType.FileHeader:  fileRx.OnFileHeader(payload); break;
                 case MessageType.FileChunk:   fileRx.OnFileChunk(payload); break;
@@ -96,6 +101,7 @@ public sealed class SenderService : BackgroundService
                         var idx = JsonDocument.Parse(payload.ToArray())
                             .RootElement.GetProperty("monitorIndex").GetInt32();
                         _capturer.SwitchMonitor(idx);
+                        _injector.MonitorIndex = idx;
                         _log.LogInformation("Trocado para monitor {Index}", idx);
                     }
                     catch (Exception ex) { _log.LogWarning(ex, "Falha ao trocar monitor"); }

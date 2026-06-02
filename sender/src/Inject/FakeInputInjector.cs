@@ -9,5 +9,6 @@ public sealed class FakeInputInjector : IInputInjector
         Received.Add(inputEventPayload.ToArray());
     }
 
+    public int  MonitorIndex { get; set; }
     public void ReleaseAllModifiers() { }
 }

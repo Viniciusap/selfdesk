@@ -1,5 +1,6 @@
 using System.Buffers.Binary;
 using System.Runtime.InteropServices;
+using SelfDesk.Sender.Capture;
 using SelfDesk.Sender.Protocol;
 
 namespace SelfDesk.Sender.Inject;
@@ -10,6 +11,19 @@ public sealed class Win32InputInjector : IInputInjector, IDisposable
     private readonly Dictionary<ushort, DateTime> _keysDown = new();
     private readonly System.Threading.Timer _stuckKeyTimer;
     private byte _trackedMods;
+    private int _monitorIndex;
+    private MonitorInfo? _monitor;
+
+    public int MonitorIndex
+    {
+        get => _monitorIndex;
+        set
+        {
+            _monitorIndex = value;
+            var list = MonitorEnumerator.Enumerate();
+            _monitor = value < list.Count ? list[value] : list.Count > 0 ? list[0] : null;
+        }
+    }
 
     public Win32InputInjector()
     {
@@ -76,25 +90,45 @@ public sealed class Win32InputInjector : IInputInjector, IDisposable
         }
     }
 
-    private static void InjectMouseMove(ushort normX, ushort normY)
+    // Remapeia coords normalizadas [0,65535] do frame capturado para o espaço virtual.
+    // Sem remap, normX=65535 mapeia para a borda direita do virtual screen (todos os monitores),
+    // mas deveria mapear para a borda direita do monitor selecionado.
+    private (int ax, int ay) Remap(ushort normX, ushort normY)
     {
+        var m = _monitor;
+        if (m is null)
+            return (normX, normY);
+
+        int vLeft   = GetSystemMetrics(SM_XVIRTUALSCREEN);
+        int vTop    = GetSystemMetrics(SM_YVIRTUALSCREEN);
+        int vWidth  = GetSystemMetrics(SM_CXVIRTUALSCREEN);
+        int vHeight = GetSystemMetrics(SM_CYVIRTUALSCREEN);
+
+        double physX = m.Left + (double)normX * m.Width  / 65535.0;
+        double physY = m.Top  + (double)normY * m.Height / 65535.0;
+
+        int ax = (int)((physX - vLeft) * 65535.0 / vWidth);
+        int ay = (int)((physY - vTop)  * 65535.0 / vHeight);
+        return (ax, ay);
+    }
+
+    private void InjectMouseMove(ushort normX, ushort normY)
+    {
+        var (ax, ay) = Remap(normX, normY);
         var input = new INPUT
         {
             type = INPUT_MOUSE,
             mi   = new MOUSEINPUT
             {
-                dx          = normX,
-                dy          = normY,
-                dwFlags     = MOUSEEVENTF_MOVE | MOUSEEVENTF_ABSOLUTE | MOUSEEVENTF_VIRTUALDESK,
-                mouseData   = 0,
-                time        = 0,
-                dwExtraInfo = 0,
+                dx      = ax,
+                dy      = ay,
+                dwFlags = MOUSEEVENTF_MOVE | MOUSEEVENTF_ABSOLUTE | MOUSEEVENTF_VIRTUALDESK,
             },
         };
         SendInput(1, ref input, Marshal.SizeOf<INPUT>());
     }
 
-    private static void InjectMouseButton(byte btn, byte state, ushort normX, ushort normY)
+    private void InjectMouseButton(byte btn, byte state, ushort normX, ushort normY)
     {
         uint downFlag, upFlag;
         uint mouseData = 0;
@@ -109,26 +143,28 @@ public sealed class Win32InputInjector : IInputInjector, IDisposable
             _                        => (MOUSEEVENTF_LEFTDOWN, MOUSEEVENTF_LEFTUP, 0u),
         };
 
+        var (ax, ay) = Remap(normX, normY);
         var flags = (state == InputEventKind.StateDown ? downFlag : upFlag)
                   | MOUSEEVENTF_MOVE | MOUSEEVENTF_ABSOLUTE | MOUSEEVENTF_VIRTUALDESK;
 
         var input = new INPUT
         {
             type = INPUT_MOUSE,
-            mi   = new MOUSEINPUT { dx = normX, dy = normY, dwFlags = flags, mouseData = mouseData },
+            mi   = new MOUSEINPUT { dx = ax, dy = ay, dwFlags = flags, mouseData = mouseData },
         };
         SendInput(1, ref input, Marshal.SizeOf<INPUT>());
     }
 
-    private static void InjectMouseWheel(short delta, ushort normX, ushort normY)
+    private void InjectMouseWheel(short delta, ushort normX, ushort normY)
     {
+        var (ax, ay) = Remap(normX, normY);
         var input = new INPUT
         {
             type = INPUT_MOUSE,
             mi   = new MOUSEINPUT
             {
-                dx        = normX,
-                dy        = normY,
+                dx        = ax,
+                dy        = ay,
                 mouseData = (uint)(delta * 120),
                 dwFlags   = MOUSEEVENTF_WHEEL | MOUSEEVENTF_MOVE | MOUSEEVENTF_ABSOLUTE | MOUSEEVENTF_VIRTUALDESK,
             },
@@ -243,6 +279,14 @@ public sealed class Win32InputInjector : IInputInjector, IDisposable
 
     [DllImport("user32.dll")]
     private static extern uint MapVirtualKey(uint uCode, uint uMapType);
+
+    [DllImport("user32.dll")]
+    private static extern int GetSystemMetrics(int nIndex);
+
+    private const int SM_XVIRTUALSCREEN  = 76;
+    private const int SM_YVIRTUALSCREEN  = 77;
+    private const int SM_CXVIRTUALSCREEN = 78;
+    private const int SM_CYVIRTUALSCREEN = 79;
 
     private const uint MAPVK_VK_TO_VSC    = 0;
     private const uint MAPVK_VK_TO_VSC_EX = 3;
