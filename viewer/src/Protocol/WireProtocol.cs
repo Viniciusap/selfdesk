@@ -99,6 +99,9 @@ public static class WireProtocol
         return BuildInputEvent(InputEventKind.Key, targetPeerId, data);
     }
 
+    public static byte[] BuildRequestIdr(string targetPeerId) =>
+        BuildEnvelope(MessageType.RequestIdr, targetPeerId, ReadOnlySpan<byte>.Empty);
+
     public static byte[] BuildBye() =>
         BuildEnvelope(MessageType.Bye, string.Empty, ReadOnlySpan<byte>.Empty);
 

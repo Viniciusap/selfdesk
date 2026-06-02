@@ -1,4 +1,4 @@
-namespace SelfDesk.Viewer.Protocol;
+namespace SelfDesk.Sender.Protocol;
 
 public static class ProtocolVersion
 {
@@ -63,6 +63,8 @@ public static class InputEventKind
     public const byte BtnLeft   = 0;
     public const byte BtnRight  = 1;
     public const byte BtnMiddle = 2;
+    public const byte BtnX1     = 3;
+    public const byte BtnX2     = 4;
 
     public const byte ModShift = 0x01;
     public const byte ModCtrl  = 0x02;

@@ -9,7 +9,12 @@
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
     <RootNamespace>SelfDesk.Viewer</RootNamespace>
     <AssemblyName>SelfDesk.Viewer</AssemblyName>
+    <ApplicationIcon>src\Views\app.ico</ApplicationIcon>
   </PropertyGroup>
+
+  <ItemGroup>
+    <Resource Include="src\Views\app.ico" />
+  </ItemGroup>
 
   <ItemGroup>
     <Compile Remove="Viewer.Tests/**" />

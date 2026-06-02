@@ -59,9 +59,9 @@ jobs:
             selfdesk-broker-linux-x64.tar.gz
             selfdesk-broker-win-x64.zip
 
-  # ── Agent + Viewer: zips Windows ─────────────────────────────────────────
+  # ── Sender + Viewer: zips Windows ─────────────────────────────────────────
   windows:
-    name: Agent + Viewer (Windows zips)
+    name: Sender + Viewer (Windows zips)
     runs-on: windows-2025
     steps:
       - uses: actions/checkout@v6
@@ -73,12 +73,12 @@ jobs:
       - name: Restore
         run: dotnet restore selfdesk.slnx
 
-      - name: Publicar Agent (self-contained)
+      - name: Publicar Sender (self-contained)
         run: >
-          dotnet publish agent/Agent.csproj
+          dotnet publish sender/Sender.csproj
           -c Release -r win-x64
           --self-contained true
-          -o agent/publish
+          -o sender/publish
 
       - name: Publicar Viewer (self-contained)
         run: >
@@ -98,17 +98,18 @@ jobs:
                     Select-Object -First 1
           if (-not $binDir) { throw "bin/ não encontrado no zip do FFmpeg." }
           $dlls = Get-ChildItem $binDir.FullName -Filter '*.dll'
-          $dlls | Copy-Item -Destination agent/publish  -Force
+          $dlls | Copy-Item -Destination sender/publish  -Force
           $dlls | Copy-Item -Destination viewer/publish -Force
           Write-Host "Copiadas $($dlls.Count) DLLs."
 
-      - name: Incluir scripts e exemplos no Agent
+      - name: Incluir scripts e exemplos no Sender
         shell: pwsh
         run: |
-          New-Item -ItemType Directory -Path agent/publish/scripts -Force | Out-Null
-          Copy-Item scripts/bootstrap.ps1 agent/publish/scripts/
-          Copy-Item scripts/install.ps1   agent/publish/scripts/
-          Copy-Item agent/.env.example    agent/publish/
+          New-Item -ItemType Directory -Path sender/publish/scripts -Force | Out-Null
+          Copy-Item scripts/bootstrap.ps1    sender/publish/scripts/
+          Copy-Item scripts/install.ps1      sender/publish/scripts/
+          Copy-Item scripts/update-sender.ps1 sender/publish/scripts/
+          Copy-Item sender/.env.example       sender/publish/
 
       - name: Incluir scripts e exemplos no Viewer
         shell: pwsh
@@ -118,9 +119,9 @@ jobs:
           Copy-Item scripts/install.ps1   viewer/publish/scripts/
           Copy-Item viewer/.env.example   viewer/publish/
 
-      - name: Zipar Agent
+      - name: Zipar Sender
         shell: pwsh
-        run: Compress-Archive -Path agent/publish/* -DestinationPath selfdesk-agent-win-x64.zip
+        run: Compress-Archive -Path sender/publish/* -DestinationPath selfdesk-sender-win-x64.zip
 
       - name: Zipar Viewer
         shell: pwsh
@@ -130,7 +131,7 @@ jobs:
         with:
           name: windows-zips
           path: |
-            selfdesk-agent-win-x64.zip
+            selfdesk-sender-win-x64.zip
             selfdesk-viewer-win-x64.zip
 
   # ── Criar GitHub Release ──────────────────────────────────────────────────
@@ -154,5 +155,5 @@ jobs:
           files: |
             selfdesk-broker-linux-x64.tar.gz
             selfdesk-broker-win-x64.zip
-            selfdesk-agent-win-x64.zip
+            selfdesk-sender-win-x64.zip
             selfdesk-viewer-win-x64.zip

@@ -35,7 +35,7 @@ jobs:
         working-directory: broker
 
   dotnet:
-    name: Agent + Viewer (.NET)
+    name: Sender + Viewer (.NET)
     runs-on: windows-2025
     steps:
       - uses: actions/checkout@v6

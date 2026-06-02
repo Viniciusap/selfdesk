@@ -1,25 +1,28 @@
-using System.IO;
+using System.Buffers.Binary;
 using System.Net.Security;
 using System.Net.Sockets;
 using System.Security.Cryptography.X509Certificates;
 using Microsoft.Extensions.Logging;
-using SelfDesk.Viewer.Protocol;
+using SelfDesk.Sender.Protocol;
 
-namespace SelfDesk.Viewer.Network;
+namespace SelfDesk.Sender.Network;
 
 public sealed class BrokerConnection : IAsyncDisposable
 {
-    private readonly ViewerConfig _cfg;
+    private readonly SenderConfig _cfg;
     private readonly ILogger _log;
-    private TcpClient? _tcp;
-    private SslStream? _ssl;
+    private TcpClient?      _tcp;
+    private SslStream?      _ssl;
+    private CancellationTokenSource _cts = new();
 
-    private readonly byte[] _headerBuf = new byte[ProtocolSizes.HeaderSize];
     private readonly SemaphoreSlim _writeLock = new(1, 1);
+    private readonly byte[] _headerBuf = new byte[ProtocolSizes.HeaderSize];
 
-    public event Action<byte, string, ReadOnlyMemory<byte>>? MessageReceived;
+    public long LastRttMs { get; private set; }
 
-    public BrokerConnection(ViewerConfig cfg, ILogger log)
+    public event Action<byte, ReadOnlyMemory<byte>>? MessageReceived;
+
+    public BrokerConnection(SenderConfig cfg, ILogger log)
     {
         _cfg = cfg;
         _log = log;
@@ -32,9 +35,11 @@ public sealed class BrokerConnection : IAsyncDisposable
 
         X509Certificate2Collection? caBundle = null;
         if (!string.IsNullOrEmpty(_cfg.TlsCaPath) && File.Exists(_cfg.TlsCaPath))
+        {
             caBundle = [X509Certificate2.CreateFromPem(File.ReadAllText(_cfg.TlsCaPath))];
+        }
 
-        _ssl = new SslStream(_tcp.GetStream(), false, (_, cert, _, errors) =>
+        _ssl = new SslStream(_tcp.GetStream(), false, (_, cert, chain, errors) =>
         {
             if (caBundle is null) return errors == SslPolicyErrors.None;
             if (cert is null) return false;
@@ -44,10 +49,11 @@ public sealed class BrokerConnection : IAsyncDisposable
 
         await _ssl.AuthenticateAsClientAsync(new SslClientAuthenticationOptions
         {
-            TargetHost = _cfg.BrokerHost,
+            TargetHost              = _cfg.BrokerHost,
+            RemoteCertificateValidationCallback = null,
         }, ct);
 
-        await SendRawAsync(WireProtocol.BuildHello("receiver", "receiver"), ct);
+        await SendRawAsync(WireProtocol.BuildHello(_cfg.SenderId, "sender", WireProtocol.GetLocalMac()), ct);
 
         var (type, _, _) = await ReadHeaderAsync(ct);
         if (type != MessageType.Challenge)
@@ -58,18 +64,21 @@ public sealed class BrokerConnection : IAsyncDisposable
 
         var (authType, _, _) = await ReadHeaderAsync(ct);
         if (authType == MessageType.AuthFail)
-            throw new UnauthorizedAccessException("AUTH_FAIL: segredo incorreto");
+            throw new UnauthorizedAccessException("AUTH_FAIL: segredo incorreto ou agentId não permitido");
         if (authType != MessageType.AuthOk)
             throw new InvalidDataException($"Esperava AUTH_OK, recebeu 0x{authType:X2}");
 
-        _log.LogInformation("Viewer autenticado no broker");
+        _log.LogInformation("Autenticado no broker como {AgentId}", _cfg.SenderId);
     }
+
+    public Task SendAsync(byte[] message, CancellationToken ct) =>
+        SendRawAsync(message, ct);
 
     public async Task RunReceiveLoopAsync(CancellationToken ct)
     {
         while (!ct.IsCancellationRequested)
         {
-            var (type, peerId, length) = await ReadHeaderAsync(ct);
+            var (type, _, length) = await ReadHeaderAsync(ct);
             var payload = length > 0 ? await ReadPayloadAsync((int)length, ct) : Array.Empty<byte>();
 
             switch (type)
@@ -78,12 +87,17 @@ public sealed class BrokerConnection : IAsyncDisposable
                     await SendRawAsync(WireProtocol.BuildPong(payload), ct);
                     break;
                 case MessageType.Pong:
+                    if (payload.Length >= 8)
+                    {
+                        var sent = (long)BinaryPrimitives.ReadUInt64BigEndian(payload);
+                        LastRttMs = Math.Max(0, DateTimeOffset.UtcNow.ToUnixTimeMilliseconds() - sent);
+                    }
                     break;
                 case MessageType.Bye:
-                    _log.LogInformation("BYE recebido");
+                    _log.LogInformation("BYE recebido — encerrando");
                     return;
                 default:
-                    MessageReceived?.Invoke(type, peerId, payload.AsMemory());
+                    MessageReceived?.Invoke(type, payload.AsMemory());
                     break;
             }
         }
@@ -93,14 +107,9 @@ public sealed class BrokerConnection : IAsyncDisposable
     {
         using var timer = new PeriodicTimer(TimeSpan.FromSeconds(5));
         while (await timer.WaitForNextTickAsync(ct))
+        {
             await SendRawAsync(WireProtocol.BuildPing(DateTimeOffset.UtcNow.ToUnixTimeMilliseconds()), ct);
-    }
-
-    public async Task SendAsync(byte[] message, CancellationToken ct)
-    {
-        await _writeLock.WaitAsync(ct);
-        try { await _ssl!.WriteAsync(message, ct); }
-        finally { _writeLock.Release(); }
+        }
     }
 
     private async Task<(byte type, string peerId, uint length)> ReadHeaderAsync(CancellationToken ct)
@@ -149,6 +158,7 @@ public sealed class BrokerConnection : IAsyncDisposable
 
     public async ValueTask DisposeAsync()
     {
+        _cts.Cancel();
         if (_ssl is not null) await _ssl.DisposeAsync();
         _tcp?.Dispose();
         _writeLock.Dispose();

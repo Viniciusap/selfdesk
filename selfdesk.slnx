@@ -1,7 +1,7 @@
 <Solution>
-  <Folder Name="/agent/">
-    <Project Path="agent/Agent.csproj" />
-    <Project Path="agent/Agent.Tests/Agent.Tests.csproj" />
+  <Folder Name="/sender/">
+    <Project Path="sender/Sender.csproj" />
+    <Project Path="sender/Sender.Tests/Sender.Tests.csproj" />
   </Folder>
   <Folder Name="/viewer/">
     <Project Path="viewer/Viewer.csproj" />

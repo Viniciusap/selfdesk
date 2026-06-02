@@ -135,24 +135,24 @@ switch ($Role) {
 
     'sender' {
         Write-Host ''
-        Write-Host '=== SelfDesk Install — sender (agent) ==='
+        Write-Host '=== SelfDesk Install — sender ==='
         Write-Host ''
         Write-Host '→ Verificando .NET 10 SDK...'
         Ensure-Command -Bin 'dotnet' -WingetId 'Microsoft.DotNet.SDK.10' -Label '.NET 10 SDK'
 
         if ($Publish) {
-            Write-Host '→ Publicando agent (self-contained)...'
-            $OutDir = Join-Path $Root 'agent' 'publish'
-            Push-Location (Join-Path $Root 'agent')
-            dotnet publish Agent.csproj -c Release -r win-x64 --self-contained false -o $OutDir
+            Write-Host '→ Publicando sender (self-contained)...'
+            $OutDir = Join-Path $Root 'sender' 'publish'
+            Push-Location (Join-Path $Root 'sender')
+            dotnet publish Sender.csproj -c Release -r win-x64 --self-contained false -o $OutDir
             Pop-Location
             $BinDir = $OutDir
         } else {
-            Write-Host '→ Compilando agent...'
-            Push-Location (Join-Path $Root 'agent')
-            dotnet build Agent.csproj -c Release
+            Write-Host '→ Compilando sender...'
+            Push-Location (Join-Path $Root 'sender')
+            dotnet build Sender.csproj -c Release
             Pop-Location
-            $BinDir = Join-Path $Root 'agent' 'bin' 'Release' 'net10.0-windows'
+            $BinDir = Join-Path $Root 'sender' 'bin' 'Release' 'net10.0-windows'
         }
 
         if (-not $SkipFFmpeg) {
@@ -161,11 +161,11 @@ switch ($Role) {
         }
 
         Write-Host ''
-        Write-Host "✔ Agent compilado em $BinDir"
+        Write-Host "✔ Sender compilado em $BinDir"
         Write-Host ''
         Write-Host 'Próximo passo:'
         Write-Host '  .\scripts\bootstrap.ps1 -Role sender'
-        Write-Host '  cd agent && dotnet run'
+        Write-Host '  cd sender && dotnet run'
     }
 
     'receiver' {

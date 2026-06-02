@@ -72,11 +72,12 @@ export class Router {
   }
 
   private routeReceiverMessage(header: ParsedHeader, payload: Buffer): void {
-    if (header.type === MessageType.INPUT_EVENT) {
+    if (header.type === MessageType.INPUT_EVENT ||
+        header.type === MessageType.REQUEST_IDR) {
       const targetId = header.peerId;
       const sender   = this.registry.getSender(targetId);
       if (!sender) {
-        this.log.warn({ targetId }, 'sender alvo não encontrado para INPUT_EVENT');
+        this.log.warn({ targetId }, 'sender alvo não encontrado para %s', header.type === MessageType.REQUEST_IDR ? 'REQUEST_IDR' : 'INPUT_EVENT');
         return;
       }
       sender.send(buildEnvelope(header.type, targetId, payload));

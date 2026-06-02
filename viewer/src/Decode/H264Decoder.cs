@@ -6,35 +6,56 @@ namespace SelfDesk.Viewer.Decode;
 public sealed unsafe class H264Decoder : IFrameDecoder, IDisposable
 {
     private AVCodecContext* _codecCtx;
-    private AVFrame*        _yuvFrame;
+    private AVFrame*        _hwFrame;   // output from decoder (may be CUDA surface)
+    private AVFrame*        _swFrame;   // CPU copy (NV12 or YUV420P)
     private AVFrame*        _bgraFrame;
     private SwsContext*     _swsCtx;
     private AVPacket*       _pkt;
     private int  _swsWidth;
     private int  _swsHeight;
     private bool _seenKeyframe;
+    private bool _hwDecode;
 
     private const int AvErrorEagain = -11;
     private const int AvErrorEof    = unchecked((int)0xDFB9B0BB);
-    // AV_INPUT_BUFFER_PADDING_SIZE = 64
-    private const int InputPadding = 64;
+    private const int InputPadding  = 64;
 
     public H264Decoder()
     {
         ffmpeg.RootPath = AppContext.BaseDirectory;
-        var codec = ffmpeg.avcodec_find_decoder(AVCodecID.AV_CODEC_ID_H264);
+
+        // Tenta NVDEC primeiro; fallback automático para software
+        AVCodec* codec = ffmpeg.avcodec_find_decoder_by_name("h264_cuvid");
+        bool triedHw   = codec != null;
+
         if (codec == null)
-            throw new InvalidOperationException("H264 software decoder (libavcodec) not found.");
+            codec = ffmpeg.avcodec_find_decoder(AVCodecID.AV_CODEC_ID_H264);
+
+        if (codec == null)
+            throw new InvalidOperationException("Nenhum decoder H264 encontrado.");
 
         _codecCtx = ffmpeg.avcodec_alloc_context3(codec);
         if (_codecCtx == null)
-            throw new InvalidOperationException("Failed to allocate AVCodecContext for H264 decoder.");
+            throw new InvalidOperationException("Falha ao alocar AVCodecContext.");
 
         int ret = ffmpeg.avcodec_open2(_codecCtx, codec, null);
+        if (ret < 0 && triedHw)
+        {
+            // h264_cuvid falhou (driver/GPU indisponível) — usa software
+            var ctx = _codecCtx;
+            ffmpeg.avcodec_free_context(&ctx);
+            _codecCtx = null;
+            codec     = ffmpeg.avcodec_find_decoder(AVCodecID.AV_CODEC_ID_H264);
+            _codecCtx = ffmpeg.avcodec_alloc_context3(codec);
+            ret       = ffmpeg.avcodec_open2(_codecCtx, codec, null);
+            triedHw   = false;
+        }
         if (ret < 0)
-            throw new InvalidOperationException($"Failed to open H264 decoder (code {ret}).");
+            throw new InvalidOperationException($"Falha ao abrir H264 decoder (código {ret}).");
 
-        _yuvFrame  = ffmpeg.av_frame_alloc();
+        _hwDecode  = triedHw;
+        _hwFrame   = ffmpeg.av_frame_alloc();
+        _swFrame   = ffmpeg.av_frame_alloc();
         _bgraFrame = ffmpeg.av_frame_alloc();
         _pkt       = ffmpeg.av_packet_alloc();
     }
@@ -42,21 +63,17 @@ public sealed unsafe class H264Decoder : IFrameDecoder, IDisposable
     public DecodedFrame Decode(ReadOnlySpan<byte> data, int width, int height, long timestampMs)
     {
         if (data.IsEmpty)
-            throw new InvalidOperationException("Empty H264 NAL data.");
+            throw new InvalidOperationException("NAL data vazio.");
 
-        // Check for keyframe (IDR NAL unit, type 5) before committing frames to decoder
         bool isKeyframe = ContainsIdr(data);
         if (isKeyframe)
         {
-            // Flush decoder so stale state is cleared
             ffmpeg.avcodec_flush_buffers(_codecCtx);
             _seenKeyframe = true;
         }
-
         if (!_seenKeyframe)
-            throw new InvalidOperationException("Waiting for H264 keyframe (IDR).");
+            throw new InvalidOperationException("Aguardando keyframe H264 (IDR).");
 
-        // Copy with padding required by FFmpeg bitstream readers
         var padded = new byte[data.Length + InputPadding];
         data.CopyTo(padded);
 
@@ -69,30 +86,41 @@ public sealed unsafe class H264Decoder : IFrameDecoder, IDisposable
             if (ret < 0)
                 throw new InvalidOperationException($"avcodec_send_packet error: {ret}");
 
-            ret = ffmpeg.avcodec_receive_frame(_codecCtx, _yuvFrame);
-            if (ret == AvErrorEagain)
-                throw new InvalidOperationException("Decoder buffering — no frame output yet.");
-            if (ret == AvErrorEof)
-                throw new InvalidOperationException("Decoder EOF.");
-            if (ret < 0)
-                throw new InvalidOperationException($"avcodec_receive_frame error: {ret}");
+            ret = ffmpeg.avcodec_receive_frame(_codecCtx, _hwFrame);
+            if (ret == AvErrorEagain) throw new InvalidOperationException("Decoder buffering.");
+            if (ret == AvErrorEof)   throw new InvalidOperationException("Decoder EOF.");
+            if (ret < 0)             throw new InvalidOperationException($"avcodec_receive_frame error: {ret}");
         }
 
-        int actualW = _yuvFrame->width;
-        int actualH = _yuvFrame->height;
+        // Se cuvid retornou CUDA surface, transfere para CPU (NV12)
+        AVFrame* decodeFrame;
+        if (_hwDecode && _hwFrame->format == (int)AVPixelFormat.AV_PIX_FMT_CUDA)
+        {
+            ffmpeg.av_frame_unref(_swFrame);
+            int xfer = ffmpeg.av_hwframe_transfer_data(_swFrame, _hwFrame, 0);
+            if (xfer < 0)
+                throw new InvalidOperationException($"av_hwframe_transfer_data falhou: {xfer}");
+            decodeFrame = _swFrame;
+        }
+        else
+        {
+            decodeFrame = _hwFrame;
+        }
 
-        // Re-create swscale context on dimension change
+        int actualW = decodeFrame->width;
+        int actualH = decodeFrame->height;
+
         if (_swsCtx == null || _swsWidth != actualW || _swsHeight != actualH)
         {
             if (_swsCtx != null) ffmpeg.sws_freeContext(_swsCtx);
 
             _swsCtx = ffmpeg.sws_getContext(
-                actualW, actualH, (AVPixelFormat)_yuvFrame->format,
+                actualW, actualH, (AVPixelFormat)decodeFrame->format,
                 actualW, actualH, AVPixelFormat.AV_PIX_FMT_BGRA,
                 ffmpeg.SWS_BILINEAR, null, null, null);
 
             if (_swsCtx == null)
-                throw new InvalidOperationException("Failed to create SwsContext (YUV→BGRA).");
+                throw new InvalidOperationException("Falha ao criar SwsContext.");
 
             ffmpeg.av_frame_unref(_bgraFrame);
             _bgraFrame->width  = actualW;
@@ -104,40 +132,35 @@ public sealed unsafe class H264Decoder : IFrameDecoder, IDisposable
             _swsHeight = actualH;
         }
 
-        // YUV → BGRA
         var srcSlice  = new byte*[8];
         var srcStride = new int[8];
         for (uint i = 0; i < 8; i++)
         {
-            srcSlice[i]  = _yuvFrame->data[i];
-            srcStride[i] = _yuvFrame->linesize[i];
+            srcSlice[i]  = decodeFrame->data[i];
+            srcStride[i] = decodeFrame->linesize[i];
         }
-
         byte*[] dstSlice  = { _bgraFrame->data[0u] };
         int[]   dstStride = { _bgraFrame->linesize[0u] };
 
         ffmpeg.sws_scale(_swsCtx, srcSlice, srcStride, 0, actualH, dstSlice, dstStride);
 
-        // Copy BGRA pixels out
         int bgraSize = actualW * actualH * 4;
         var bgra = new byte[bgraSize];
         fixed (byte* bgraPtr = bgra)
             Buffer.MemoryCopy(_bgraFrame->data[0], bgraPtr, bgraSize, bgraSize);
 
-        ffmpeg.av_frame_unref(_yuvFrame);
+        ffmpeg.av_frame_unref(_hwFrame);
 
         return new DecodedFrame(actualW, actualH, bgra, timestampMs);
     }
 
     private static bool ContainsIdr(ReadOnlySpan<byte> data)
     {
-        // Annex-B start codes: 00 00 00 01 or 00 00 01
         for (int i = 0; i < data.Length - 4; i++)
         {
             if (data[i] == 0 && data[i + 1] == 0 && data[i + 2] == 0 && data[i + 3] == 1)
             {
-                if (i + 4 < data.Length && (data[i + 4] & 0x1F) == 5) // IDR
-                    return true;
+                if (i + 4 < data.Length && (data[i + 4] & 0x1F) == 5) return true;
                 i += 3;
             }
         }
@@ -146,10 +169,11 @@ public sealed unsafe class H264Decoder : IFrameDecoder, IDisposable
 
     public void Dispose()
     {
-        if (_pkt != null)       { var p = _pkt;       ffmpeg.av_packet_free(&p);       _pkt       = null; }
-        if (_yuvFrame != null)  { var f = _yuvFrame;   ffmpeg.av_frame_free(&f);        _yuvFrame  = null; }
-        if (_bgraFrame != null) { var f = _bgraFrame;  ffmpeg.av_frame_free(&f);        _bgraFrame = null; }
-        if (_swsCtx != null)    { ffmpeg.sws_freeContext(_swsCtx);                      _swsCtx    = null; }
-        if (_codecCtx != null)  { var c = _codecCtx;   ffmpeg.avcodec_free_context(&c); _codecCtx  = null; }
+        if (_pkt       != null) { var p = _pkt;       ffmpeg.av_packet_free(&p);       _pkt       = null; }
+        if (_hwFrame   != null) { var f = _hwFrame;   ffmpeg.av_frame_free(&f);        _hwFrame   = null; }
+        if (_swFrame   != null) { var f = _swFrame;   ffmpeg.av_frame_free(&f);        _swFrame   = null; }
+        if (_bgraFrame != null) { var f = _bgraFrame; ffmpeg.av_frame_free(&f);        _bgraFrame = null; }
+        if (_swsCtx    != null) { ffmpeg.sws_freeContext(_swsCtx);                     _swsCtx    = null; }
+        if (_codecCtx  != null) { var c = _codecCtx; ffmpeg.avcodec_free_context(&c); _codecCtx  = null; }
     }
 }

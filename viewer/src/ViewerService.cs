@@ -11,24 +11,28 @@ using SelfDesk.Viewer.Decode;
 using SelfDesk.Viewer.Network;
 using SelfDesk.Viewer.Protocol;
 using SelfDesk.Viewer.ViewModels;
+using SelfDesk.Viewer.Views;
 
 namespace SelfDesk.Viewer;
 
 public sealed class ViewerService : BackgroundService
 {
-    private readonly ViewerConfig          _cfg;
-    private readonly MainWindowViewModel   _vm;
-    private readonly ILogger<ViewerService> _log;
-    private readonly IFrameDecoder          _decoder;
+    private readonly ViewerConfig            _cfg;
+    private readonly MainWindowViewModel     _vm;
+    private readonly MainWindow              _window;
+    private readonly ILogger<ViewerService>  _log;
+    private readonly IFrameDecoder           _decoder;
 
     public ViewerService(
         IOptions<ViewerConfig> cfg,
         MainWindowViewModel vm,
+        MainWindow window,
         IFrameDecoder decoder,
         ILogger<ViewerService> log)
     {
         _cfg     = cfg.Value;
         _vm      = vm;
+        _window  = window;
         _decoder = decoder;
         _log     = log;
     }
@@ -72,11 +76,21 @@ public sealed class ViewerService : BackgroundService
                 var text = Encoding.UTF8.GetString(payload.Span);
                 if (text == _lastClipboard) return;
                 _lastClipboard = text;
-                Application.Current?.Dispatcher.Invoke(() =>
+                Application.Current?.Dispatcher.InvokeAsync(() =>
                 {
                     try { System.Windows.Clipboard.SetText(text); }
                     catch { }
                 });
+                return;
+            }
+            if (type == MessageType.SenderUp)
+            {
+                var doc = System.Text.Json.JsonDocument.Parse(payload.ToArray());
+                var id  = doc.RootElement.GetProperty("agentId").GetString() ?? peerId;
+                var mac = doc.RootElement.TryGetProperty("mac", out var macEl) ? macEl.GetString() : null;
+                Application.Current?.Dispatcher.InvokeAsync(() => _vm.AddSender(id, mac));
+                // BUG4: REQUEST_IDR garante IDR imediato — sem artefatos H264 ao conectar/reconectar
+                _ = conn.SendAsync(WireProtocol.BuildRequestIdr(id), ct);
                 return;
             }
             OnMessage(type, peerId, payload);
@@ -89,10 +103,10 @@ public sealed class ViewerService : BackgroundService
             _vm.ConnectionStatus = "Conectado";
         });
 
-        // Conecta drag & drop da janela
-        var window = Application.Current?.MainWindow as SelfDesk.Viewer.Views.MainWindow;
-        if (window is not null)
-            window.FileDropped += files => _ = SendFilesAsync(files, conn, ct);
+        void InputHandler(byte[] msg)   => _ = conn.SendAsync(msg, ct);
+        void FileHandler(string[] files) => _ = SendFilesAsync(files, conn, ct);
+        _window.InputSend   += InputHandler;
+        _window.FileDropped += FileHandler;
 
         _ = conn.StartHeartbeatAsync(ct);
         var recvLoop = conn.RunReceiveLoopAsync(ct);
@@ -118,7 +132,15 @@ public sealed class ViewerService : BackgroundService
             }
         }, ct);
 
-        await Task.WhenAny(recvLoop, clipboardLoop);
+        try
+        {
+            await Task.WhenAny(recvLoop, clipboardLoop);
+        }
+        finally
+        {
+            _window.InputSend   -= InputHandler;
+            _window.FileDropped -= FileHandler;
+        }
     }
 
     private static uint _transferIdCounter;
@@ -189,14 +211,6 @@ public sealed class ViewerService : BackgroundService
     {
         switch (type)
         {
-            case MessageType.SenderUp:
-            {
-                var doc = System.Text.Json.JsonDocument.Parse(payload.ToArray());
-                var id  = doc.RootElement.GetProperty("agentId").GetString() ?? peerId;
-                var mac = doc.RootElement.TryGetProperty("mac", out var macEl) ? macEl.GetString() : null;
-                Application.Current?.Dispatcher.Invoke(() => _vm.AddSender(id, mac));
-                break;
-            }
             case MessageType.SenderDown:
             {
                 var doc = System.Text.Json.JsonDocument.Parse(payload.ToArray());
@@ -229,7 +243,8 @@ public sealed class ViewerService : BackgroundService
 
         var rtt = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds() - ts;
 
-        Application.Current?.Dispatcher.Invoke(() =>
+        // BUG3: InvokeAsync desacopla o receive loop do UI thread — sem stutter por espera de blit
+        _ = Application.Current?.Dispatcher.InvokeAsync(() =>
         {
             var sender = _vm.Senders.FirstOrDefault(s => s.AgentId == senderId);
             if (sender is not null)

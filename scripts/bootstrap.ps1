@@ -102,7 +102,7 @@ function New-Certs {
 }
 
 # Detecta se estamos num release pré-compilado (exe ao lado de scripts/) ou no source tree
-$Prebuilt = (Test-Path (Join-Path $Root 'SelfDesk.Agent.exe')) -or
+$Prebuilt = (Test-Path (Join-Path $Root 'SelfDesk.Sender.exe')) -or
             (Test-Path (Join-Path $Root 'SelfDesk.Viewer.exe')) -or
             (Test-Path (Join-Path $Root 'dist' 'index.js'))
 
@@ -143,14 +143,14 @@ LOG_LEVEL=info
     }
 
     'sender' {
-        # Pré-compilado: .env fica em $Root (ao lado do exe); source: em agent/
-        $out    = if ($Prebuilt) { Join-Path $Root '.env' } else { Join-Path $Root 'agent' '.env' }
+        # Pré-compilado: .env fica em $Root (ao lado do exe); source: em sender/
+        $out    = if ($Prebuilt) { Join-Path $Root '.env' } else { Join-Path $Root 'sender' '.env' }
         $caPath = if ($Prebuilt) {
             Prompt-Value -Question 'Caminho para ca-cert.pem (copiado do broker)' -Default (Join-Path $Root 'ca-cert.pem')
         } else { '../certs/ca-cert.pem' }
         Confirm-Overwrite $out
 
-        $agentId     = Prompt-Value -Question 'ID único deste emissor' -Default 'laptop-01'
+        $senderId     = Prompt-Value -Question 'ID único deste emissor' -Default 'laptop-01'
         $brokerHost  = Prompt-Value -Question 'IP/hostname do broker'
         $brokerPort  = Prompt-Value -Question 'Porta do broker' -Default '7000'
         $secret      = Prompt-Value -Question 'SHARED_SECRET (idêntico ao do broker)'
@@ -164,13 +164,13 @@ LOG_LEVEL=info
         $jpegQuality = Prompt-Value -Question 'Qualidade JPEG (1-100)' -Default '75'
 
         if (-not $Prebuilt) {
-            $dir = Join-Path $Root 'agent'
+            $dir = Join-Path $Root 'sender'
             if (-not (Test-Path $dir)) { New-Item -ItemType Directory -Path $dir | Out-Null }
         }
 
         @"
 ROLE=sender
-AGENT_ID=$agentId
+SENDER_ID=$senderId
 SHARED_SECRET=$secret
 BROKER_HOST=$brokerHost
 BROKER_PORT=$brokerPort

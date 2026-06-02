@@ -41,7 +41,7 @@
         </Style>
     </Window.Resources>
 
-    <Grid>
+    <Grid x:Name="RootGrid">
         <Grid.RowDefinitions>
             <RowDefinition Height="32"/>
             <RowDefinition Height="*"/>
@@ -73,7 +73,7 @@
         </Border>
 
         <!-- Main content -->
-        <Grid Grid.Row="1">
+        <Grid x:Name="ContentGrid" Grid.Row="1">
             <Grid.ColumnDefinitions>
                 <ColumnDefinition Width="200"/>
                 <ColumnDefinition Width="Auto"/>
@@ -153,12 +153,13 @@
 
             <!-- Video surface -->
             <Border Grid.Column="2" Background="{StaticResource BrushVideoBackground}"
-                    AllowDrop="True" x:Name="VideoBorder">
+                    x:Name="VideoBorder">
                 <Image x:Name="VideoImage"
                        Source="{Binding VideoFrame}"
                        Stretch="Uniform"
                        RenderOptions.BitmapScalingMode="NearestNeighbor"
                        SnapsToDevicePixels="True"
+                       AllowDrop="True"
                        Cursor="Cross"/>
             </Border>
         </Grid>

@@ -88,9 +88,9 @@ EOF
     ;;
 
   sender)
-    OUT="$ROOT/agent/.env"
+    OUT="$ROOT/sender/.env"
     confirm_overwrite "$OUT"
-    prompt AGENT_ID     "ID único deste emissor" "laptop-01"
+    prompt SENDER_ID     "ID único deste emissor" "laptop-01"
     prompt BROKER_HOST  "IP/host do broker" ""
     prompt BROKER_PORT  "Porta do broker" "7000"
     prompt SHARED_SECRET "SHARED_SECRET (idêntico ao do broker)" ""
@@ -102,10 +102,10 @@ EOF
     prompt TARGET_FPS   "FPS alvo" "30"
     prompt ENCODER      "Encoder (jpeg|qsv|nvenc)" "jpeg"
     prompt JPEG_QUALITY "Qualidade JPEG (1-100)" "75"
-    mkdir -p "$ROOT/agent"
+    mkdir -p "$ROOT/sender"
     cat > "$OUT" <<EOF
 ROLE=sender
-AGENT_ID=$AGENT_ID
+SENDER_ID=$SENDER_ID
 SHARED_SECRET=$SHARED_SECRET
 BROKER_HOST=$BROKER_HOST
 BROKER_PORT=$BROKER_PORT
