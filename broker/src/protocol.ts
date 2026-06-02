@@ -85,8 +85,8 @@ export const build = {
   authFail: (peerId: string, reason: string) =>
     buildEnvelope(MessageType.AUTH_FAIL, peerId, Buffer.from(JSON.stringify({ reason }))),
 
-  senderUp: (agentId: string, mac?: string) =>
-    buildEnvelope(MessageType.SENDER_UP, 'receiver', Buffer.from(JSON.stringify({ agentId, mac }))),
+  senderUp: (agentId: string, mac?: string, version?: string) =>
+    buildEnvelope(MessageType.SENDER_UP, 'receiver', Buffer.from(JSON.stringify({ agentId, mac, version }))),
 
   senderDown: (agentId: string) =>
     buildEnvelope(MessageType.SENDER_DOWN, 'receiver', Buffer.from(JSON.stringify({ agentId }))),

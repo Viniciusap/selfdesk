@@ -22,7 +22,7 @@ export class Router {
 
     const receiver = this.registry.getReceiver();
     if (receiver) {
-      receiver.send(build.senderUp(agentId, conn.mac));
+      receiver.send(build.senderUp(agentId, conn.mac, conn.senderVersion));
     }
 
     conn.on('message', (header: ParsedHeader, payload: Buffer) =>
@@ -39,7 +39,7 @@ export class Router {
     this.registry.registerReceiver(conn);
 
     for (const { id, mac } of this.registry.getSenders()) {
-      conn.send(build.senderUp(id, mac));
+      conn.send(build.senderUp(id, mac, this.registry.getSenders().find(s => s.id === id)?.version));
     }
 
     conn.on('message', (header: ParsedHeader, payload: Buffer) =>

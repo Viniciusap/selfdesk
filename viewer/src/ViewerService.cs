@@ -114,7 +114,8 @@ public sealed class ViewerService : BackgroundService
                 var doc = System.Text.Json.JsonDocument.Parse(payload.ToArray());
                 var id  = doc.RootElement.GetProperty("agentId").GetString() ?? peerId;
                 var mac = doc.RootElement.TryGetProperty("mac", out var macEl) ? macEl.GetString() : null;
-                Application.Current?.Dispatcher.InvokeAsync(() => _vm.AddSender(id, mac));
+                var ver = doc.RootElement.TryGetProperty("version", out var verEl) ? verEl.GetString() : null;
+                Application.Current?.Dispatcher.InvokeAsync(() => _vm.AddSender(id, mac, ver));
                 // BUG4: REQUEST_IDR garante IDR imediato — sem artefatos H264 ao conectar/reconectar
                 _ = conn.SendAsync(WireProtocol.BuildRequestIdr(id), ct);
                 return;

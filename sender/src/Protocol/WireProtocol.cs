@@ -46,7 +46,9 @@ public static class WireProtocol
 
     public static byte[] BuildHello(string agentId, string role, string? mac = null)
     {
-        var json    = JsonSerializer.Serialize(new { version = 1, role, agentId, mac });
+        var ver = System.Reflection.Assembly
+            .GetExecutingAssembly().GetName().Version?.ToString(3) ?? "0.0.0";
+        var json    = JsonSerializer.Serialize(new { version = 1, role, agentId, mac, senderVersion = ver });
         var payload = Encoding.UTF8.GetBytes(json);
         return BuildEnvelope(MessageType.Hello, agentId, payload);
     }

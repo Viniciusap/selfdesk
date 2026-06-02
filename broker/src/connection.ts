@@ -25,10 +25,11 @@ export type ConnState =
 export type Role = 'sender' | 'receiver';
 
 export interface HelloPayload {
-  version: number;
-  role:    Role;
-  agentId: string;
-  mac?:    string;
+  version:       number;
+  role:          Role;
+  agentId:       string;
+  mac?:          string;
+  senderVersion?: string;
 }
 
 export interface ConnectionEvents {
@@ -44,6 +45,7 @@ export class Connection extends EventEmitter {
   role?: Role;
   agentId?: string;
   mac?: string;
+  senderVersion?: string;
 
   private readonly socket: tls.TLSSocket;
   private readonly secret: string;
@@ -163,9 +165,10 @@ export class Connection extends EventEmitter {
           return;
         }
 
-        this.role    = hello.role;
-        this.agentId = hello.agentId;
-        this.mac     = hello.mac;
+        this.role          = hello.role;
+        this.agentId       = hello.agentId;
+        this.mac           = hello.mac;
+        this.senderVersion = hello.senderVersion;
         this.state   = 'HELLO_RECEIVED';
 
         this.nonce = generateNonce();

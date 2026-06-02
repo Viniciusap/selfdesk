@@ -74,18 +74,16 @@ jobs:
         run: dotnet restore selfdesk.slnx
 
       - name: Publicar Sender (self-contained)
-        run: >
-          dotnet publish sender/Sender.csproj
-          -c Release -r win-x64
-          --self-contained true
-          -o sender/publish
+        shell: pwsh
+        run: |
+          $version = "${{ github.ref_name }}".TrimStart('v')
+          dotnet publish sender/Sender.csproj -c Release -r win-x64 --self-contained true -o sender/publish /p:Version=$version
 
       - name: Publicar Viewer (self-contained)
-        run: >
-          dotnet publish viewer/Viewer.csproj
-          -c Release -r win-x64
-          --self-contained true
-          -o viewer/publish
+        shell: pwsh
+        run: |
+          $version = "${{ github.ref_name }}".TrimStart('v')
+          dotnet publish viewer/Viewer.csproj -c Release -r win-x64 --self-contained true -o viewer/publish /p:Version=$version
 
       - name: Baixar DLLs FFmpeg 7.1 (BtbN shared)
         shell: pwsh

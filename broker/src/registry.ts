@@ -1,7 +1,7 @@
 import type { Connection } from './connection.js';
 import type { Logger } from 'pino';
 
-interface SenderEntry { conn: Connection; mac?: string; }
+interface SenderEntry { conn: Connection; mac?: string; version?: string; }
 
 export class Registry {
   private readonly senders  = new Map<string, SenderEntry>();
@@ -13,7 +13,7 @@ export class Registry {
   }
 
   registerSender(agentId: string, conn: Connection): void {
-    this.senders.set(agentId, { conn, mac: conn.mac });
+    this.senders.set(agentId, { conn, mac: conn.mac, version: conn.senderVersion });
     this.log.info({ agentId }, 'sender registrado');
     conn.once('closed', () => this.removeSender(agentId));
   }
@@ -44,8 +44,8 @@ export class Registry {
     return Array.from(this.senders.keys());
   }
 
-  getSenders(): { id: string; mac?: string }[] {
-    return Array.from(this.senders.entries()).map(([id, e]) => ({ id, mac: e.mac }));
+  getSenders(): { id: string; mac?: string; version?: string }[] {
+    return Array.from(this.senders.entries()).map(([id, e]) => ({ id, mac: e.mac, version: e.version }));
   }
 
   hasSender(agentId: string): boolean {

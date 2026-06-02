@@ -40,16 +40,23 @@ public sealed partial class MainWindowViewModel : ObservableObject
 
     public void NotifyStatusBarChanged() => OnPropertyChanged(nameof(StatusBarText));
 
-    public void AddSender(string agentId, string? mac = null)
+    public void AddSender(string agentId, string? mac = null, string? version = null)
     {
         var existing = Senders.FirstOrDefault(s => s.AgentId == agentId);
         if (existing is not null)
         {
             existing.IsConnected = true;
-            if (!string.IsNullOrEmpty(mac)) existing.MacAddress = mac;
+            if (!string.IsNullOrEmpty(mac))     existing.MacAddress    = mac;
+            if (!string.IsNullOrEmpty(version)) existing.SenderVersion = version;
             return;
         }
-        var vm = new SenderViewModel { AgentId = agentId, IsConnected = true, MacAddress = mac ?? string.Empty };
+        var vm = new SenderViewModel
+        {
+            AgentId       = agentId,
+            IsConnected   = true,
+            MacAddress    = mac     ?? string.Empty,
+            SenderVersion = version ?? string.Empty,
+        };
         Senders.Add(vm);
         SelectedSender ??= vm;
     }

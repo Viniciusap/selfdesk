@@ -27,6 +27,7 @@ public sealed class Win32InputInjector : IInputInjector, IDisposable
 
     public Win32InputInjector()
     {
+        MonitorIndex = 0; // inicializa _monitor com o monitor primário
         _stuckKeyTimer = new System.Threading.Timer(
             ReleaseStuckKeys, null,
             TimeSpan.FromSeconds(10), TimeSpan.FromSeconds(10));

@@ -142,8 +142,13 @@
                                     </Ellipse>
 
                                     <StackPanel Grid.Column="1">
-                                        <TextBlock Text="{Binding DisplayName}" FontSize="13"
-                                                   Foreground="{StaticResource BrushTextPrimary}"/>
+                                        <StackPanel Orientation="Horizontal">
+                                            <TextBlock Text="{Binding DisplayName}" FontSize="13"
+                                                       Foreground="{StaticResource BrushTextPrimary}"/>
+                                            <TextBlock Text="{Binding VersionDisplay}" FontSize="11"
+                                                       Foreground="{StaticResource BrushTextMuted}"
+                                                       Margin="6,0,0,0" VerticalAlignment="Center"/>
+                                        </StackPanel>
                                         <TextBlock Text="{Binding ResolutionDisplay}" FontSize="11"
                                                    Foreground="{StaticResource BrushTextMuted}"/>
                                         <ComboBox ItemsSource="{Binding Monitors}"

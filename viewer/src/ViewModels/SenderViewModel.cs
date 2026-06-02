@@ -12,6 +12,7 @@ public sealed partial class SenderViewModel : ObservableObject
     [ObservableProperty] private int              _frameHeight;
     [ObservableProperty] private string           _codec = string.Empty;
     [ObservableProperty] private string           _macAddress = string.Empty;
+    [ObservableProperty] private string           _senderVersion = string.Empty;
     [ObservableProperty] private MonitorViewModel? _selectedMonitor;
 
     public ObservableCollection<MonitorViewModel> Monitors { get; }
@@ -30,6 +31,9 @@ public sealed partial class SenderViewModel : ObservableObject
 
     public string ResolutionDisplay =>
         FrameWidth > 0 ? $"{FrameWidth}×{FrameHeight}" : string.Empty;
+
+    public string VersionDisplay =>
+        string.IsNullOrEmpty(SenderVersion) ? string.Empty : $"v{SenderVersion}";
 
     public bool HasMultipleMonitors => Monitors.Count > 1;
 }
