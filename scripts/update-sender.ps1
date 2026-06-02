@@ -89,6 +89,15 @@ if (Test-Path $curExe) {
 
 Write-Step "Parando servico '$ServiceName'..."
 $svc = Get-Service -Name $ServiceName -ErrorAction SilentlyContinue
+if (-not $svc) {
+    # Fallback para nome legado (instalacoes anteriores a v0.5.0)
+    $legacy = Get-Service -Name 'SelfDesk.Agent' -ErrorAction SilentlyContinue
+    if ($legacy) {
+        Write-Warn "Servico encontrado com nome legado 'SelfDesk.Agent' — usando-o."
+        $ServiceName = 'SelfDesk.Agent'
+        $svc = $legacy
+    }
+}
 if ($svc) {
     if ($svc.Status -ne 'Stopped') {
         Stop-Service -Name $ServiceName -Force

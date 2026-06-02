@@ -12,10 +12,10 @@
 
 param([switch]$Uninstall)
 
-$ServiceName = 'SelfDesk.Agent'
+$ServiceName = 'SelfDesk.Sender'
 $Root        = Split-Path -Parent $PSScriptRoot
-$PublishDir  = Join-Path $Root 'agent' 'publish'
-$ExePath     = Join-Path $PublishDir 'SelfDesk.Agent.exe'
+$PublishDir  = Join-Path $Root 'sender' 'publish'
+$ExePath     = Join-Path $PublishDir 'SelfDesk.Sender.exe'
 
 if ($Uninstall) {
     if (Get-Service -Name $ServiceName -ErrorAction SilentlyContinue) {
@@ -29,9 +29,9 @@ if ($Uninstall) {
 }
 
 if (-not (Test-Path $ExePath)) {
-    Write-Host "Publicando agent..."
-    Push-Location (Join-Path $Root 'agent')
-    dotnet publish -c Release -r win-x64 --self-contained false -o publish
+    Write-Host "Publicando sender..."
+    Push-Location (Join-Path $Root 'sender')
+    dotnet publish Sender.csproj -c Release -r win-x64 --self-contained false -o publish
     Pop-Location
 }
 
@@ -42,15 +42,15 @@ if (Get-Service -Name $ServiceName -ErrorAction SilentlyContinue) {
 
 New-Service -Name $ServiceName `
             -BinaryPathName $ExePath `
-            -DisplayName 'SelfDesk Remote Agent' `
+            -DisplayName 'SelfDesk Sender' `
             -Description 'Captura a tela e injeta input para acesso remoto via SelfDesk.' `
             -StartupType Automatic
 
 Write-Host "Serviço '$ServiceName' instalado."
 
 # Variáveis relevantes para o serviço (lidas do .env)
-$EnvVarsToSet = @('ROLE','AGENT_ID','SHARED_SECRET','BROKER_HOST','BROKER_PORT',
-                  'TLS_CA_PATH','TARGET_FPS','ENCODER','JPEG_QUALITY')
+$EnvVarsToSet = @('ROLE','SENDER_ID','SHARED_SECRET','BROKER_HOST','BROKER_PORT',
+                  'TLS_CA_PATH','TARGET_FPS','ENCODER','JPEG_QUALITY','CAPTURER')
 
 # Procura o .env: primeiro publish/, depois agent/
 $EnvFile = $null
