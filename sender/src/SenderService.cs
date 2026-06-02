@@ -1,3 +1,4 @@
+using System.Text.Json;
 using System.Threading.Channels;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
@@ -88,8 +89,22 @@ public sealed class SenderService : BackgroundService
                 case MessageType.FileChunk:   fileRx.OnFileChunk(payload); break;
                 case MessageType.FileDone:    fileRx.OnFileDone(payload); break;
                 case MessageType.FileError:   fileRx.OnFileError(payload); break;
+                case MessageType.SelectMonitor:
+                    try
+                    {
+                        var idx = JsonDocument.Parse(payload.ToArray())
+                            .RootElement.GetProperty("monitorIndex").GetInt32();
+                        _capturer.SwitchMonitor(idx);
+                        _log.LogInformation("Trocado para monitor {Index}", idx);
+                    }
+                    catch (Exception ex) { _log.LogWarning(ex, "Falha ao trocar monitor"); }
+                    break;
             }
         };
+
+        // envia lista de monitores ao conectar
+        var monitors = MonitorEnumerator.Enumerate();
+        await conn.SendAsync(WireProtocol.BuildMonitorList(monitors, _cfg.SenderId), ct);
 
         var heartbeat      = conn.StartHeartbeatAsync(ct);
         var recvLoop       = conn.RunReceiveLoopAsync(ct);

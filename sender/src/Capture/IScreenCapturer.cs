@@ -9,4 +9,5 @@ public readonly record struct CapturedFrame(
 public interface IScreenCapturer : IDisposable
 {
     CapturedFrame CaptureFrame();
+    void SwitchMonitor(int monitorIndex);
 }

@@ -58,11 +58,12 @@ export class Router {
       receiver.send(buildEnvelope(header.type, agentId, payload));
       return;
     }
-    if (header.type === MessageType.CLIPBOARD ||
-        header.type === MessageType.FILE_HEADER ||
-        header.type === MessageType.FILE_CHUNK  ||
-        header.type === MessageType.FILE_DONE   ||
-        header.type === MessageType.FILE_ERROR) {
+    if (header.type === MessageType.CLIPBOARD    ||
+        header.type === MessageType.FILE_HEADER  ||
+        header.type === MessageType.FILE_CHUNK   ||
+        header.type === MessageType.FILE_DONE    ||
+        header.type === MessageType.FILE_ERROR   ||
+        header.type === MessageType.MONITOR_LIST) {
       const receiver = this.registry.getReceiver();
       if (!receiver) return;
       receiver.send(buildEnvelope(header.type, agentId, payload));
@@ -72,8 +73,9 @@ export class Router {
   }
 
   private routeReceiverMessage(header: ParsedHeader, payload: Buffer): void {
-    if (header.type === MessageType.INPUT_EVENT ||
-        header.type === MessageType.REQUEST_IDR) {
+    if (header.type === MessageType.INPUT_EVENT  ||
+        header.type === MessageType.REQUEST_IDR  ||
+        header.type === MessageType.SELECT_MONITOR) {
       const targetId = header.peerId;
       const sender   = this.registry.getSender(targetId);
       if (!sender) {

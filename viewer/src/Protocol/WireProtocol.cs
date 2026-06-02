@@ -144,4 +144,10 @@ public static class WireProtocol
         BinaryPrimitives.WriteUInt32BigEndian(payload, transferId);
         return BuildEnvelope(MessageType.FileError, targetPeerId, payload);
     }
+
+    public static byte[] BuildSelectMonitor(string targetPeerId, int monitorIndex)
+    {
+        var json = JsonSerializer.Serialize(new { monitorIndex });
+        return BuildEnvelope(MessageType.SelectMonitor, targetPeerId, Encoding.UTF8.GetBytes(json));
+    }
 }

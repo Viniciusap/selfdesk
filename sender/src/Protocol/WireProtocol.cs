@@ -119,4 +119,18 @@ public static class WireProtocol
 
     public static byte[] BuildClipboard(ReadOnlySpan<byte> utf8Text, string agentId) =>
         BuildEnvelope(MessageType.Clipboard, agentId, utf8Text);
+
+    public static byte[] BuildMonitorList(
+        IReadOnlyList<SelfDesk.Sender.Capture.MonitorInfo> monitors, string agentId)
+    {
+        var json = JsonSerializer.Serialize(monitors.Select(m => new
+        {
+            index     = m.Index,
+            width     = m.Width,
+            height    = m.Height,
+            name      = m.Name,
+            isPrimary = m.IsPrimary,
+        }));
+        return BuildEnvelope(MessageType.MonitorList, agentId, Encoding.UTF8.GetBytes(json));
+    }
 }

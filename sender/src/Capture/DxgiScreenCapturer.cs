@@ -9,10 +9,10 @@ namespace SelfDesk.Sender.Capture;
 // Falha silenciosamente e cai para GDI em RDP/VM (ver Program.cs).
 public sealed class DxgiScreenCapturer : IScreenCapturer
 {
-    private readonly ID3D11Device            _device;
-    private readonly ID3D11DeviceContext     _context;
-    private          IDXGIOutputDuplication  _duplication;
-    private          ID3D11Texture2D?        _staging;
+    private readonly ID3D11Device        _device;
+    private readonly ID3D11DeviceContext _context;
+    private          IDXGIOutputDuplication _duplication = null!;
+    private          ID3D11Texture2D?    _staging;
 
     private int    _width;
     private int    _height;
@@ -22,11 +22,25 @@ public sealed class DxgiScreenCapturer : IScreenCapturer
     {
         _device  = D3D11.D3D11CreateDevice(DriverType.Hardware, DeviceCreationFlags.None);
         _context = _device.ImmediateContext;
+        _bgra    = [];
+        InitDuplication(0);
+    }
+
+    public void SwitchMonitor(int monitorIndex)
+    {
+        _staging?.Dispose();
+        _staging = null;
+        InitDuplication(monitorIndex);
+    }
+
+    private void InitDuplication(int outputIndex)
+    {
+        _duplication?.Dispose();
 
         using var dxgiDevice = _device.QueryInterface<IDXGIDevice>();
         using var adapter    = dxgiDevice.GetAdapter();
 
-        adapter.EnumOutputs(0u, out IDXGIOutput rawOutput).CheckError();
+        adapter.EnumOutputs((uint)outputIndex, out IDXGIOutput rawOutput).CheckError();
         using (rawOutput)
         {
             using var output1 = rawOutput.QueryInterface<IDXGIOutput1>();

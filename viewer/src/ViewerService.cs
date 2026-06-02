@@ -69,6 +69,26 @@ public sealed class ViewerService : BackgroundService
         await using var conn = new BrokerConnection(_cfg, _log);
         string _lastClipboard = string.Empty;
 
+        void WireMonitorCallback(SenderViewModel vm)
+        {
+            vm.PropertyChanged += (_, e) =>
+            {
+                if (e.PropertyName == nameof(SenderViewModel.SelectedMonitor) &&
+                    vm.SelectedMonitor is not null)
+                {
+                    _ = conn.SendAsync(
+                        WireProtocol.BuildSelectMonitor(vm.AgentId, vm.SelectedMonitor.Index), ct);
+                }
+            };
+        }
+
+        _vm.Senders.CollectionChanged += (_, e) =>
+        {
+            if (e.NewItems is null) return;
+            foreach (SenderViewModel vm in e.NewItems) WireMonitorCallback(vm);
+        };
+        foreach (var existing in _vm.Senders) WireMonitorCallback(existing);
+
         conn.MessageReceived += (type, peerId, payload) =>
         {
             if (type == MessageType.Clipboard)
@@ -91,6 +111,33 @@ public sealed class ViewerService : BackgroundService
                 Application.Current?.Dispatcher.InvokeAsync(() => _vm.AddSender(id, mac));
                 // BUG4: REQUEST_IDR garante IDR imediato — sem artefatos H264 ao conectar/reconectar
                 _ = conn.SendAsync(WireProtocol.BuildRequestIdr(id), ct);
+                return;
+            }
+            if (type == MessageType.MonitorList)
+            {
+                try
+                {
+                    var monitors = System.Text.Json.JsonDocument.Parse(payload.ToArray())
+                        .RootElement.EnumerateArray()
+                        .Select(el => new ViewModels.MonitorViewModel
+                        {
+                            Index     = el.GetProperty("index").GetInt32(),
+                            Name      = el.GetProperty("name").GetString() ?? $"Monitor {el.GetProperty("index").GetInt32() + 1}",
+                            IsPrimary = el.GetProperty("isPrimary").GetBoolean(),
+                        })
+                        .ToList();
+
+                    Application.Current?.Dispatcher.InvokeAsync(() =>
+                    {
+                        var sender = _vm.Senders.FirstOrDefault(s => s.AgentId == peerId);
+                        if (sender is null) return;
+                        sender.Monitors.Clear();
+                        foreach (var m in monitors) sender.Monitors.Add(m);
+                        sender.SelectedMonitor ??= sender.Monitors.FirstOrDefault(m => m.IsPrimary)
+                                                   ?? sender.Monitors.FirstOrDefault();
+                    });
+                }
+                catch (Exception ex) { _log.LogWarning(ex, "Falha ao processar MONITOR_LIST"); }
                 return;
             }
             OnMessage(type, peerId, payload);

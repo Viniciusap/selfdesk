@@ -3,29 +3,39 @@ using System.Runtime.InteropServices;
 namespace SelfDesk.Sender.Capture;
 
 // BUG1: handles GDI e buffer BGRA cacheados no construtor — zero alocação por frame.
-// BUG2: SM_CXVIRTUALSCREEN(78)/SM_CYVIRTUALSCREEN(79) em vez de SM_CXSCREEN(0)/SM_CYSCREEN(1).
+// BUG2: usa monitor rect via MonitorEnumerator em vez de SM_CXSCREEN — suporta multi-monitor.
 public sealed class GdiScreenCapturer : IScreenCapturer
 {
-    private readonly int    _left;
-    private readonly int    _top;
-    private readonly int    _width;
-    private readonly int    _height;
-    private readonly byte[] _bgra;
+    private int    _left;
+    private int    _top;
+    private int    _width;
+    private int    _height;
+    private byte[] _bgra = [];
 
-    private readonly IntPtr _hdcScreen;
-    private readonly IntPtr _hdcMem;
-    private readonly IntPtr _hBitmap;
-    private readonly IntPtr _hOldBitmap;
-    private          BITMAPINFOHEADER _bi;
+    private IntPtr _hdcScreen;
+    private IntPtr _hdcMem;
+    private IntPtr _hBitmap;
+    private IntPtr _hOldBitmap;
+    private BITMAPINFOHEADER _bi;
 
-    public GdiScreenCapturer()
+    public GdiScreenCapturer() => InitMonitor(0);
+
+    public void SwitchMonitor(int monitorIndex)
     {
-        _left   = GetSystemMetrics(SM_XVIRTUALSCREEN);
-        _top    = GetSystemMetrics(SM_YVIRTUALSCREEN);
-        _width  = GetSystemMetrics(SM_CXVIRTUALSCREEN);
-        _height = GetSystemMetrics(SM_CYVIRTUALSCREEN);
+        ReleaseHandles();
+        InitMonitor(monitorIndex);
+    }
 
-        _bgra = new byte[_width * _height * 4];
+    private void InitMonitor(int monitorIndex)
+    {
+        var monitors = MonitorEnumerator.Enumerate();
+        var m = monitorIndex < monitors.Count ? monitors[monitorIndex] : monitors[0];
+
+        _left   = m.Left;
+        _top    = m.Top;
+        _width  = m.Width;
+        _height = m.Height;
+        _bgra   = new byte[_width * _height * 4];
 
         _hdcScreen  = GetDC(IntPtr.Zero);
         _hdcMem     = CreateCompatibleDC(_hdcScreen);
@@ -52,27 +62,25 @@ public sealed class GdiScreenCapturer : IScreenCapturer
             DateTimeOffset.UtcNow.ToUnixTimeMilliseconds());
     }
 
-    public void Dispose()
+    private void ReleaseHandles()
     {
+        if (_hdcMem == IntPtr.Zero) return;
         SelectObject(_hdcMem, _hOldBitmap);
         DeleteObject(_hBitmap);
         DeleteDC(_hdcMem);
         ReleaseDC(IntPtr.Zero, _hdcScreen);
+        _hdcMem = IntPtr.Zero;
     }
+
+    public void Dispose() => ReleaseHandles();
 
     // ── P/Invoke ────────────────────────────────────────────────────
     private const uint SRCCOPY        = 0xCC0020;
     private const uint BI_RGB         = 0;
     private const uint DIB_RGB_COLORS = 0;
 
-    private const int SM_XVIRTUALSCREEN  = 76;
-    private const int SM_YVIRTUALSCREEN  = 77;
-    private const int SM_CXVIRTUALSCREEN = 78;
-    private const int SM_CYVIRTUALSCREEN = 79;
-
     [DllImport("user32.dll")] private static extern IntPtr GetDC(IntPtr hWnd);
     [DllImport("user32.dll")] private static extern int    ReleaseDC(IntPtr hWnd, IntPtr hDC);
-    [DllImport("user32.dll")] private static extern int    GetSystemMetrics(int nIndex);
     [DllImport("gdi32.dll")]  private static extern IntPtr CreateCompatibleDC(IntPtr hdc);
     [DllImport("gdi32.dll")]  private static extern IntPtr CreateCompatibleBitmap(IntPtr hdc, int nWidth, int nHeight);
     [DllImport("gdi32.dll")]  private static extern IntPtr SelectObject(IntPtr hdc, IntPtr hgdiobj);

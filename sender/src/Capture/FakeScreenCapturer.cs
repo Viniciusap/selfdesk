@@ -18,5 +18,6 @@ public sealed class FakeScreenCapturer : IScreenCapturer
         return new CapturedFrame(_width, _height, bgra, DateTimeOffset.UtcNow.ToUnixTimeMilliseconds());
     }
 
+    public void SwitchMonitor(int monitorIndex) { }
     public void Dispose() { }
 }

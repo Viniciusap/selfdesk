@@ -124,6 +124,16 @@
                                                    Foreground="{StaticResource BrushTextPrimary}"/>
                                         <TextBlock Text="{Binding ResolutionDisplay}" FontSize="11"
                                                    Foreground="{StaticResource BrushTextMuted}"/>
+                                        <ComboBox ItemsSource="{Binding Monitors}"
+                                                  SelectedItem="{Binding SelectedMonitor, Mode=TwoWay}"
+                                                  FontSize="11"
+                                                  Margin="0,3,0,0"
+                                                  Padding="4,2"
+                                                  Background="{StaticResource BrushSurfaceElevated}"
+                                                  Foreground="{StaticResource BrushTextSecondary}"
+                                                  BorderBrush="{StaticResource BrushBorderSubtle}"
+                                                  Visibility="{Binding HasMultipleMonitors,
+                                                      Converter={StaticResource BoolToVisConverter}}"/>
                                     </StackPanel>
 
                                     <StackPanel Grid.Column="2" VerticalAlignment="Top">
