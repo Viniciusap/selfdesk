@@ -4,6 +4,7 @@ using System.Text;
 using System.Windows;
 using System.Windows.Media;
 using System.Windows.Media.Imaging;
+using Concentus;
 using Concentus.Structs;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
@@ -25,7 +26,7 @@ public sealed class ViewerService : BackgroundService
     private readonly ILogger<ViewerService>  _log;
     private readonly IFrameDecoder           _decoder;
     private readonly IAudioPlayer            _audioPlayer;
-    private          OpusDecoder?            _audioDecoder;
+    private          IOpusDecoder?            _audioDecoder;
 
     public ViewerService(
         IOptions<ViewerConfig> cfg,
@@ -292,7 +293,7 @@ public sealed class ViewerService : BackgroundService
 
         try
         {
-            _audioDecoder ??= new OpusDecoder(48000, 2);
+            _audioDecoder ??= OpusCodecFactory.CreateDecoder(48000, 2);
             var pcm = new short[FrameSamples * Channels];
             _audioDecoder.Decode(opusData, pcm.AsSpan(), FrameSamples, false);
             _audioPlayer.AddSamples(pcm);
