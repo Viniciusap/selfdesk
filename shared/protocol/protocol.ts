@@ -12,8 +12,9 @@ export const MessageType = {
   AUTH_OK:     0x03,
   AUTH_FAIL:   0x04,
   CHALLENGE:   0x05,
-  VIDEO_FRAME: 0x10,
-  INPUT_EVENT: 0x20,
+  VIDEO_FRAME:     0x10,
+  REQUEST_IDR:     0x11,
+  INPUT_EVENT:     0x20,
   SENDER_UP:   0x30,
   SENDER_DOWN: 0x31,
   PING:        0x40,
@@ -23,7 +24,10 @@ export const MessageType = {
   CLIPBOARD:   0x61,
   FILE_CHUNK:  0x62,
   FILE_DONE:   0x63,
-  FILE_ERROR:  0x64,
+  FILE_ERROR:      0x64,
+  MONITOR_LIST:    0x70,
+  SELECT_MONITOR:  0x71,
+  AUDIO_FRAME:     0x80,
 } as const;
 
 export type MessageTypeValue = (typeof MessageType)[keyof typeof MessageType];

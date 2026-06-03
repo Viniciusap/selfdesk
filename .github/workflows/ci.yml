@@ -5,6 +5,17 @@ on:
   pull_request:
 
 jobs:
+  protocol-sync:
+    name: Verificar sync TS ↔ C# do protocolo
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-node@v6
+        with:
+          node-version: lts/*
+      - name: Verificar sincronização de MessageType
+        run: node scripts/verify-protocol-sync.js
+
   broker:
     name: Broker (Node.js)
     runs-on: ubuntu-latest
