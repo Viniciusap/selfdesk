@@ -6,7 +6,7 @@
     Requer execução como administrador.
     Uso: .\scripts\install-service.ps1 [-Uninstall]
 
-    Lê agent/.env (ou agent/publish/.env) e configura automaticamente
+    Lê sender/publish/.env (ou sender/.env) e configura automaticamente
     as variáveis de ambiente do serviço em Machine scope.
 #>
 
@@ -52,11 +52,11 @@ Write-Host "Serviço '$ServiceName' instalado."
 $EnvVarsToSet = @('ROLE','SENDER_ID','SHARED_SECRET','BROKER_HOST','BROKER_PORT',
                   'TLS_CA_PATH','TARGET_FPS','ENCODER','JPEG_QUALITY','CAPTURER')
 
-# Procura o .env: primeiro publish/, depois agent/
+# Procura o .env: primeiro publish/, depois sender/
 $EnvFile = $null
 foreach ($candidate in @(
     (Join-Path $PublishDir '.env'),
-    (Join-Path $Root 'agent' '.env')
+    (Join-Path $Root 'sender' '.env')
 )) {
     if (Test-Path $candidate) { $EnvFile = $candidate; break }
 }
