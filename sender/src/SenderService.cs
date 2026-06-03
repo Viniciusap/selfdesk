@@ -65,8 +65,11 @@ public sealed class SenderService : BackgroundService
 
         _injector.ReleaseAllModifiers();
 
+        using var sessionCts = CancellationTokenSource.CreateLinkedTokenSource(ct);
+        var sCt = sessionCts.Token;
+
         await using var conn = new BrokerConnection(_cfg, _log);
-        await conn.ConnectAndAuthAsync(ct);
+        await conn.ConnectAndAuthAsync(sCt);
         _injector.ReleaseAllModifiers();
 
         var channel = Channel.CreateBounded<EncodedFrame>(new BoundedChannelOptions(1)
@@ -88,7 +91,7 @@ public sealed class SenderService : BackgroundService
                     _encoder.RequestKeyframe();
                     // Viewer acabou de conectar — reenviar lista de monitores
                     _ = conn.SendAsync(WireProtocol.BuildMonitorList(
-                        MonitorEnumerator.Enumerate(), _cfg.SenderId), ct);
+                        MonitorEnumerator.Enumerate(), _cfg.SenderId), sCt);
                     break;
                 case MessageType.Clipboard:   clipboard.OnRemoteClipboard(payload); break;
                 case MessageType.FileHeader:  fileRx.OnFileHeader(payload); break;
@@ -111,16 +114,16 @@ public sealed class SenderService : BackgroundService
 
         // envia lista de monitores ao conectar
         var monitors = MonitorEnumerator.Enumerate();
-        await conn.SendAsync(WireProtocol.BuildMonitorList(monitors, _cfg.SenderId), ct);
+        await conn.SendAsync(WireProtocol.BuildMonitorList(monitors, _cfg.SenderId), sCt);
 
-        var heartbeat      = conn.StartHeartbeatAsync(ct);
-        var recvLoop       = conn.RunReceiveLoopAsync(ct);
-        var clipboardLoop  = clipboard.MonitorAsync(_cfg.SenderId, ct);
+        var heartbeat      = conn.StartHeartbeatAsync(sCt);
+        var recvLoop       = conn.RunReceiveLoopAsync(sCt);
+        var clipboardLoop  = clipboard.MonitorAsync(_cfg.SenderId, sCt);
 
         var rttMonitor = Task.Run(async () =>
         {
             using var timer = new PeriodicTimer(TimeSpan.FromSeconds(5));
-            while (await timer.WaitForNextTickAsync(ct))
+            while (await timer.WaitForNextTickAsync(sCt))
             {
                 var rtt = conn.LastRttMs;
                 if (rtt <= 0) continue;
@@ -132,11 +135,11 @@ public sealed class SenderService : BackgroundService
                 };
                 _encoder.UpdateBitrate(bps);
             }
-        }, ct);
+        }, sCt);
 
         var producer = Task.Run(async () =>
         {
-            while (!ct.IsCancellationRequested)
+            while (!sCt.IsCancellationRequested)
             {
                 var started = DateTime.UtcNow;
                 try
@@ -144,21 +147,21 @@ public sealed class SenderService : BackgroundService
                     var frame   = _capturer.CaptureFrame();
                     var encoded = _encoder.Encode(frame);
                     if (encoded.Data.Length == 0) continue;
-                    await channel.Writer.WriteAsync(encoded, ct);
+                    await channel.Writer.WriteAsync(encoded, sCt);
                 }
                 catch (OperationCanceledException) { break; }
                 catch (Exception ex) { _log.LogError(ex, "Erro no capturer/encoder"); }
 
                 var elapsed = DateTime.UtcNow - started;
                 var delay   = interval - elapsed;
-                if (delay > TimeSpan.Zero) await Task.Delay(delay, ct);
+                if (delay > TimeSpan.Zero) await Task.Delay(delay, sCt);
             }
             channel.Writer.Complete();
-        }, ct);
+        }, sCt);
 
         var consumer = Task.Run(async () =>
         {
-            await foreach (var encoded in channel.Reader.ReadAllAsync(ct))
+            await foreach (var encoded in channel.Reader.ReadAllAsync(sCt))
             {
                 var msg = WireProtocol.BuildVideoFrame(
                     encoded.TimestampMs,
@@ -168,13 +171,20 @@ public sealed class SenderService : BackgroundService
                     encoded.Flags,
                     encoded.Data,
                     _cfg.SenderId);
-                await conn.SendAsync(msg, ct);
+                await conn.SendAsync(msg, sCt);
             }
-        }, ct);
+        }, sCt);
 
         // fire-and-forget: falha de áudio não encerra a sessão de vídeo
-        _ = AudioPipeline.Start(conn, _cfg.SenderId, _log, ct);
+        _ = AudioPipeline.Start(conn, _cfg.SenderId, _log, sCt);
 
-        await Task.WhenAny(producer, consumer, heartbeat, recvLoop, clipboardLoop, rttMonitor);
+        try
+        {
+            await Task.WhenAny(producer, consumer, heartbeat, recvLoop, clipboardLoop, rttMonitor);
+        }
+        finally
+        {
+            await sessionCts.CancelAsync();
+        }
     }
 }
