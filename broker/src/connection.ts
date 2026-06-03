@@ -52,7 +52,8 @@ export class Connection extends EventEmitter {
   private readonly allowedSenders: Set<string>;
   private readonly log: Logger;
 
-  private buf: Buffer     = Buffer.alloc(0);
+  private chunks: Buffer[] = [];
+  private chunksLen = 0;
   private nonce?: Buffer;
   private pingTimer?: NodeJS.Timeout;
   private pongTimer?: NodeJS.Timeout;
@@ -101,13 +102,22 @@ export class Connection extends EventEmitter {
   }
 
   private onData(chunk: Buffer): void {
-    this.buf = Buffer.concat([this.buf, chunk]);
+    this.chunks.push(chunk);
+    this.chunksLen += chunk.length;
     this.drainFrames();
   }
 
+  private consolidate(): Buffer {
+    if (this.chunks.length === 1) return this.chunks[0];
+    const flat = Buffer.concat(this.chunks, this.chunksLen);
+    this.chunks = [flat];
+    return flat;
+  }
+
   private drainFrames(): void {
-    while (this.buf.length >= HEADER_SIZE) {
-      const header = parseHeader(this.buf);
+    while (this.chunksLen >= HEADER_SIZE) {
+      const buf    = this.consolidate();
+      const header = parseHeader(buf);
 
       if (header.length > MAX_FRAME_BYTES) {
         this.log.warn({ id: this.id, length: header.length }, 'frame oversized — encerrando conexão');
@@ -115,11 +125,13 @@ export class Connection extends EventEmitter {
         return;
       }
 
-      const total  = HEADER_SIZE + header.length;
-      if (this.buf.length < total) break;
+      const total = HEADER_SIZE + header.length;
+      if (this.chunksLen < total) break;
 
-      const payload  = this.buf.subarray(HEADER_SIZE, total);
-      this.buf       = this.buf.subarray(total);
+      const payload   = buf.subarray(HEADER_SIZE, total);
+      const remainder = buf.subarray(total);
+      this.chunks     = remainder.length > 0 ? [remainder] : [];
+      this.chunksLen  = remainder.length;
       this.handleFrame(header, payload);
     }
   }
