@@ -21,8 +21,8 @@ export function loadConfig(envFile?: string): BrokerConfig {
   }
 
   const secret = process.env.SHARED_SECRET;
-  if (!secret || secret.length < 8) {
-    throw new Error('SHARED_SECRET ausente ou muito curto');
+  if (!secret || secret.length < 32) {
+    throw new Error('SHARED_SECRET ausente ou muito curto (mínimo 32 caracteres)');
   }
 
   const senders = (process.env.ALLOWED_SENDERS ?? '')
