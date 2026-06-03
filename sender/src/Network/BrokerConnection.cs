@@ -39,9 +39,13 @@ public sealed class BrokerConnection : IAsyncDisposable
             caBundle = [X509Certificate2.CreateFromPem(File.ReadAllText(_cfg.TlsCaPath))];
         }
 
-        _ssl = new SslStream(_tcp.GetStream(), false, (_, cert, chain, errors) =>
+        if (caBundle is null)
+            throw new InvalidOperationException(
+                "TLS_CA_PATH não configurado ou arquivo não encontrado — CA pinning obrigatório. " +
+                "Execute bootstrap.ps1 -Role sender para gerar o .env correto.");
+
+        _ssl = new SslStream(_tcp.GetStream(), false, (_, cert, _, _) =>
         {
-            if (caBundle is null) return errors == SslPolicyErrors.None;
             if (cert is null) return false;
             var serverCert = new X509Certificate2(cert);
             return caBundle.Any(ca => IsSignedBy(serverCert, ca));
