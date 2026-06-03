@@ -85,7 +85,15 @@ jobs:
           $version = "${{ github.ref_name }}".TrimStart('v')
           dotnet publish viewer/Viewer.csproj -c Release -r win-x64 --self-contained true -o viewer/publish /p:Version=$version
 
+      - name: Cache DLLs FFmpeg 7.1
+        id: cache-ffmpeg
+        uses: actions/cache@v4
+        with:
+          path: ffmpeg-dlls
+          key: ffmpeg-7.1-win64-gpl-shared
+
       - name: Baixar DLLs FFmpeg 7.1 (BtbN shared)
+        if: steps.cache-ffmpeg.outputs.cache-hit != 'true'
         shell: pwsh
         run: |
           $url = 'https://github.com/BtbN/FFmpeg-Builds/releases/download/latest/ffmpeg-n7.1-latest-win64-gpl-shared-7.1.zip'
@@ -95,8 +103,16 @@ jobs:
           $binDir = Get-ChildItem -Path ffmpeg-tmp -Recurse -Directory -Filter bin |
                     Select-Object -First 1
           if (-not $binDir) { throw "bin/ não encontrado no zip do FFmpeg." }
-          $dlls = Get-ChildItem $binDir.FullName -Filter '*.dll'
-          $dlls | Copy-Item -Destination sender/publish  -Force
+          New-Item -ItemType Directory -Force -Path ffmpeg-dlls | Out-Null
+          Get-ChildItem $binDir.FullName -Filter '*.dll' |
+            Copy-Item -Destination ffmpeg-dlls -Force
+          Write-Host "DLLs cacheadas: $(Get-ChildItem ffmpeg-dlls -Filter *.dll | Measure-Object | Select-Object -ExpandProperty Count)"
+
+      - name: Copiar DLLs FFmpeg para publish
+        shell: pwsh
+        run: |
+          $dlls = Get-ChildItem ffmpeg-dlls -Filter '*.dll'
+          $dlls | Copy-Item -Destination sender/publish -Force
           $dlls | Copy-Item -Destination viewer/publish -Force
           Write-Host "Copiadas $($dlls.Count) DLLs."
 
