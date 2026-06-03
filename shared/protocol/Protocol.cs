@@ -16,8 +16,9 @@ public static class MessageType
     public const byte AuthOk     = 0x03;
     public const byte AuthFail   = 0x04;
     public const byte Challenge  = 0x05;
-    public const byte VideoFrame = 0x10;
-    public const byte InputEvent = 0x20;
+    public const byte VideoFrame   = 0x10;
+    public const byte RequestIdr   = 0x11;
+    public const byte InputEvent   = 0x20;
     public const byte SenderUp   = 0x30;
     public const byte SenderDown = 0x31;
     public const byte Ping       = 0x40;
@@ -27,7 +28,10 @@ public static class MessageType
     public const byte FileHeader = 0x60;
     public const byte FileChunk  = 0x62;
     public const byte FileDone   = 0x63;
-    public const byte FileError  = 0x64;
+    public const byte FileError      = 0x64;
+    public const byte MonitorList    = 0x70;
+    public const byte SelectMonitor  = 0x71;
+    public const byte AudioFrame     = 0x80;
 }
 
 public static class ProtocolSizes
