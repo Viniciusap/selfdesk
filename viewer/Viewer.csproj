@@ -21,6 +21,14 @@
   </ItemGroup>
 
   <ItemGroup>
+    <ProjectReference Include="..\shared\dotnet\SelfDesk.Protocol.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Using Include="SelfDesk.Protocol" />
+  </ItemGroup>
+
+  <ItemGroup>
     <PackageReference Include="CommunityToolkit.Mvvm" Version="8.3.2" />
     <PackageReference Include="Concentus" Version="2.2.2" />
     <PackageReference Include="NAudio" Version="2.2.1" />

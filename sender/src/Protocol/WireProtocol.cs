@@ -2,6 +2,7 @@ using System.Buffers.Binary;
 using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json;
+using SelfDesk.Protocol;
 
 namespace SelfDesk.Sender.Protocol;
 

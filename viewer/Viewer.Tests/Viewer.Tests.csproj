@@ -19,6 +19,11 @@
 
   <ItemGroup>
     <ProjectReference Include="..\Viewer.csproj" />
+    <ProjectReference Include="..\..\shared\dotnet\SelfDesk.Protocol.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Using Include="SelfDesk.Protocol" />
   </ItemGroup>
 
 </Project>

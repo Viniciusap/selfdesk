@@ -1,4 +1,7 @@
 <Solution>
+  <Folder Name="/shared/">
+    <Project Path="shared/dotnet/SelfDesk.Protocol.csproj" />
+  </Folder>
   <Folder Name="/sender/">
     <Project Path="sender/Sender.csproj" />
     <Project Path="sender/Sender.Tests/Sender.Tests.csproj" />
