@@ -113,8 +113,12 @@ public sealed class BrokerConnection : IAsyncDisposable
         return WireProtocol.ParseHeader(_headerBuf);
     }
 
+    private const int MaxPayloadBytes = 10 * 1024 * 1024; // 10 MB
+
     private async Task<byte[]> ReadPayloadAsync(int length, CancellationToken ct)
     {
+        if (length > MaxPayloadBytes)
+            throw new InvalidDataException($"Payload de {length} bytes excede limite de {MaxPayloadBytes} bytes");
         var buf = new byte[length];
         await ReadExactAsync(buf, ct);
         return buf;
