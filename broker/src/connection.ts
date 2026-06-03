@@ -214,6 +214,7 @@ export class Connection extends EventEmitter {
   private startHeartbeat(): void {
     this.pingTimer = setInterval(() => {
       if (this.state !== 'ACTIVE') return;
+      clearTimeout(this.pongTimer);
       this.send(build.ping(BigInt(Date.now())));
 
       this.pongTimer = setTimeout(() => {
