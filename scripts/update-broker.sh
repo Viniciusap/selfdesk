@@ -1,15 +1,15 @@
 #!/usr/bin/env bash
 #
-# update-broker.sh — atualiza o SelfDesk Broker a partir da latest release do GitHub.
+# update-broker.sh — Updates the SelfDesk Broker from the latest GitHub release.
 #
-# Uso (rodar no servidor como vini):
+# Usage (run on the server):
 #   bash update-broker.sh
 #
 # One-liner:
-#   curl -fsSL https://raw.githubusercontent.com/Viniciusap/selfdesk/master/scripts/update-broker.sh | bash
+#   curl -fsSL https://raw.githubusercontent.com/Viniciusap/selfdesk/master/scripts/install-broker.sh | bash
 #
-# Variáveis de ambiente opcionais:
-#   INSTALL_DIR   Diretório de instalação. Padrão: ~/selfdesk
+# Optional environment variables:
+#   INSTALL_DIR   Installation directory. Default: ~/selfdesk
 #
 
 set -euo pipefail
@@ -35,13 +35,13 @@ DOWNLOAD_URL="https://github.com/$REPO_OWNER/$REPO_NAME/releases/latest/download
 TMP_TARBALL="/tmp/selfdesk-broker-update-$$.tar.gz"
 TMP_DIR="/tmp/selfdesk-broker-update-$$"
 
-step() { echo ""; echo "→ $*"; }
+step() { echo ""; echo "-> $*"; }
 ok()   { echo "  ✔ $*"; }
 warn() { echo "  ⚠ $*"; }
 
-# ── 1. Baixar zip ─────────────────────────────────────────────────────────────
+# ── 1. Download ───────────────────────────────────────────────────────────────
 
-step "Baixando $ASSET_NAME..."
+step "Downloading $ASSET_NAME..."
 echo "  URL: $DOWNLOAD_URL"
 
 if command -v curl &>/dev/null; then
@@ -49,59 +49,59 @@ if command -v curl &>/dev/null; then
 elif command -v wget &>/dev/null; then
     wget -q "$DOWNLOAD_URL" -O "$TMP_TARBALL"
 else
-    echo "ERRO: curl ou wget necessário." >&2
+    echo "ERROR: curl or wget is required." >&2
     exit 1
 fi
-ok "Download concluído."
+ok "Download complete."
 
-# ── 2. Extrair ────────────────────────────────────────────────────────────────
+# ── 2. Extract ────────────────────────────────────────────────────────────────
 
-step "Extraindo..."
+step "Extracting..."
 rm -rf "$TMP_DIR"
 mkdir -p "$TMP_DIR"
 tar -xzf "$TMP_TARBALL" -C "$TMP_DIR"
 rm -f "$TMP_TARBALL"
-ok "Extraído em $TMP_DIR"
+ok "Extracted to $TMP_DIR"
 
-# ── 3. Parar broker ───────────────────────────────────────────────────────────
+# ── 3. Stop broker ────────────────────────────────────────────────────────────
 
-step "Parando broker..."
+step "Stopping broker..."
 if pkill -f "node dist/index.js" 2>/dev/null; then
     sleep 1
-    ok "Broker parado."
+    ok "Broker stopped."
 else
-    warn "Broker não estava rodando."
+    warn "Broker was not running."
 fi
 
-# ── 4. Atualizar dist/ ────────────────────────────────────────────────────────
+# ── 4. Update files ───────────────────────────────────────────────────────────
 
-step "Atualizando $INSTALL_DIR ..."
+step "Updating $INSTALL_DIR ..."
 mkdir -p "$INSTALL_DIR"
 cp -r "$TMP_DIR/selfdesk-broker/dist"         "$INSTALL_DIR/"
 cp -r "$TMP_DIR/selfdesk-broker/node_modules" "$INSTALL_DIR/"
 cp    "$TMP_DIR/selfdesk-broker/package.json"  "$INSTALL_DIR/"
 rm -rf "$TMP_DIR"
-ok "Arquivos atualizados."
+ok "Files updated."
 
-# ── 5. Reiniciar broker ───────────────────────────────────────────────────────
+# ── 5. Start broker ───────────────────────────────────────────────────────────
 
-step "Iniciando broker..."
+step "Starting broker..."
 cd "$INSTALL_DIR"
 nohup node dist/index.js >> broker.log 2>&1 &
 BROKER_PID=$!
 sleep 1
 
 if kill -0 "$BROKER_PID" 2>/dev/null; then
-    ok "Broker rodando (PID $BROKER_PID)."
+    ok "Broker running (PID $BROKER_PID)."
 else
-    echo "ERRO: broker não iniciou. Verifique $INSTALL_DIR/broker.log" >&2
+    echo "ERROR: broker did not start. Check $INSTALL_DIR/broker.log" >&2
     exit 1
 fi
 
 echo ""
-echo "=== Update broker concluído ==="
-echo "  Diretório : $INSTALL_DIR"
+echo "=== Broker update complete ==="
+echo "  Directory : $INSTALL_DIR"
 echo "  Log       : $INSTALL_DIR/broker.log"
 echo ""
-echo "Para acompanhar:"
+echo "To follow logs:"
 echo "  tail -f $INSTALL_DIR/broker.log"

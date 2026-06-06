@@ -1,23 +1,23 @@
 <#
 .SYNOPSIS
-    Atualiza o SelfDesk Sender a partir da latest release do GitHub.
+    Updates the SelfDesk Sender from the latest GitHub release.
 
 .DESCRIPTION
-    Uso (rodar no laptop-01 como administrador):
+    Usage (run on the sender machine as Administrator):
       .\update-sender.ps1
       .\update-sender.ps1 -InstallDir C:\tools\selfdesk-sender
 
-    O que faz:
-      1. Baixa selfdesk-sender-win-x64.zip da latest release (GitHub)
-      2. Para o serviço SelfDesk.Sender
-      3. Extrai o zip preservando .env e certs/
-      4. Reinicia o serviço
+    What it does:
+      1. Downloads selfdesk-sender-win-x64.zip from the latest release (GitHub)
+      2. Stops the SelfDesk.Sender service (or process)
+      3. Extracts the zip, preserving .env and certs/
+      4. Restarts the service
 
 .PARAMETER InstallDir
-    Diretório de instalação do sender. Padrão: C:\tools\selfdesk-sender
+    Sender installation directory. Default: C:\tools\selfdesk-sender
 
 .PARAMETER ServiceName
-    Nome do serviço Windows. Padrão: SelfDesk.Sender
+    Windows service name. Default: SelfDesk.Sender
 #>
 
 param(
@@ -49,63 +49,63 @@ function Write-Step { param([string]$Msg) Write-Host "`n-> $Msg" -ForegroundColo
 function Write-OK   { param([string]$Msg) Write-Host "   OK  $Msg" -ForegroundColor Green }
 function Write-Warn { param([string]$Msg) Write-Host "   WARN $Msg" -ForegroundColor Yellow }
 
-# ── 0. Verificar admin ────────────────────────────────────────────────────────
+# ── 0. Check admin ────────────────────────────────────────────────────────────
 
 $principal = [Security.Principal.WindowsPrincipal][Security.Principal.WindowsIdentity]::GetCurrent()
 if (-not $principal.IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)) {
-    throw 'Execute como administrador (clique com botão direito → Executar como administrador).'
+    throw 'Run as Administrator (right-click -> Run as administrator).'
 }
 
-# ── 1. Baixar zip ─────────────────────────────────────────────────────────────
+# ── 1. Download zip ───────────────────────────────────────────────────────────
 
-Write-Step "Baixando $AssetName..."
+Write-Step "Downloading $AssetName..."
 Write-Host "   URL: $DownloadUrl"
 
 $tmpZip = Join-Path $env:TEMP "selfdesk-sender-update-$([System.Guid]::NewGuid().ToString('N')[0..7] -join '').zip"
 $tmpDir = Join-Path $env:TEMP 'selfdesk-sender-update'
 
 Invoke-WebRequest -Uri $DownloadUrl -OutFile $tmpZip -UseBasicParsing
-Write-OK "Download concluído: $tmpZip"
+Write-OK "Download complete: $tmpZip"
 
-# ── 2. Extrair em diretório temporário ───────────────────────────────────────
+# ── 2. Extract to temp directory ─────────────────────────────────────────────
 
-Write-Step 'Extraindo...'
+Write-Step 'Extracting...'
 if (Test-Path $tmpDir) { Remove-Item $tmpDir -Recurse -Force }
 Expand-Archive -Path $tmpZip -DestinationPath $tmpDir
 Remove-Item $tmpZip -ErrorAction SilentlyContinue
 
-# O zip pode ter um subdiretório raiz ou não — normaliza
+# Normalize: zip may or may not have a root subdirectory
 $extracted = Get-ChildItem -Path $tmpDir
 if ($extracted.Count -eq 1 -and $extracted[0].PSIsContainer) {
     $srcDir = $extracted[0].FullName
 } else {
     $srcDir = $tmpDir
 }
-Write-OK "Extraído em: $srcDir"
+Write-OK "Extracted to: $srcDir"
 
-# ── 3. Verificar versão nova ──────────────────────────────────────────────────
+# ── 3. Check version ──────────────────────────────────────────────────────────
 
 $newExe = Join-Path $srcDir 'SelfDesk.Sender.exe'
 if (Test-Path $newExe) {
     $newVer = (Get-Item $newExe).VersionInfo.ProductVersion
-    Write-Host "   Nova versao : $newVer"
+    Write-Host "   New version     : $newVer"
 }
 
 $curExe = Join-Path $InstallDir 'SelfDesk.Sender.exe'
 if (Test-Path $curExe) {
     $curVer = (Get-Item $curExe).VersionInfo.ProductVersion
-    Write-Host "   Versao atual: $curVer"
+    Write-Host "   Current version : $curVer"
 }
 
-# ── 4. Parar serviço ──────────────────────────────────────────────────────────
+# ── 4. Stop service ───────────────────────────────────────────────────────────
 
-Write-Step "Parando servico '$ServiceName'..."
+Write-Step "Stopping service '$ServiceName'..."
 $svc = Get-Service -Name $ServiceName -ErrorAction SilentlyContinue
 if (-not $svc) {
-    # Fallback para nome legado (instalacoes anteriores a v0.5.0)
+    # Fallback for legacy service name (installations before v0.5.0)
     $legacy = Get-Service -Name 'SelfDesk.Agent' -ErrorAction SilentlyContinue
     if ($legacy) {
-        Write-Warn "Servico encontrado com nome legado 'SelfDesk.Agent' — usando-o."
+        Write-Warn "Found legacy service name 'SelfDesk.Agent' — using it."
         $ServiceName = 'SelfDesk.Agent'
         $svc = $legacy
     }
@@ -119,23 +119,23 @@ if ($svc) {
             $timeout--
         }
         if ((Get-Service -Name $ServiceName).Status -ne 'Stopped') {
-            throw "Servico nao parou em 15s. Mate o processo manualmente e tente novamente."
+            throw "Service did not stop within 15s. Kill the process manually and retry."
         }
     }
-    Write-OK 'Servico parado.'
+    Write-OK 'Service stopped.'
 } else {
-    Write-Warn "Servico '$ServiceName' nao encontrado — tentando matar processo diretamente."
+    Write-Warn "Service '$ServiceName' not found — attempting to kill process directly."
     $proc = Get-Process -Name 'SelfDesk.Sender' -ErrorAction SilentlyContinue
     if ($proc) {
         $proc | Stop-Process -Force
         Start-Sleep -Seconds 1
-        Write-OK 'Processo SelfDesk.Sender encerrado.'
+        Write-OK 'SelfDesk.Sender process terminated.'
     } else {
-        Write-Warn 'Nenhum processo SelfDesk.Sender encontrado — copiando direto.'
+        Write-Warn 'No SelfDesk.Sender process found — copying files directly.'
     }
 }
 
-# ── 5. Preservar .env e certs/ ───────────────────────────────────────────────
+# ── 5. Preserve .env and certs/ ──────────────────────────────────────────────
 
 $envPath  = Join-Path $InstallDir '.env'
 $certsDir = Join-Path $InstallDir 'certs'
@@ -145,19 +145,19 @@ $certsTmpDir = $null
 
 if (Test-Path $envPath) {
     $envContent = Get-Content $envPath -Raw
-    Write-OK '.env salvo.'
+    Write-OK '.env saved.'
 }
 
 if (Test-Path $certsDir) {
     $certsTmpDir = Join-Path $env:TEMP 'selfdesk-certs-backup'
     if (Test-Path $certsTmpDir) { Remove-Item $certsTmpDir -Recurse -Force }
     Copy-Item -Path $certsDir -Destination $certsTmpDir -Recurse
-    Write-OK 'certs/ salvo.'
+    Write-OK 'certs/ saved.'
 }
 
-# ── 6. Copiar novos arquivos (exceto .env e certs/) ──────────────────────────
+# ── 6. Copy new files (excluding .env and certs/) ────────────────────────────
 
-Write-Step "Copiando para $InstallDir..."
+Write-Step "Copying to $InstallDir..."
 if (-not (Test-Path $InstallDir)) {
     New-Item -ItemType Directory -Path $InstallDir -Force | Out-Null
 }
@@ -165,16 +165,16 @@ if (-not (Test-Path $InstallDir)) {
 Get-ChildItem -Path $srcDir -Exclude '.env', 'certs' |
     Copy-Item -Destination $InstallDir -Recurse -Force
 
-Write-OK 'Arquivos copiados.'
+Write-OK 'Files copied.'
 
-# ── 7. Restaurar .env e certs/ ───────────────────────────────────────────────
+# ── 7. Restore .env and certs/ ───────────────────────────────────────────────
 
 if ($null -ne $envContent) {
     Set-Content -Path $envPath -Value $envContent -NoNewline
-    Write-OK '.env restaurado.'
+    Write-OK '.env restored.'
 } else {
-    Write-Warn ".env nao encontrado em $InstallDir — crie antes de iniciar o servico."
-    Write-Host "   Modelo: $(Join-Path $InstallDir '.env.example')"
+    Write-Warn ".env not found in $InstallDir — create it before starting the service."
+    Write-Host "   Template: $(Join-Path $InstallDir '.env.example')"
 }
 
 if ($null -ne $certsTmpDir) {
@@ -182,29 +182,29 @@ if ($null -ne $certsTmpDir) {
     if (Test-Path $certsDestDir) { Remove-Item $certsDestDir -Recurse -Force }
     Copy-Item -Path $certsTmpDir -Destination $certsDestDir -Recurse
     Remove-Item $certsTmpDir -Recurse -ErrorAction SilentlyContinue
-    Write-OK 'certs/ restaurado.'
+    Write-OK 'certs/ restored.'
 }
 
-# ── 8. Limpar temporários ─────────────────────────────────────────────────────
+# ── 8. Clean up temp files ────────────────────────────────────────────────────
 
 Remove-Item $tmpDir -Recurse -ErrorAction SilentlyContinue
 
-# ── 9. Reiniciar serviço ──────────────────────────────────────────────────────
+# ── 9. Restart service ────────────────────────────────────────────────────────
 
 if ($svc) {
-    Write-Step "Iniciando servico '$ServiceName'..."
+    Write-Step "Starting service '$ServiceName'..."
     Start-Service -Name $ServiceName
     Start-Sleep -Seconds 2
     $status = (Get-Service -Name $ServiceName).Status
     if ($status -eq 'Running') {
-        Write-OK "Servico rodando."
+        Write-OK 'Service running.'
     } else {
-        Write-Warn "Servico em estado '$status'. Verifique o Event Viewer para erros."
+        Write-Warn "Service is in state '$status'. Check Event Viewer for errors."
     }
 }
 
 Write-Host ''
-Write-Host '=== Update concluido ===' -ForegroundColor Green
-if ($newVer) { Write-Host "   Versao instalada: $newVer" }
-Write-Host "   Diretorio       : $InstallDir"
+Write-Host '=== Update complete ===' -ForegroundColor Green
+if ($newVer) { Write-Host "   Version installed : $newVer" }
+Write-Host "   Directory         : $InstallDir"
 Write-Host ''
