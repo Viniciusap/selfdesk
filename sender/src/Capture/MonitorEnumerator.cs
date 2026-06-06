@@ -51,7 +51,7 @@ public static class MonitorEnumerator
             bool primary = e.left == 0 && e.top == 0;
             int w = e.right - e.left, h = e.bottom - e.top;
             return new MonitorInfo(idx, e.left, e.top, w, h,
-                primary ? $"Monitor {idx + 1} — {w}×{h} (Principal)"
+                primary ? $"Monitor {idx + 1} — {w}×{h} (Primary)"
                         : $"Monitor {idx + 1} — {w}×{h}",
                 primary);
         }).ToList();
@@ -79,7 +79,7 @@ public static class MonitorEnumerator
         {
             int w = m.rect.right - m.rect.left, h = m.rect.bottom - m.rect.top;
             return new MonitorInfo(i, m.rect.left, m.rect.top, w, h,
-                m.primary ? $"Monitor 1 — {w}×{h} (Principal)"
+                m.primary ? $"Monitor 1 — {w}×{h} (Primary)"
                           : $"Monitor {i + 1} — {w}×{h}",
                 m.primary);
         }).ToList();

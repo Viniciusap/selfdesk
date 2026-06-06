@@ -9,7 +9,7 @@ using SelfDesk.Sender.Capture;
 using SelfDesk.Sender.Encode;
 using SelfDesk.Sender.Inject;
 
-// DPI-aware: captura em pixels físicos, coordenadas de input corretas
+// DPI-aware: captures in physical pixels, input coordinates are correct
 SetProcessDpiAwarenessContext(-4); // DPI_AWARENESS_CONTEXT_PER_MONITOR_AWARE_V2
 
 // Load .env if present (ignored when running as a service — use service environment variables instead)

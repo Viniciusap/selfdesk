@@ -36,8 +36,8 @@ public sealed class BrokerConnection : IAsyncDisposable
 
         if (caBundle is null)
             throw new InvalidOperationException(
-                "TLS_CA_PATH não configurado ou arquivo não encontrado — CA pinning obrigatório. " +
-                "Execute bootstrap.ps1 -Role receiver para gerar o .env correto.");
+                "TLS_CA_PATH not set or file not found — CA pinning is required. " +
+                "Run bootstrap.ps1 -Role receiver to generate the correct .env.");
 
         _ssl = new SslStream(_tcp.GetStream(), false, (_, cert, _, _) =>
         {
@@ -130,7 +130,7 @@ public sealed class BrokerConnection : IAsyncDisposable
         while (offset < buf.Length)
         {
             var read = await _ssl!.ReadAsync(buf.AsMemory(offset), ct);
-            if (read == 0) throw new EndOfStreamException("Conexão encerrada pelo broker");
+            if (read == 0) throw new EndOfStreamException("Connection closed by broker");
             offset += read;
         }
     }

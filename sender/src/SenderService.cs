@@ -56,13 +56,13 @@ public sealed class SenderService : BackgroundService
             catch (OperationCanceledException) { break; }
             catch (Exception ex)
             {
-                _log.LogWarning(ex, "Sessão encerrada. Reconectando em {Delay}s", retryDelay.TotalSeconds);
+                _log.LogWarning(ex, "Session ended. Reconnecting in {Delay}s", retryDelay.TotalSeconds);
                 await Task.Delay(retryDelay, ct);
                 retryDelay = TimeSpan.FromSeconds(Math.Min(retryDelay.TotalSeconds * 2, 60));
             }
         }
 
-        _log.LogInformation("SenderService encerrando");
+        _log.LogInformation("SenderService stopping");
     }
 
     private async Task RunSessionAsync(CancellationToken ct)
@@ -113,7 +113,7 @@ public sealed class SenderService : BackgroundService
                         _injector.MonitorIndex = idx;
                         _log.LogInformation("Trocado para monitor {Index}", idx);
                     }
-                    catch (Exception ex) { _log.LogWarning(ex, "Falha ao trocar monitor"); }
+                    catch (Exception ex) { _log.LogWarning(ex, "Failed to switch monitor"); }
                     break;
             }
         };
@@ -156,7 +156,7 @@ public sealed class SenderService : BackgroundService
                     await channel.Writer.WriteAsync(encoded, sCt);
                 }
                 catch (OperationCanceledException) { break; }
-                catch (Exception ex) { _log.LogError(ex, "Erro no capturer/encoder"); }
+                catch (Exception ex) { _log.LogError(ex, "Error in capturer/encoder"); }
 
                 var elapsed = DateTime.UtcNow - started;
                 var delay   = interval - elapsed;

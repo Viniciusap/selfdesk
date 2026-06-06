@@ -79,7 +79,7 @@
                               Background="Transparent"
                               BorderThickness="0"
                               Foreground="{StaticResource BrushTextSecondary}"
-                              ToolTip="Silenciar / Ativar áudio">
+                              ToolTip="Mute / Unmute audio">
                     <ToggleButton.Style>
                         <Style TargetType="ToggleButton">
                             <Setter Property="Content" Value="🔊"/>
@@ -108,7 +108,7 @@
                 <DockPanel>
                     <Border DockPanel.Dock="Top" Padding="12,8"
                             BorderBrush="{StaticResource BrushBorderSubtle}" BorderThickness="0,0,0,1">
-                        <TextBlock Text="EMISSORES" FontSize="10" FontWeight="SemiBold"
+                        <TextBlock Text="SENDERS" FontSize="10" FontWeight="SemiBold"
                                    Foreground="{StaticResource BrushTextMuted}"/>
                     </Border>
 

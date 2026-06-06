@@ -59,11 +59,11 @@ public sealed class ViewerService : BackgroundService
             catch (OperationCanceledException) { break; }
             catch (Exception ex)
             {
-                _log.LogWarning(ex, "Sessão encerrada. Reconectando em {Delay}s", retryDelay.TotalSeconds);
+                _log.LogWarning(ex, "Session ended. Reconnecting in {Delay}s", retryDelay.TotalSeconds);
                 Application.Current?.Dispatcher.Invoke(() =>
                 {
                     _vm.IsConnected      = false;
-                    _vm.ConnectionStatus = $"Reconectando em {retryDelay.TotalSeconds:0}s…";
+                    _vm.ConnectionStatus = $"Reconnecting in {retryDelay.TotalSeconds:0}s…";
                     _vm.Senders.Clear();
                 });
                 await Task.Delay(retryDelay, ct);
@@ -145,7 +145,7 @@ public sealed class ViewerService : BackgroundService
                                                    ?? sender.Monitors.FirstOrDefault();
                     });
                 }
-                catch (Exception ex) { _log.LogWarning(ex, "Falha ao processar MONITOR_LIST"); }
+                catch (Exception ex) { _log.LogWarning(ex, "Failed to process MONITOR_LIST"); }
                 return;
             }
             OnMessage(type, peerId, payload);
@@ -155,7 +155,7 @@ public sealed class ViewerService : BackgroundService
         Application.Current?.Dispatcher.Invoke(() =>
         {
             _vm.IsConnected      = true;
-            _vm.ConnectionStatus = "Conectado";
+            _vm.ConnectionStatus = "Connected";
         });
 
         void InputHandler(byte[] msg)   => _ = conn.SendAsync(msg, ct);
@@ -247,7 +247,7 @@ public sealed class ViewerService : BackgroundService
             }
             catch (Exception ex)
             {
-                _log.LogWarning(ex, "Falha ao enviar {Name}", fileName);
+                _log.LogWarning(ex, "Failed to send {Name}", fileName);
                 try { await conn.SendAsync(ViewerWire.BuildFileError(id, targetId), ct); } catch { }
             }
             finally
@@ -298,7 +298,7 @@ public sealed class ViewerService : BackgroundService
             _audioDecoder.Decode(opusData, pcm.AsSpan(), FrameSamples, false);
             _audioPlayer.AddSamples(pcm);
         }
-        catch (Exception ex) { _log.LogWarning(ex, "Falha ao decodificar frame de áudio"); }
+        catch (Exception ex) { _log.LogWarning(ex, "Failed to decode audio frame"); }
     }
 
     private void ProcessVideoFrame(string senderId, ReadOnlyMemory<byte> payload)
@@ -316,7 +316,7 @@ public sealed class ViewerService : BackgroundService
 
         DecodedFrame decoded;
         try { decoded = _decoder.Decode(data, width, height, ts); }
-        catch (Exception ex) { _log.LogWarning(ex, "Falha ao decodificar frame"); return; }
+        catch (Exception ex) { _log.LogWarning(ex, "Failed to decode frame"); return; }
 
         var rtt = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds() - ts;
 

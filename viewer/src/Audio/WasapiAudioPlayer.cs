@@ -27,11 +27,11 @@ public sealed class WasapiAudioPlayer : IAudioPlayer
             _output = new WasapiOut(NAudio.CoreAudioApi.AudioClientShareMode.Shared, 100);
             _output.Init(_buffer);
             _output.Play();
-            _log.LogInformation("Reprodução de áudio iniciada (WASAPI, 48kHz estéreo)");
+            _log.LogInformation("Audio playback started (WASAPI, 48kHz stereo)");
         }
         catch (Exception ex)
         {
-            _log.LogWarning(ex, "WASAPI playback não disponível — áudio desativado");
+            _log.LogWarning(ex, "WASAPI playback unavailable — audio disabled");
             _buffer ??= new BufferedWaveProvider(new WaveFormat(SampleRate, 16, Channels));
         }
     }

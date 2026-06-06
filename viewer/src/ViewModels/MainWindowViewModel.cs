@@ -15,7 +15,7 @@ public sealed partial class MainWindowViewModel : ObservableObject
     }
 
     [ObservableProperty] private SenderViewModel? _selectedSender;
-    [ObservableProperty] private string           _connectionStatus = "Desconectado";
+    [ObservableProperty] private string           _connectionStatus = "Disconnected";
     [ObservableProperty] private bool             _isConnected;
     [ObservableProperty] private WriteableBitmap? _videoFrame;
     [ObservableProperty] private int              _transferProgress = -1;
@@ -30,7 +30,7 @@ public sealed partial class MainWindowViewModel : ObservableObject
         TransferProgress >= 0
             ? TransferStatus
             : SelectedSender is null
-                ? "Aguardando conexão..."
+                ? "Waiting for connection..."
                 : $"{SelectedSender.AgentId} · {SelectedSender.ResolutionDisplay}" +
                   $" · {SelectedSender.Codec}" +
                   (SelectedSender.LastRttMs >= 0 ? $" · RTT {SelectedSender.LastRttMs}ms" : string.Empty);

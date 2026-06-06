@@ -36,12 +36,12 @@ public sealed unsafe class H264Decoder : IFrameDecoder, IDisposable
 
         _codecCtx = ffmpeg.avcodec_alloc_context3(codec);
         if (_codecCtx == null)
-            throw new InvalidOperationException("Falha ao alocar AVCodecContext.");
+            throw new InvalidOperationException("Failed to allocate AVCodecContext.");
 
         int ret = ffmpeg.avcodec_open2(_codecCtx, codec, null);
         if (ret < 0 && triedHw)
         {
-            // h264_cuvid falhou (driver/GPU indisponível) — usa software
+            // h264_cuvid failed (driver/GPU unavailable) — fall back to software
             var ctx = _codecCtx;
             ffmpeg.avcodec_free_context(&ctx);
             _codecCtx = null;
@@ -51,7 +51,7 @@ public sealed unsafe class H264Decoder : IFrameDecoder, IDisposable
             triedHw   = false;
         }
         if (ret < 0)
-            throw new InvalidOperationException($"Falha ao abrir H264 decoder (código {ret}).");
+            throw new InvalidOperationException($"Failed to open H264 decoder (code {ret}).");
 
         _hwDecode  = triedHw;
         _hwFrame   = ffmpeg.av_frame_alloc();
@@ -72,7 +72,7 @@ public sealed unsafe class H264Decoder : IFrameDecoder, IDisposable
             _seenKeyframe = true;
         }
         if (!_seenKeyframe)
-            throw new InvalidOperationException("Aguardando keyframe H264 (IDR).");
+            throw new InvalidOperationException("Waiting for H264 keyframe (IDR).");
 
         var padded = new byte[data.Length + InputPadding];
         data.CopyTo(padded);

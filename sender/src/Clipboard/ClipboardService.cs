@@ -42,7 +42,7 @@ public sealed class ClipboardService
             var payload = Encoding.UTF8.GetBytes(text);
             var msg = WireProtocol.BuildClipboard(payload, agentId);
             try { await _conn.SendAsync(msg, ct); }
-            catch (Exception ex) { _log.LogWarning(ex, "Falha ao enviar clipboard"); }
+            catch (Exception ex) { _log.LogWarning(ex, "Failed to send clipboard"); }
         }
     }
 

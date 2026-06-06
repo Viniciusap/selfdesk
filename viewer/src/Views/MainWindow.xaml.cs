@@ -30,7 +30,7 @@ public partial class MainWindow : Window
         VideoImage.MouseUp    += OnVideoMouseUp;
         VideoImage.MouseWheel += OnVideoMouseWheel;
 
-        // handledEventsToo=true: captura mesmo que um filho já tenha marcado handled
+        // handledEventsToo=true: captures even if a child already marked the event handled
         AddHandler(UIElement.PreviewKeyDownEvent, new KeyEventHandler(OnVideoKeyDown), handledEventsToo: true);
         AddHandler(UIElement.PreviewKeyUpEvent,   new KeyEventHandler(OnVideoKeyUp),   handledEventsToo: true);
 
@@ -192,7 +192,7 @@ public partial class MainWindow : Window
             try { await WakeOnLanService.SendMagicPacketAsync(vm.MacAddress); }
             catch (Exception ex)
             {
-                MessageBox.Show($"Falha ao enviar magic packet: {ex.Message}", "Wake-on-LAN",
+                MessageBox.Show($"Failed to send magic packet: {ex.Message}", "Wake-on-LAN",
                     MessageBoxButton.OK, MessageBoxImage.Warning);
             }
         }

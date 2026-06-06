@@ -40,8 +40,8 @@ public sealed class BrokerConnection : IAsyncDisposable
 
         if (caBundle is null)
             throw new InvalidOperationException(
-                "TLS_CA_PATH não configurado ou arquivo não encontrado — CA pinning obrigatório. " +
-                "Execute bootstrap.ps1 -Role sender para gerar o .env correto.");
+                "TLS_CA_PATH not set or file not found — CA pinning is required. " +
+                "Run bootstrap.ps1 -Role sender to generate the correct .env.");
 
         _ssl = new SslStream(_tcp.GetStream(), false, (_, cert, _, _) =>
         {
@@ -60,18 +60,18 @@ public sealed class BrokerConnection : IAsyncDisposable
 
         var (type, _, _) = await ReadHeaderAsync(ct);
         if (type != MessageType.Challenge)
-            throw new InvalidDataException($"Esperava CHALLENGE, recebeu 0x{type:X2}");
+            throw new InvalidDataException($"Expected CHALLENGE, got 0x{type:X2}");
 
         var nonce = await ReadPayloadAsync(ProtocolSizes.NonceSize, ct);
         await SendRawAsync(WireProtocol.BuildAuth(nonce, _cfg.SharedSecret), ct);
 
         var (authType, _, _) = await ReadHeaderAsync(ct);
         if (authType == MessageType.AuthFail)
-            throw new UnauthorizedAccessException("AUTH_FAIL: segredo incorreto ou agentId não permitido");
+            throw new UnauthorizedAccessException("AUTH_FAIL: wrong secret or agentId not allowed");
         if (authType != MessageType.AuthOk)
-            throw new InvalidDataException($"Esperava AUTH_OK, recebeu 0x{authType:X2}");
+            throw new InvalidDataException($"Expected AUTH_OK, got 0x{authType:X2}");
 
-        _log.LogInformation("Autenticado no broker como {AgentId}", _cfg.SenderId);
+        _log.LogInformation("Authenticated with broker as {AgentId}", _cfg.SenderId);
     }
 
     public Task SendAsync(byte[] message, CancellationToken ct) =>
@@ -97,7 +97,7 @@ public sealed class BrokerConnection : IAsyncDisposable
                     }
                     break;
                 case MessageType.Bye:
-                    _log.LogInformation("BYE recebido — encerrando");
+                    _log.LogInformation("BYE received — closing");
                     return;
                 default:
                     MessageReceived?.Invoke(type, payload.AsMemory());
@@ -138,7 +138,7 @@ public sealed class BrokerConnection : IAsyncDisposable
         while (offset < buf.Length)
         {
             var read = await _ssl!.ReadAsync(buf.AsMemory(offset), ct);
-            if (read == 0) throw new EndOfStreamException("Conexão encerrada pelo broker");
+            if (read == 0) throw new EndOfStreamException("Connection closed by broker");
             offset += read;
         }
     }

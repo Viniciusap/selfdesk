@@ -9,7 +9,7 @@ public sealed class JpegFrameDecoder : IFrameDecoder
     {
         using var bitmap = SKBitmap.Decode(data);
         if (bitmap is null)
-            throw new InvalidDataException("Falha ao decodificar JPEG");
+            throw new InvalidDataException("Failed to decode JPEG frame");
 
         var bgra = new byte[bitmap.Width * bitmap.Height * 4];
 
