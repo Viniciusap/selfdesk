@@ -127,7 +127,7 @@ The same repository clone can play any role — just run the corresponding boots
 
 This project assumes a trusted local network. It has not been audited for public internet exposure; in that scenario, use a VPN or tunnel in front of the broker.
 
-Found a vulnerability? Please report it responsibly via a [private issue](https://github.com/Viniciusap/selfdesk/issues) before public disclosure.
+Found a vulnerability? Open an issue or email vinicius.ap48@gmail.com.
 
 ---
 
