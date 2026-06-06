@@ -123,7 +123,6 @@ The same repository clone can play any role — just run the corresponding boots
 - **TLS on every connection** with a LAN-local CA (no dependency on a public CA). The broker presents `server-cert.pem`; clients pin the CA via `TLS_CA_PATH`.
 - **Challenge-response authentication (HMAC-SHA256)** — `SHARED_SECRET` never travels over the wire.
 - **Zero inbound ports on Windows machines** — outbound connections to the broker only.
-- **Native RDP (3389) disabled** as part of setup.
 - **No secrets committed** — `.env`, keys, and certificates are in `.gitignore`.
 
 This project assumes a trusted local network. It has not been audited for public internet exposure; in that scenario, use a VPN or tunnel in front of the broker.
@@ -268,10 +267,6 @@ cd broker && npm start
 
 # Step 2 — generate sender/.env
 .\scripts\bootstrap.ps1 -Role sender
-
-# Disable native RDP (run as administrator):
-Set-ItemProperty 'HKLM:\System\CurrentControlSet\Control\Terminal Server' fDenyTSConnections 1
-Disable-NetFirewallRule -DisplayGroup "Remote Desktop"
 
 cd sender && dotnet run
 ```
