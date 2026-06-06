@@ -41,7 +41,7 @@ public sealed class SenderService : BackgroundService
         var version = System.Reflection.Assembly
             .GetExecutingAssembly().GetName().Version?.ToString(3) ?? "0.0.0";
         _log.LogInformation(
-            "SelfDesk.Sender v{Version} iniciando — id={SenderId} broker={Host}:{Port} capturer={Capturer} encoder={Encoder}",
+            "SelfDesk.Sender v{Version} starting — id={SenderId} broker={Host}:{Port} capturer={Capturer} encoder={Encoder}",
             version, _cfg.SenderId, _cfg.BrokerHost, _cfg.BrokerPort, _cfg.Capturer, _cfg.Encoder);
 
         var retryDelay = TimeSpan.FromSeconds(2);
@@ -111,7 +111,7 @@ public sealed class SenderService : BackgroundService
                             .RootElement.GetProperty("monitorIndex").GetInt32();
                         _capturer.SwitchMonitor(idx);
                         _injector.MonitorIndex = idx;
-                        _log.LogInformation("Trocado para monitor {Index}", idx);
+                        _log.LogInformation("Switched to monitor {Index}", idx);
                     }
                     catch (Exception ex) { _log.LogWarning(ex, "Failed to switch monitor"); }
                     break;
