@@ -49,7 +49,7 @@ irm https://raw.githubusercontent.com/Viniciusap/selfdesk/master/scripts/install
 
 ## What it does
 
-You run a small **broker** on any Linux box (a Raspberry Pi handles it fine). Your Windows machines connect outbound to it — nothing listens for inbound connections, no third-party cloud, nothing phones home.
+You run a small **broker** on any Linux box (a Raspberry Pi handles it fine — [ARM64 build](https://github.com/Viniciusap/selfdesk/issues/7) coming). Your Windows machines connect outbound to it — nothing listens for inbound connections, no third-party cloud, nothing phones home.
 
 - **Screen capture and remote control** — mouse, keyboard, scroll wheel
 - **Clipboard sync** — copy on one machine, paste on the other, bidirectional
