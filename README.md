@@ -16,7 +16,7 @@ An open-source alternative to AnyDesk and TeamViewer — no third-party cloud, n
 
 <div align="center">
 
-![SelfDesk demo](demo.gif)
+<img src="demo.gif" alt="SelfDesk demo" width="100%" />
 
 </div>
 
