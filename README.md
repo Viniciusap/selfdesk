@@ -153,11 +153,11 @@ Found a vulnerability? Please report it responsibly via a [private issue](https:
 > **Already installed?** Update any component to the latest release with a single command — no manual steps:
 >
 > ```bash
-> # Broker — Linux
-> curl -fsSL https://raw.githubusercontent.com/Viniciusap/selfdesk/master/scripts/update-broker.sh | bash
+> # Broker — Linux, Git Bash, WSL (auto-detects platform)
+> curl -fsSL https://raw.githubusercontent.com/Viniciusap/selfdesk/master/scripts/install-broker.sh | bash
 > ```
 > ```powershell
-> # Broker — Windows (PowerShell as Administrator)
+> # Broker — Windows PowerShell (no bash available)
 > iwr https://raw.githubusercontent.com/Viniciusap/selfdesk/master/scripts/update-broker.ps1 | iex
 > ```
 > ```powershell
