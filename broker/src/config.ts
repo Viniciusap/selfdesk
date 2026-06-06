@@ -36,12 +36,13 @@ export function loadConfig(envFile?: string): BrokerConfig {
     throw new Error('TLS_CERT_PATH e TLS_KEY_PATH são obrigatórios');
   }
 
+  const envDir = path.dirname(file);
   return {
     listenPort:     port,
     sharedSecret:  secret,
     allowedSenders: new Set(senders),
-    tlsCertPath:   path.resolve(path.dirname(file), '..', certPath.replace(/^\.\.\//, '')),
-    tlsKeyPath:    path.resolve(path.dirname(file), '..', keyPath.replace(/^\.\.\//, '')),
+    tlsCertPath:   path.resolve(envDir, certPath),
+    tlsKeyPath:    path.resolve(envDir, keyPath),
     logLevel:      process.env.LOG_LEVEL ?? 'info',
   };
 }

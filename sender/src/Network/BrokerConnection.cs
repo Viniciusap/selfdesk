@@ -3,7 +3,7 @@ using System.Net.Security;
 using System.Net.Sockets;
 using System.Security.Cryptography.X509Certificates;
 using Microsoft.Extensions.Logging;
-using SelfDesk.Sender.Protocol;
+using SenderWire = SelfDesk.Sender.Protocol.WireProtocol;
 
 namespace SelfDesk.Sender.Network;
 
@@ -13,7 +13,6 @@ public sealed class BrokerConnection : IAsyncDisposable
     private readonly ILogger _log;
     private TcpClient?      _tcp;
     private SslStream?      _ssl;
-    private CancellationTokenSource _cts = new();
 
     private readonly SemaphoreSlim _writeLock = new(1, 1);
     private readonly byte[] _headerBuf = new byte[ProtocolSizes.HeaderSize];
@@ -57,7 +56,7 @@ public sealed class BrokerConnection : IAsyncDisposable
             RemoteCertificateValidationCallback = null,
         }, ct);
 
-        await SendRawAsync(WireProtocol.BuildHello(_cfg.SenderId, "sender", WireProtocol.GetLocalMac()), ct);
+        await SendRawAsync(SenderWire.BuildHello(_cfg.SenderId, "sender", SenderWire.GetLocalMac()), ct);
 
         var (type, _, _) = await ReadHeaderAsync(ct);
         if (type != MessageType.Challenge)
@@ -166,7 +165,6 @@ public sealed class BrokerConnection : IAsyncDisposable
 
     public async ValueTask DisposeAsync()
     {
-        _cts.Cancel();
         if (_ssl is not null) await _ssl.DisposeAsync();
         _tcp?.Dispose();
         _writeLock.Dispose();

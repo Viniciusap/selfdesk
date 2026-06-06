@@ -2,7 +2,7 @@ using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
 using System.Windows.Media.Imaging;
-using SelfDesk.Viewer.Protocol;
+using ViewerWire = SelfDesk.Viewer.Protocol.WireProtocol;
 using SelfDesk.Viewer.ViewModels;
 using SelfDesk.Viewer.WakeOnLan;
 
@@ -73,7 +73,7 @@ public partial class MainWindow : Window
     {
         if (_vm.SelectedSender is null) return;
         var (x, y) = NormalizePosition(e.GetPosition(VideoImage));
-        Send(WireProtocol.BuildMouseMove(_vm.SelectedSender.AgentId, x, y));
+        Send(ViewerWire.BuildMouseMove(_vm.SelectedSender.AgentId, x, y));
     }
 
     private void OnVideoMouseDown(object sender, MouseButtonEventArgs e)
@@ -87,7 +87,7 @@ public partial class MainWindow : Window
             _                  => InputEventKind.BtnLeft,
         };
         var (x, y) = NormalizePosition(e.GetPosition(VideoImage));
-        Send(WireProtocol.BuildMouseButton(_vm.SelectedSender.AgentId, btn, InputEventKind.StateDown, x, y));
+        Send(ViewerWire.BuildMouseButton(_vm.SelectedSender.AgentId, btn, InputEventKind.StateDown, x, y));
         Focus();
     }
 
@@ -102,7 +102,7 @@ public partial class MainWindow : Window
             _                  => InputEventKind.BtnLeft,
         };
         var (x, y) = NormalizePosition(e.GetPosition(VideoImage));
-        Send(WireProtocol.BuildMouseButton(_vm.SelectedSender.AgentId, btn, InputEventKind.StateUp, x, y));
+        Send(ViewerWire.BuildMouseButton(_vm.SelectedSender.AgentId, btn, InputEventKind.StateUp, x, y));
     }
 
     private void OnVideoMouseWheel(object sender, MouseWheelEventArgs e)
@@ -113,7 +113,7 @@ public partial class MainWindow : Window
         System.Buffers.Binary.BinaryPrimitives.WriteInt16BigEndian(payload, (short)(e.Delta / 120));
         System.Buffers.Binary.BinaryPrimitives.WriteUInt16BigEndian(payload.AsSpan(2), x);
         System.Buffers.Binary.BinaryPrimitives.WriteUInt16BigEndian(payload.AsSpan(4), y);
-        Send(WireProtocol.BuildInputEvent(InputEventKind.MouseWheel, _vm.SelectedSender.AgentId, payload));
+        Send(ViewerWire.BuildInputEvent(InputEventKind.MouseWheel, _vm.SelectedSender.AgentId, payload));
     }
 
     private void ToggleFullscreen()
@@ -159,7 +159,7 @@ public partial class MainWindow : Window
         if (vk == 0) { e.Handled = true; return; }
         var modBit = GetModBit(vk);
         if (modBit != 0) _modsTracked |= modBit;
-        Send(WireProtocol.BuildKey(_vm.SelectedSender.AgentId, vk, InputEventKind.StateDown, _modsTracked));
+        Send(ViewerWire.BuildKey(_vm.SelectedSender.AgentId, vk, InputEventKind.StateDown, _modsTracked));
         e.Handled = true;
     }
 
@@ -170,7 +170,7 @@ public partial class MainWindow : Window
         if (_vm.SelectedSender is null) { e.Handled = true; return; }
         if (vk == 0) { e.Handled = true; return; }
         // send with mods still including this modifier (modifier is still held at UP moment)
-        Send(WireProtocol.BuildKey(_vm.SelectedSender.AgentId, vk, InputEventKind.StateUp, _modsTracked));
+        Send(ViewerWire.BuildKey(_vm.SelectedSender.AgentId, vk, InputEventKind.StateUp, _modsTracked));
         var modBit = GetModBit(vk);
         if (modBit != 0) _modsTracked &= (byte)~modBit;
         e.Handled = true;
@@ -204,7 +204,7 @@ public partial class MainWindow : Window
     {
         if (_vm.SelectedSender is null) return;
         foreach (var vk in ModifierVKs)
-            InputSend?.Invoke(WireProtocol.BuildKey(_vm.SelectedSender.AgentId, vk, InputEventKind.StateUp, 0));
+            InputSend?.Invoke(ViewerWire.BuildKey(_vm.SelectedSender.AgentId, vk, InputEventKind.StateUp, 0));
         _modsTracked = 0;
     }
 

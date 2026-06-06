@@ -1,7 +1,7 @@
 using System.Buffers.Binary;
 using System.Text;
 using SelfDesk.Viewer.Audio;
-using SelfDesk.Viewer.Protocol;
+using ViewerWire = SelfDesk.Viewer.Protocol.WireProtocol;
 using Xunit;
 
 namespace SelfDesk.Viewer.Tests;
@@ -45,7 +45,7 @@ public class WireProtocolTests
     [Fact]
     public void BuildMouseMove_NormalizedCoordinates_BigEndian()
     {
-        var msg     = WireProtocol.BuildMouseMove("laptop-01", 0xFFFF, 0x8000);
+        var msg     = ViewerWire.BuildMouseMove("laptop-01", 0xFFFF, 0x8000);
         var payload = msg.AsSpan(ProtocolSizes.HeaderSize);
 
         Assert.Equal(InputEventKind.MouseMove, payload[0]);
@@ -58,7 +58,7 @@ public class WireProtocolTests
     [Fact]
     public void BuildKey_Layout_BigEndian()
     {
-        var msg     = WireProtocol.BuildKey("laptop-01", 0x0041, InputEventKind.StateDown, InputEventKind.ModShift);
+        var msg     = ViewerWire.BuildKey("laptop-01", 0x0041, InputEventKind.StateDown, InputEventKind.ModShift);
         var payload = msg.AsSpan(ProtocolSizes.HeaderSize);
 
         Assert.Equal(InputEventKind.Key, payload[0]);
@@ -71,7 +71,7 @@ public class WireProtocolTests
     [Fact]
     public void BuildMouseButton_HasCorrectKind()
     {
-        var msg     = WireProtocol.BuildMouseButton("x", InputEventKind.BtnRight, InputEventKind.StateDown, 100, 200);
+        var msg     = ViewerWire.BuildMouseButton("x", InputEventKind.BtnRight, InputEventKind.StateDown, 100, 200);
         var payload = msg.AsSpan(ProtocolSizes.HeaderSize);
         Assert.Equal(InputEventKind.MouseButton, payload[0]);
         Assert.Equal(InputEventKind.BtnRight,    payload[1]);
@@ -146,8 +146,8 @@ public class ViewModelTests
         Assert.Equal("laptop-02", vm.SelectedSender?.AgentId);
 
         // INPUT_EVENT usaria peer_id = laptop-02
-        var inputMsg = Protocol.WireProtocol.BuildMouseMove(vm.SelectedSender!.AgentId, 100, 200);
-        var (_, peerId, _) = Protocol.WireProtocol.ParseHeader(inputMsg);
+        var inputMsg = ViewerWire.BuildMouseMove(vm.SelectedSender!.AgentId, 100, 200);
+        var (_, peerId, _) = WireProtocol.ParseHeader(inputMsg);
         Assert.Equal("laptop-02", peerId);
     }
 }

@@ -12,7 +12,7 @@ using Microsoft.Extensions.Options;
 using SelfDesk.Viewer.Audio;
 using SelfDesk.Viewer.Decode;
 using SelfDesk.Viewer.Network;
-using SelfDesk.Viewer.Protocol;
+using ViewerWire = SelfDesk.Viewer.Protocol.WireProtocol;
 using SelfDesk.Viewer.ViewModels;
 using SelfDesk.Viewer.Views;
 
@@ -27,6 +27,7 @@ public sealed class ViewerService : BackgroundService
     private readonly IFrameDecoder           _decoder;
     private readonly IAudioPlayer            _audioPlayer;
     private          IOpusDecoder?            _audioDecoder;
+    private          string                   _lastClipboard = string.Empty;
 
     public ViewerService(
         IOptions<ViewerConfig> cfg,
@@ -74,7 +75,6 @@ public sealed class ViewerService : BackgroundService
     private async Task RunSessionAsync(CancellationToken ct)
     {
         await using var conn = new BrokerConnection(_cfg, _log);
-        string _lastClipboard = string.Empty;
 
         void WireMonitorCallback(SenderViewModel vm)
         {
@@ -84,7 +84,7 @@ public sealed class ViewerService : BackgroundService
                     vm.SelectedMonitor is not null)
                 {
                     _ = conn.SendAsync(
-                        WireProtocol.BuildSelectMonitor(vm.AgentId, vm.SelectedMonitor.Index), ct);
+                        ViewerWire.BuildSelectMonitor(vm.AgentId, vm.SelectedMonitor.Index), ct);
                 }
             };
         }
@@ -118,7 +118,7 @@ public sealed class ViewerService : BackgroundService
                 var ver = doc.RootElement.TryGetProperty("version", out var verEl) ? verEl.GetString() : null;
                 Application.Current?.Dispatcher.InvokeAsync(() => _vm.AddSender(id, mac, ver));
                 // BUG4: REQUEST_IDR garante IDR imediato — sem artefatos H264 ao conectar/reconectar
-                _ = conn.SendAsync(WireProtocol.BuildRequestIdr(id), ct);
+                _ = conn.SendAsync(ViewerWire.BuildRequestIdr(id), ct);
                 return;
             }
             if (type == MessageType.MonitorList)
@@ -163,7 +163,7 @@ public sealed class ViewerService : BackgroundService
         _window.InputSend   += InputHandler;
         _window.FileDropped += FileHandler;
 
-        _ = conn.StartHeartbeatAsync(ct);
+        var heartbeat = conn.StartHeartbeatAsync(ct);
         var recvLoop = conn.RunReceiveLoopAsync(ct);
 
         var clipboardLoop = Task.Run(async () =>
@@ -189,7 +189,7 @@ public sealed class ViewerService : BackgroundService
 
         try
         {
-            await Task.WhenAny(recvLoop, clipboardLoop);
+            await Task.WhenAny(recvLoop, clipboardLoop, heartbeat);
         }
         finally
         {
@@ -198,7 +198,7 @@ public sealed class ViewerService : BackgroundService
         }
     }
 
-    private static uint _transferIdCounter;
+    private uint _transferIdCounter;
     private const int ChunkSize = 512 * 1024;
 
     private async Task SendFilesAsync(string[] paths, BrokerConnection conn, CancellationToken ct)
@@ -209,7 +209,7 @@ public sealed class ViewerService : BackgroundService
             var targetId = _vm.SelectedSender?.AgentId ?? string.Empty;
             if (string.IsNullOrEmpty(targetId)) continue;
 
-            var id       = ++_transferIdCounter;
+            var id       = Interlocked.Increment(ref _transferIdCounter);
             var fileName = Path.GetFileName(path);
             var info     = new FileInfo(path);
             long total   = info.Length;
@@ -224,14 +224,14 @@ public sealed class ViewerService : BackgroundService
 
             try
             {
-                await conn.SendAsync(WireProtocol.BuildFileHeader(id, total, fileName, targetId), ct);
+                await conn.SendAsync(ViewerWire.BuildFileHeader(id, total, fileName, targetId), ct);
 
                 await using var fs = new FileStream(path, FileMode.Open, FileAccess.Read, FileShare.Read);
                 var buf = new byte[ChunkSize];
                 int read;
                 while ((read = await fs.ReadAsync(buf.AsMemory(0, ChunkSize), ct)) > 0)
                 {
-                    await conn.SendAsync(WireProtocol.BuildFileChunk(id, buf.AsSpan(0, read), targetId), ct);
+                    await conn.SendAsync(ViewerWire.BuildFileChunk(id, buf.AsSpan(0, read), targetId), ct);
                     sent += read;
                     var pct = (int)(sent * 100 / total);
                     Application.Current?.Dispatcher.Invoke(() =>
@@ -242,13 +242,13 @@ public sealed class ViewerService : BackgroundService
                     });
                 }
 
-                await conn.SendAsync(WireProtocol.BuildFileDone(id, targetId), ct);
+                await conn.SendAsync(ViewerWire.BuildFileDone(id, targetId), ct);
                 _log.LogInformation("Arquivo enviado: {Name}", fileName);
             }
             catch (Exception ex)
             {
                 _log.LogWarning(ex, "Falha ao enviar {Name}", fileName);
-                try { await conn.SendAsync(WireProtocol.BuildFileError(id, targetId), ct); } catch { }
+                try { await conn.SendAsync(ViewerWire.BuildFileError(id, targetId), ct); } catch { }
             }
             finally
             {

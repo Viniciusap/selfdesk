@@ -19,11 +19,17 @@ export class Registry {
   }
 
   registerReceiver(conn: Connection): void {
+    if (this.receiver && this.receiver.state !== 'CLOSED') {
+      this.log.warn('segundo receiver conectou — encerrando receiver anterior');
+      this.receiver.close();
+    }
     this.receiver = conn;
     this.log.info('receiver registrado');
     conn.once('closed', () => {
-      this.receiver = undefined;
-      this.log.info('receiver desconectado');
+      if (this.receiver === conn) {
+        this.receiver = undefined;
+        this.log.info('receiver desconectado');
+      }
     });
   }
 

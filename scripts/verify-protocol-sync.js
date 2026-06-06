@@ -1,63 +1,74 @@
 #!/usr/bin/env node
-// Verifica que shared/protocol/protocol.ts e shared/dotnet/MessageType.cs
-// têm os mesmos valores de MessageType. Executado pelo CI.
+// Verifica que shared/protocol/protocol.ts, broker/src/protocol.ts e
+// shared/dotnet/MessageType.cs têm os mesmos valores de MessageType. Executado pelo CI.
 
 const fs   = require('fs');
 const path = require('path');
 
-const root  = path.join(__dirname, '..');
-const tsPath = path.join(root, 'shared', 'protocol', 'protocol.ts');
-const csPath = path.join(root, 'shared', 'dotnet', 'MessageType.cs');
-
-// --- Extrair MessageType do TypeScript ---
-const tsText = fs.readFileSync(tsPath, 'utf8');
-const tsBlock = tsText.match(/MessageType\s*=\s*\{([^}]+)\}/s);
-if (!tsBlock) { console.error('Não encontrou MessageType no protocol.ts'); process.exit(1); }
-
-const tsTypes = {};
-for (const line of tsBlock[1].split('\n')) {
-  const m = line.match(/^\s*(\w+)\s*:\s*(0x[0-9a-fA-F]+|\d+)/);
-  if (m) tsTypes[m[1].toUpperCase()] = parseInt(m[2], 16);
-}
-
-// --- Extrair constantes de MessageType do C# ---
-const csText = fs.readFileSync(csPath, 'utf8');
-const csBlock = csText.match(/class MessageType\s*\{([^}]+)\}/s);
-if (!csBlock) { console.error('Não encontrou MessageType no MessageType.cs'); process.exit(1); }
-
-const csTypes = {};
-for (const m of csBlock[1].matchAll(/public const byte (\w+)\s*=\s*(0x[0-9a-fA-F]+|\d+)/g)) {
-  csTypes[m[1].toUpperCase()] = parseInt(m[2], 16);
-}
-
-// --- Comparar ---
-let ok = true;
+const root        = path.join(__dirname, '..');
+const sharedTsPath = path.join(root, 'shared', 'protocol', 'protocol.ts');
+const brokerTsPath = path.join(root, 'broker', 'src', 'protocol.ts');
+const csPath       = path.join(root, 'shared', 'dotnet', 'MessageType.cs');
 
 // TS nomes usam SNAKE_CASE, C# usa PascalCase → normalizar removendo underscore
 function normalize(name) { return name.replace(/_/g, '').toUpperCase(); }
 
-const tsNorm = Object.fromEntries(Object.entries(tsTypes).map(([k, v]) => [normalize(k), { name: k, val: v }]));
-const csNorm = Object.fromEntries(Object.entries(csTypes).map(([k, v]) => [normalize(k), { name: k, val: v }]));
-
-for (const [key, { name, val }] of Object.entries(tsNorm)) {
-  if (!(key in csNorm)) {
-    console.error(`FALTANDO em MessageType.cs: ${name} = 0x${val.toString(16).padStart(2,'0')}`);
-    ok = false;
-  } else if (csNorm[key].val !== val) {
-    console.error(`DIVERGÊNCIA ${name}: TS=0x${val.toString(16).padStart(2,'0')} CS=0x${csNorm[key].val.toString(16).padStart(2,'0')}`);
-    ok = false;
+function extractTsTypes(filePath) {
+  const text  = fs.readFileSync(filePath, 'utf8');
+  const block = text.match(/MessageType\s*=\s*\{([^}]+)\}/s);
+  if (!block) { console.error(`Não encontrou MessageType em ${filePath}`); process.exit(1); }
+  const types = {};
+  for (const line of block[1].split('\n')) {
+    const m = line.match(/^\s*(\w+)\s*:\s*(0x[0-9a-fA-F]+|\d+)/);
+    if (m) types[m[1].toUpperCase()] = parseInt(m[2], 16);
   }
+  return types;
 }
 
-for (const [key, { name, val }] of Object.entries(csNorm)) {
-  if (!(key in tsNorm)) {
-    console.error(`FALTANDO em protocol.ts: ${name} = 0x${val.toString(16).padStart(2,'0')}`);
-    ok = false;
+function extractCsTypes(filePath) {
+  const text  = fs.readFileSync(filePath, 'utf8');
+  const block = text.match(/class MessageType\s*\{([^}]+)\}/s);
+  if (!block) { console.error(`Não encontrou MessageType em ${filePath}`); process.exit(1); }
+  const types = {};
+  for (const m of block[1].matchAll(/public const byte (\w+)\s*=\s*(0x[0-9a-fA-F]+|\d+)/g)) {
+    types[m[1].toUpperCase()] = parseInt(m[2], 16);
   }
+  return types;
 }
+
+function compareTypes(aTypes, aLabel, bTypes, bLabel) {
+  const aNorm = Object.fromEntries(Object.entries(aTypes).map(([k, v]) => [normalize(k), { name: k, val: v }]));
+  const bNorm = Object.fromEntries(Object.entries(bTypes).map(([k, v]) => [normalize(k), { name: k, val: v }]));
+  let ok = true;
+
+  for (const [key, { name, val }] of Object.entries(aNorm)) {
+    if (!(key in bNorm)) {
+      console.error(`FALTANDO em ${bLabel}: ${name} = 0x${val.toString(16).padStart(2,'0')}`);
+      ok = false;
+    } else if (bNorm[key].val !== val) {
+      console.error(`DIVERGÊNCIA ${name}: ${aLabel}=0x${val.toString(16).padStart(2,'0')} ${bLabel}=0x${bNorm[key].val.toString(16).padStart(2,'0')}`);
+      ok = false;
+    }
+  }
+  for (const [key, { name, val }] of Object.entries(bNorm)) {
+    if (!(key in aNorm)) {
+      console.error(`FALTANDO em ${aLabel}: ${name} = 0x${val.toString(16).padStart(2,'0')}`);
+      ok = false;
+    }
+  }
+  return ok;
+}
+
+const sharedTs = extractTsTypes(sharedTsPath);
+const brokerTs = extractTsTypes(brokerTsPath);
+const csTypes  = extractCsTypes(csPath);
+
+let ok = true;
+ok = compareTypes(sharedTs, 'shared/protocol.ts', csTypes, 'MessageType.cs') && ok;
+ok = compareTypes(brokerTs, 'broker/protocol.ts',  csTypes, 'MessageType.cs') && ok;
 
 if (ok) {
-  console.log(`Protocol sync OK — ${Object.keys(tsTypes).length} tipos verificados`);
+  console.log(`Protocol sync OK — ${Object.keys(sharedTs).length} tipos verificados em 3 arquivos`);
 } else {
   process.exit(1);
 }

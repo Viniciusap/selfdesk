@@ -5,7 +5,7 @@ using Microsoft.Extensions.Logging;
 using NAudio.Wave;
 using NAudio.Wave.SampleProviders;
 using SelfDesk.Sender.Network;
-using SelfDesk.Sender.Protocol;
+using SenderWire = SelfDesk.Sender.Protocol.WireProtocol;
 
 namespace SelfDesk.Sender.Audio;
 
@@ -79,7 +79,7 @@ internal static class AudioPipeline
 
                     if (len <= 0) continue;
 
-                    var msg = WireProtocol.BuildAudioFrame(
+                    var msg = SenderWire.BuildAudioFrame(
                         DateTimeOffset.UtcNow.ToUnixTimeMilliseconds(),
                         Channels, opusBuf.AsSpan(0, len), senderId);
 

@@ -2,8 +2,6 @@ using System.Runtime.InteropServices;
 using System.Text;
 using Microsoft.Extensions.Logging;
 using SelfDesk.Sender.Network;
-using SelfDesk.Sender.Protocol;
-
 namespace SelfDesk.Sender.Clipboard;
 
 /// <summary>

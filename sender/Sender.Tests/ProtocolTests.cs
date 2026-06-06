@@ -1,6 +1,6 @@
 using System.Buffers.Binary;
 using System.Text;
-using SelfDesk.Sender.Protocol;
+using SenderWire = SelfDesk.Sender.Protocol.WireProtocol;
 using Xunit;
 
 namespace SelfDesk.Sender.Tests;
@@ -80,7 +80,7 @@ public class WireProtocolTests
     [Fact]
     public void BuildHello_PayloadIsValidJson()
     {
-        var msg  = WireProtocol.BuildHello("laptop-01", "sender");
+        var msg  = SenderWire.BuildHello("laptop-01", "sender");
         var body = msg.AsSpan(ProtocolSizes.HeaderSize);
         var json = System.Text.Json.JsonDocument.Parse(body.ToArray());
         Assert.Equal("laptop-01", json.RootElement.GetProperty("agentId").GetString());
@@ -101,7 +101,7 @@ public class WireProtocolTests
     public void BuildVideoFrame_Header_BigEndianFields()
     {
         var data      = new byte[100];
-        var msg       = WireProtocol.BuildVideoFrame(12345L, 1920, 1080, VideoFrameOffsets.CodecJpeg, 0, data, "laptop-01");
+        var msg       = SenderWire.BuildVideoFrame(12345L, 1920, 1080, VideoFrameOffsets.CodecJpeg, 0, data, "laptop-01");
         var payload   = msg.AsSpan(ProtocolSizes.HeaderSize);
 
         var ts     = BinaryPrimitives.ReadInt64BigEndian(payload[VideoFrameOffsets.Timestamp..]);

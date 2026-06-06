@@ -3,7 +3,7 @@ using System.Net.Security;
 using System.Net.Sockets;
 using System.Security.Cryptography.X509Certificates;
 using Microsoft.Extensions.Logging;
-using SelfDesk.Viewer.Protocol;
+using ViewerWire = SelfDesk.Viewer.Protocol.WireProtocol;
 
 namespace SelfDesk.Viewer.Network;
 
@@ -51,7 +51,7 @@ public sealed class BrokerConnection : IAsyncDisposable
             TargetHost = _cfg.BrokerHost,
         }, ct);
 
-        await SendRawAsync(WireProtocol.BuildHello("receiver", "receiver"), ct);
+        await SendRawAsync(ViewerWire.BuildHello("receiver", "receiver"), ct);
 
         var (type, _, _) = await ReadHeaderAsync(ct);
         if (type != MessageType.Challenge)

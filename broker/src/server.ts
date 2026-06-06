@@ -30,6 +30,11 @@ export function createServer(
       const ip  = socket.remoteAddress ?? 'unknown';
       const now = Date.now();
 
+      // Purgar entradas expiradas para evitar crescimento ilimitado
+      for (const [k, v] of rateMap) {
+        if (now > v.blockedUntil + FAIL_WINDOW) rateMap.delete(k);
+      }
+
       const entry = rateMap.get(ip);
       if (entry && now < entry.blockedUntil) {
         socket.destroy();

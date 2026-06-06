@@ -10,7 +10,7 @@ using SelfDesk.Sender.Encode;
 using SelfDesk.Sender.FileTransfer;
 using SelfDesk.Sender.Inject;
 using SelfDesk.Sender.Network;
-using SelfDesk.Sender.Protocol;
+using SenderWire = SelfDesk.Sender.Protocol.WireProtocol;
 
 namespace SelfDesk.Sender;
 
@@ -90,7 +90,7 @@ public sealed class SenderService : BackgroundService
                 case MessageType.RequestIdr:
                     _encoder.RequestKeyframe();
                     // Viewer acabou de conectar — reenviar lista de monitores
-                    _ = conn.SendAsync(WireProtocol.BuildMonitorList(
+                    _ = conn.SendAsync(SenderWire.BuildMonitorList(
                         MonitorEnumerator.Enumerate(), _cfg.SenderId), sCt);
                     break;
                 case MessageType.Clipboard:   clipboard.OnRemoteClipboard(payload); break;
@@ -114,7 +114,7 @@ public sealed class SenderService : BackgroundService
 
         // envia lista de monitores ao conectar
         var monitors = MonitorEnumerator.Enumerate();
-        await conn.SendAsync(WireProtocol.BuildMonitorList(monitors, _cfg.SenderId), sCt);
+        await conn.SendAsync(SenderWire.BuildMonitorList(monitors, _cfg.SenderId), sCt);
 
         var heartbeat      = conn.StartHeartbeatAsync(sCt);
         var recvLoop       = conn.RunReceiveLoopAsync(sCt);
@@ -163,7 +163,7 @@ public sealed class SenderService : BackgroundService
         {
             await foreach (var encoded in channel.Reader.ReadAllAsync(sCt))
             {
-                var msg = WireProtocol.BuildVideoFrame(
+                var msg = SenderWire.BuildVideoFrame(
                     encoded.TimestampMs,
                     (ushort)encoded.Width,
                     (ushort)encoded.Height,

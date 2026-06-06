@@ -8,6 +8,25 @@ import type { Registry } from './registry.js';
 import type { Connection } from './connection.js';
 import type { Logger } from 'pino';
 
+// Tipos roteados do sender para o receiver (além de VIDEO_FRAME e AUDIO_FRAME)
+const SENDER_TO_RECEIVER_TYPES = new Set<number>([
+  MessageType.CLIPBOARD,
+  MessageType.FILE_HEADER,
+  MessageType.FILE_CHUNK,
+  MessageType.FILE_DONE,
+  MessageType.FILE_ERROR,
+  MessageType.MONITOR_LIST,
+]);
+
+// Tipos roteados do receiver para sender alvo específico (ou broadcast)
+const RECEIVER_TO_SENDER_FILE_TYPES = new Set<number>([
+  MessageType.CLIPBOARD,
+  MessageType.FILE_HEADER,
+  MessageType.FILE_CHUNK,
+  MessageType.FILE_DONE,
+  MessageType.FILE_ERROR,
+]);
+
 export class Router {
   private readonly registry: Registry;
   private readonly log: Logger;
@@ -38,8 +57,8 @@ export class Router {
   onReceiverAuthenticated(conn: Connection): void {
     this.registry.registerReceiver(conn);
 
-    for (const { id, mac } of this.registry.getSenders()) {
-      conn.send(build.senderUp(id, mac, this.registry.getSenders().find(s => s.id === id)?.version));
+    for (const { id, mac, version } of this.registry.getSenders()) {
+      conn.send(build.senderUp(id, mac, version));
     }
 
     conn.on('message', (header: ParsedHeader, payload: Buffer) =>
@@ -53,18 +72,8 @@ export class Router {
     payload: Buffer,
   ): void {
     if (header.type === MessageType.VIDEO_FRAME ||
-        header.type === MessageType.AUDIO_FRAME) {
-      const receiver = this.registry.getReceiver();
-      if (!receiver) return;
-      receiver.send(buildEnvelope(header.type, agentId, payload));
-      return;
-    }
-    if (header.type === MessageType.CLIPBOARD    ||
-        header.type === MessageType.FILE_HEADER  ||
-        header.type === MessageType.FILE_CHUNK   ||
-        header.type === MessageType.FILE_DONE    ||
-        header.type === MessageType.FILE_ERROR   ||
-        header.type === MessageType.MONITOR_LIST) {
+        header.type === MessageType.AUDIO_FRAME ||
+        SENDER_TO_RECEIVER_TYPES.has(header.type)) {
       const receiver = this.registry.getReceiver();
       if (!receiver) return;
       receiver.send(buildEnvelope(header.type, agentId, payload));
@@ -80,17 +89,13 @@ export class Router {
       const targetId = header.peerId;
       const sender   = this.registry.getSender(targetId);
       if (!sender) {
-        this.log.warn({ targetId }, 'sender alvo não encontrado para %s', header.type === MessageType.REQUEST_IDR ? 'REQUEST_IDR' : 'INPUT_EVENT');
+        this.log.warn({ targetId, type: header.type }, 'sender alvo não encontrado');
         return;
       }
       sender.send(buildEnvelope(header.type, targetId, payload));
       return;
     }
-    if (header.type === MessageType.CLIPBOARD ||
-        header.type === MessageType.FILE_HEADER ||
-        header.type === MessageType.FILE_CHUNK  ||
-        header.type === MessageType.FILE_DONE   ||
-        header.type === MessageType.FILE_ERROR) {
+    if (RECEIVER_TO_SENDER_FILE_TYPES.has(header.type)) {
       const targetId = header.peerId;
       const sender   = targetId ? this.registry.getSender(targetId) : undefined;
       if (sender) {
