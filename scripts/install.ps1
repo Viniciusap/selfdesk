@@ -1,28 +1,28 @@
 <#
 .SYNOPSIS
-    Instala dependências e compila um componente do SelfDesk (Windows).
+    Installs dependencies and compiles a SelfDesk component (Windows).
 
 .DESCRIPTION
-    Uso: .\scripts\install.ps1 -Role <broker|sender|receiver> [-SkipFFmpeg] [-Publish]
+    Usage: .\scripts\install.ps1 -Role <broker|sender|receiver> [-SkipFFmpeg] [-Publish]
 
-    Pré-requisitos ausentes (Node.js LTS, .NET 10 SDK) são instalados
-    automaticamente via winget.
+    Missing prerequisites (Node.js LTS, .NET 10 SDK) are installed
+    automatically via winget.
 
-    Para sender e receiver com ENCODER=qsv|nvenc (Fase 4), as DLLs do
-    FFmpeg 7.x são baixadas do BtbN e copiadas para a saída do build.
+    For sender and receiver with ENCODER=qsv|nvenc (Phase 4), FFmpeg 7.x
+    shared DLLs are downloaded from BtbN and copied to the build output.
 
-    Após este script, rode:
-        .\scripts\bootstrap.ps1 -Role <papel>
+    After this script, run:
+        .\scripts\bootstrap.ps1 -Role <role>
 
 .PARAMETER Role
-    Papel deste nó: broker, sender ou receiver.
+    Role of this node: broker, sender, or receiver.
 
 .PARAMETER SkipFFmpeg
-    Não baixar DLLs FFmpeg (ENCODER=jpeg não precisa delas).
+    Skip FFmpeg DLL download (not needed when ENCODER=jpeg).
 
 .PARAMETER Publish
-    Para sender/receiver: publicar self-contained em vez de só compilar.
-    Necessário para instalar como serviço (Fase 5).
+    For sender/receiver: publish as self-contained instead of just building.
+    Required for installing as a Windows service (Phase 5).
 #>
 
 param(
@@ -43,28 +43,28 @@ $Root = Split-Path -Parent $PSScriptRoot
 
 function Ensure-Winget {
     if (-not (Get-Command winget -ErrorAction SilentlyContinue)) {
-        throw 'winget não encontrado. Instale o App Installer pela Microsoft Store ou atualize o Windows 10/11.'
+        throw 'winget not found. Install App Installer from the Microsoft Store or update Windows 10/11.'
     }
 }
 
 function Ensure-Command {
     param([string]$Bin, [string]$WingetId, [string]$Label)
     if (Get-Command $Bin -ErrorAction SilentlyContinue) {
-        Write-Host "  $Label já instalado."
+        Write-Host "  $Label already installed."
         return
     }
     Ensure-Winget
-    Write-Host "  Instalando $Label via winget ($WingetId)..."
+    Write-Host "  Installing $Label via winget ($WingetId)..."
     winget install --id $WingetId -e --accept-source-agreements --accept-package-agreements
-    # Recarrega PATH para o processo atual
+    # Reload PATH for the current process
     $env:PATH = [System.Environment]::GetEnvironmentVariable('PATH', 'Machine') + ';' +
                 [System.Environment]::GetEnvironmentVariable('PATH', 'User')
     if (-not (Get-Command $Bin -ErrorAction SilentlyContinue)) {
-        Write-Warning "  $Label instalado mas '$Bin' ainda não está no PATH desta sessão."
-        Write-Warning "  Feche e reabra o terminal, depois rode este script novamente."
+        Write-Warning "  $Label installed but '$Bin' is not yet in PATH for this session."
+        Write-Warning "  Close and reopen the terminal, then run this script again."
         exit 1
     }
-    Write-Host "  $Label instalado."
+    Write-Host "  $Label installed."
 }
 
 function Install-FFmpeg {
@@ -72,42 +72,42 @@ function Install-FFmpeg {
 
     $marker = Join-Path $TargetDir 'avcodec-61.dll'
     if (Test-Path $marker) {
-        Write-Host '  DLLs FFmpeg já presentes — pulando download.'
+        Write-Host '  FFmpeg DLLs already present — skipping download.'
         return
     }
 
-    $zipUrl  = 'https://github.com/BtbN/FFmpeg-Builds/releases/download/latest/ffmpeg-n7.1-latest-win64-gpl-shared-7.1.zip'
-    $tmpZip  = Join-Path $env:TEMP 'ffmpeg-shared.zip'
-    $tmpDir  = Join-Path $env:TEMP 'ffmpeg-shared'
+    $zipUrl = 'https://github.com/BtbN/FFmpeg-Builds/releases/download/latest/ffmpeg-n7.1-latest-win64-gpl-shared-7.1.zip'
+    $tmpZip = Join-Path $env:TEMP 'ffmpeg-shared.zip'
+    $tmpDir = Join-Path $env:TEMP 'ffmpeg-shared'
 
-    Write-Host '  Baixando FFmpeg 7.1 shared (BtbN)...'
+    Write-Host '  Downloading FFmpeg 7.1 shared (BtbN)...'
     Invoke-WebRequest -Uri $zipUrl -OutFile $tmpZip -UseBasicParsing
 
-    Write-Host '  Extraindo...'
+    Write-Host '  Extracting...'
     if (Test-Path $tmpDir) { Remove-Item $tmpDir -Recurse -Force }
     Expand-Archive -Path $tmpZip -DestinationPath $tmpDir
 
-    # A pasta interna tem nome variável; acha o subdiretório que contém bin/
+    # The inner folder name varies; find the subdirectory that contains bin/
     $binSrc = Get-ChildItem -Path $tmpDir -Recurse -Directory -Filter 'bin' |
               Select-Object -First 1
 
     if (-not $binSrc) {
-        throw 'Estrutura inesperada no zip FFmpeg — pasta bin/ não encontrada.'
+        throw 'Unexpected structure in FFmpeg zip — bin/ folder not found.'
     }
 
     if (-not (Test-Path $TargetDir)) { New-Item -ItemType Directory -Path $TargetDir | Out-Null }
 
-    Write-Host "  Copiando DLLs para $TargetDir..."
+    Write-Host "  Copying DLLs to $TargetDir..."
     Get-ChildItem -Path $binSrc.FullName -Filter '*.dll' |
         Copy-Item -Destination $TargetDir -Force
 
-    Remove-Item $tmpZip  -ErrorAction SilentlyContinue
-    Remove-Item $tmpDir  -Recurse -ErrorAction SilentlyContinue
+    Remove-Item $tmpZip -ErrorAction SilentlyContinue
+    Remove-Item $tmpDir -Recurse -ErrorAction SilentlyContinue
 
-    Write-Host '  DLLs FFmpeg copiadas.'
+    Write-Host '  FFmpeg DLLs copied.'
 }
 
-# ── Instalação por papel ──────────────────────────────────────────────────────
+# ── Install by role ───────────────────────────────────────────────────────────
 
 switch ($Role) {
 
@@ -115,20 +115,20 @@ switch ($Role) {
         Write-Host ''
         Write-Host '=== SelfDesk Install — broker ==='
         Write-Host ''
-        Write-Host '→ Verificando Node.js LTS...'
+        Write-Host '-> Checking Node.js LTS...'
         Ensure-Command -Bin 'node' -WingetId 'OpenJS.NodeJS.LTS' -Label 'Node.js LTS'
 
-        Write-Host '→ Instalando dependências npm...'
+        Write-Host '-> Installing npm dependencies...'
         Push-Location (Join-Path $Root 'broker')
         npm install
-        Write-Host '→ Compilando TypeScript...'
+        Write-Host '-> Compiling TypeScript...'
         npm run build
         Pop-Location
 
         Write-Host ''
-        Write-Host '✔ Broker compilado em broker/dist/'
+        Write-Host '✔ Broker compiled to broker/dist/'
         Write-Host ''
-        Write-Host 'Próximo passo:'
+        Write-Host 'Next step:'
         Write-Host '  .\scripts\bootstrap.ps1 -Role broker'
         Write-Host '  cd broker && npm start'
     }
@@ -137,18 +137,18 @@ switch ($Role) {
         Write-Host ''
         Write-Host '=== SelfDesk Install — sender ==='
         Write-Host ''
-        Write-Host '→ Verificando .NET 10 SDK...'
+        Write-Host '-> Checking .NET 10 SDK...'
         Ensure-Command -Bin 'dotnet' -WingetId 'Microsoft.DotNet.SDK.10' -Label '.NET 10 SDK'
 
         if ($Publish) {
-            Write-Host '→ Publicando sender (self-contained)...'
+            Write-Host '-> Publishing sender (self-contained)...'
             $OutDir = Join-Path $Root 'sender' 'publish'
             Push-Location (Join-Path $Root 'sender')
             dotnet publish Sender.csproj -c Release -r win-x64 --self-contained false -o $OutDir
             Pop-Location
             $BinDir = $OutDir
         } else {
-            Write-Host '→ Compilando sender...'
+            Write-Host '-> Building sender...'
             Push-Location (Join-Path $Root 'sender')
             dotnet build Sender.csproj -c Release
             Pop-Location
@@ -156,14 +156,14 @@ switch ($Role) {
         }
 
         if (-not $SkipFFmpeg) {
-            Write-Host '→ Instalando DLLs FFmpeg (Fase 4 — H264)...'
+            Write-Host '-> Installing FFmpeg DLLs (Phase 4 — H264)...'
             Install-FFmpeg -TargetDir $BinDir
         }
 
         Write-Host ''
-        Write-Host "✔ Sender compilado em $BinDir"
+        Write-Host "✔ Sender built to $BinDir"
         Write-Host ''
-        Write-Host 'Próximo passo:'
+        Write-Host 'Next step:'
         Write-Host '  .\scripts\bootstrap.ps1 -Role sender'
         Write-Host '  cd sender && dotnet run'
     }
@@ -172,18 +172,18 @@ switch ($Role) {
         Write-Host ''
         Write-Host '=== SelfDesk Install — receiver (viewer) ==='
         Write-Host ''
-        Write-Host '→ Verificando .NET 10 SDK...'
+        Write-Host '-> Checking .NET 10 SDK...'
         Ensure-Command -Bin 'dotnet' -WingetId 'Microsoft.DotNet.SDK.10' -Label '.NET 10 SDK'
 
         if ($Publish) {
-            Write-Host '→ Publicando viewer (self-contained)...'
+            Write-Host '-> Publishing viewer (self-contained)...'
             $OutDir = Join-Path $Root 'viewer' 'publish'
             Push-Location (Join-Path $Root 'viewer')
             dotnet publish Viewer.csproj -c Release -r win-x64 --self-contained false -o $OutDir
             Pop-Location
             $BinDir = $OutDir
         } else {
-            Write-Host '→ Compilando viewer...'
+            Write-Host '-> Building viewer...'
             Push-Location (Join-Path $Root 'viewer')
             dotnet build Viewer.csproj -c Release
             Pop-Location
@@ -191,14 +191,14 @@ switch ($Role) {
         }
 
         if (-not $SkipFFmpeg) {
-            Write-Host '→ Instalando DLLs FFmpeg (Fase 4 — H264)...'
+            Write-Host '-> Installing FFmpeg DLLs (Phase 4 — H264)...'
             Install-FFmpeg -TargetDir $BinDir
         }
 
         Write-Host ''
-        Write-Host "✔ Viewer compilado em $BinDir"
+        Write-Host "✔ Viewer built to $BinDir"
         Write-Host ''
-        Write-Host 'Próximo passo:'
+        Write-Host 'Next step:'
         Write-Host '  .\scripts\bootstrap.ps1 -Role receiver'
         Write-Host '  cd viewer && dotnet run'
     }

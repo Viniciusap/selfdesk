@@ -1,13 +1,13 @@
 <#
 .SYNOPSIS
-    Instala o SelfDesk Agent como serviço do Windows (Fase 5).
+    Installs the SelfDesk Sender as a Windows service (Phase 5).
 
 .DESCRIPTION
-    Requer execução como administrador.
-    Uso: .\scripts\install-service.ps1 [-Uninstall]
+    Requires Administrator privileges.
+    Usage: .\scripts\install-service.ps1 [-Uninstall]
 
-    Lê sender/publish/.env (ou sender/.env) e configura automaticamente
-    as variáveis de ambiente do serviço em Machine scope.
+    Reads sender/publish/.env (or sender/.env) and automatically configures
+    the service environment variables in Machine scope.
 #>
 
 param([switch]$Uninstall)
@@ -21,38 +21,38 @@ if ($Uninstall) {
     if (Get-Service -Name $ServiceName -ErrorAction SilentlyContinue) {
         Stop-Service -Name $ServiceName -Force
         & sc.exe delete $ServiceName
-        Write-Host "Serviço '$ServiceName' removido."
+        Write-Host "Service '$ServiceName' removed."
     } else {
-        Write-Host "Serviço '$ServiceName' não encontrado."
+        Write-Host "Service '$ServiceName' not found."
     }
     exit 0
 }
 
 if (-not (Test-Path $ExePath)) {
-    Write-Host "Publicando sender..."
+    Write-Host "Publishing sender..."
     Push-Location (Join-Path $Root 'sender')
     dotnet publish Sender.csproj -c Release -r win-x64 --self-contained false -o publish
     Pop-Location
 }
 
 if (Get-Service -Name $ServiceName -ErrorAction SilentlyContinue) {
-    Write-Warning "Serviço '$ServiceName' já existe. Use -Uninstall primeiro para reinstalar."
+    Write-Warning "Service '$ServiceName' already exists. Use -Uninstall first to reinstall."
     exit 1
 }
 
 New-Service -Name $ServiceName `
             -BinaryPathName $ExePath `
             -DisplayName 'SelfDesk Sender' `
-            -Description 'Captura a tela e injeta input para acesso remoto via SelfDesk.' `
+            -Description 'Captures the screen and injects input for remote access via SelfDesk.' `
             -StartupType Automatic
 
-Write-Host "Serviço '$ServiceName' instalado."
+Write-Host "Service '$ServiceName' installed."
 
-# Variáveis relevantes para o serviço (lidas do .env)
+# Environment variables relevant to the service (read from .env)
 $EnvVarsToSet = @('ROLE','SENDER_ID','SHARED_SECRET','BROKER_HOST','BROKER_PORT',
                   'TLS_CA_PATH','TARGET_FPS','ENCODER','JPEG_QUALITY','CAPTURER')
 
-# Procura o .env: primeiro publish/, depois sender/
+# Look for .env: first in publish/, then in sender/
 $EnvFile = $null
 foreach ($candidate in @(
     (Join-Path $PublishDir '.env'),
@@ -62,13 +62,13 @@ foreach ($candidate in @(
 }
 
 if ($null -eq $EnvFile) {
-    Write-Warning ".env não encontrado. Execute .\scripts\bootstrap.ps1 -Role sender antes de continuar."
-    Write-Warning "Após gerar o .env, rode install-service.ps1 novamente para configurar as variáveis."
+    Write-Warning ".env not found. Run .\scripts\bootstrap.ps1 -Role sender before continuing."
+    Write-Warning "After generating the .env, run install-service.ps1 again to configure the variables."
     exit 1
 }
 
 Write-Host ""
-Write-Host "Configurando variáveis de ambiente do serviço a partir de: $EnvFile"
+Write-Host "Configuring service environment variables from: $EnvFile"
 
 foreach ($line in Get-Content $EnvFile) {
     $line = $line.Trim()
@@ -84,6 +84,6 @@ foreach ($line in Get-Content $EnvFile) {
 }
 
 Write-Host ""
-Write-Host "Iniciando serviço..."
+Write-Host "Starting service..."
 Start-Service -Name $ServiceName
-Write-Host "Serviço '$ServiceName' iniciado."
+Write-Host "Service '$ServiceName' started."

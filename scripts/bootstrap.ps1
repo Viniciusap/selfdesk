@@ -1,15 +1,15 @@
 <#
 .SYNOPSIS
-    Bootstrap SelfDesk — gera o .env local de um componente (Windows).
+    Bootstrap SelfDesk — generates the local .env for a component (Windows).
 
 .DESCRIPTION
-    Uso: .\scripts\bootstrap.ps1 -Role <broker|sender|receiver>
+    Usage: .\scripts\bootstrap.ps1 -Role <broker|sender|receiver>
 
-    Nada gerado aqui deve ser commitado: o .gitignore ignora .env e certs/.
-    Rode este script ANTES de 'dotnet run'.
+    Nothing generated here should be committed: .gitignore ignores .env and certs/.
+    Run this script BEFORE 'dotnet run'.
 
 .PARAMETER Role
-    Papel deste nó: broker, sender ou receiver.
+    Role of this node: broker, sender, or receiver.
 #>
 
 param(
@@ -32,7 +32,7 @@ function Prompt-Value {
         return $ans
     }
     do {
-        $ans = Read-Host "$Question (obrigatório)"
+        $ans = Read-Host "$Question (required)"
     } while ([string]::IsNullOrWhiteSpace($ans))
     return $ans
 }
@@ -40,9 +40,9 @@ function Prompt-Value {
 function Confirm-Overwrite {
     param([string]$FilePath)
     if (Test-Path $FilePath) {
-        $resp = Read-Host ".env já existe em '$FilePath'. Sobrescrever? (y/N)"
+        $resp = Read-Host ".env already exists at '$FilePath'. Overwrite? (y/N)"
         if ($resp -notin @('y', 'Y')) {
-            Write-Host 'Abortado.'
+            Write-Host 'Aborted.'
             exit 0
         }
     }
@@ -59,15 +59,15 @@ function New-Certs {
 
     $serverCert = Join-Path $CertDir 'server-cert.pem'
     if (Test-Path $serverCert) {
-        Write-Host 'Certificados já existem em certs/ — mantendo.'
+        Write-Host 'Certificates already exist in certs/ — keeping them.'
         return
     }
 
     $openssl = Get-Command openssl -ErrorAction SilentlyContinue
     if (-not $openssl) {
-        Write-Host 'openssl não encontrado. Instalando via winget...'
+        Write-Host 'openssl not found. Installing via winget...'
         if (-not (Get-Command winget -ErrorAction SilentlyContinue)) {
-            Write-Warning 'winget não disponível. Instale o OpenSSL manualmente (winget install ShiningLight.OpenSSL) ou gere os certificados no broker Linux e copie certs/ca-cert.pem.'
+            Write-Warning 'winget not available. Install OpenSSL manually (winget install ShiningLight.OpenSSL) or generate certificates on the Linux broker and copy certs/ca-cert.pem.'
             return
         }
         winget install --id ShiningLight.OpenSSL -e --accept-source-agreements --accept-package-agreements
@@ -75,15 +75,15 @@ function New-Certs {
                     [System.Environment]::GetEnvironmentVariable('PATH', 'User')
         $openssl = Get-Command openssl -ErrorAction SilentlyContinue
         if (-not $openssl) {
-            Write-Warning 'OpenSSL instalado mas não encontrado no PATH desta sessão. Feche e reabra o terminal e rode o bootstrap novamente.'
+            Write-Warning 'OpenSSL installed but not found in PATH for this session. Close and reopen the terminal, then run bootstrap again.'
             return
         }
-        Write-Host 'OpenSSL instalado.'
+        Write-Host 'OpenSSL installed.'
     }
 
-    $ip = Prompt-Value -Question 'IP/hostname deste broker (vai no SAN do certificado)' -Default '127.0.0.1'
+    $ip = Prompt-Value -Question 'IP/hostname of this broker (used in the certificate SAN)' -Default '127.0.0.1'
 
-    Write-Host 'Gerando CA e certificado de servidor...'
+    Write-Host 'Generating CA and server certificate...'
 
     $caKey  = Join-Path $CertDir 'ca-key.pem'
     $caCert = Join-Path $CertDir 'ca-cert.pem'
@@ -98,24 +98,24 @@ function New-Certs {
     & openssl x509 -req -in $srvCsr -CA $caCert -CAkey $caKey -CAcreateserial -out $srvCrt -days 825 -extfile $extFile 2>$null
 
     Remove-Item $srvCsr, $extFile -ErrorAction SilentlyContinue
-    Write-Host "OK. Distribua '$caCert' para as máquinas sender/receiver (pinning via TLS_CA_PATH)."
+    Write-Host "Done. Distribute '$caCert' to sender/receiver machines (TLS_CA_PATH pinning)."
 }
 
-# Detecta se estamos num release pré-compilado (exe ao lado de scripts/) ou no source tree
+# Detect whether we are in a pre-built release (exe next to scripts/) or source tree
 $Prebuilt = (Test-Path (Join-Path $Root 'SelfDesk.Sender.exe')) -or
             (Test-Path (Join-Path $Root 'SelfDesk.Viewer.exe')) -or
             (Test-Path (Join-Path $Root 'dist' 'index.js'))
 
 switch ($Role) {
     'broker' {
-        # Pré-compilado: .env fica em $Root (ao lado de dist/); source: em broker/
+        # Pre-built: .env lives in $Root (next to dist/); source: in broker/
         $out     = if ($Prebuilt) { Join-Path $Root '.env' } else { Join-Path $Root 'broker' '.env' }
         $certRel = if ($Prebuilt) { 'certs/server-cert.pem' } else { '../certs/server-cert.pem' }
         $keyRel  = if ($Prebuilt) { 'certs/server-key.pem'  } else { '../certs/server-key.pem'  }
         Confirm-Overwrite $out
 
-        $listenPort     = Prompt-Value -Question 'Porta de escuta do broker' -Default '7000'
-        $allowedSenders = Prompt-Value -Question 'IDs de emissores permitidos (CSV)' -Default 'laptop-01'
+        $listenPort     = Prompt-Value -Question 'Broker listen port' -Default '7000'
+        $allowedSenders = Prompt-Value -Question 'Allowed sender IDs (comma-separated)' -Default 'laptop-01'
 
         New-Certs
 
@@ -136,32 +136,32 @@ LOG_LEVEL=info
 "@ | Set-Content -Path $out -Encoding UTF8
 
         Write-Host ''
-        Write-Host "Gerado: $out"
+        Write-Host "Generated: $out"
         Write-Host ''
-        Write-Host '==> SHARED_SECRET (cole nos .env de sender e receiver):'
+        Write-Host '==> SHARED_SECRET (paste into sender and receiver .env files):'
         Write-Host "    $secret"
     }
 
     'sender' {
-        # Pré-compilado: .env fica em $Root (ao lado do exe); source: em sender/
+        # Pre-built: .env lives in $Root (next to exe); source: in sender/
         $out    = if ($Prebuilt) { Join-Path $Root '.env' } else { Join-Path $Root 'sender' '.env' }
         $caPath = if ($Prebuilt) {
-            Prompt-Value -Question 'Caminho para ca-cert.pem (copiado do broker)' -Default (Join-Path $Root 'ca-cert.pem')
+            Prompt-Value -Question 'Path to ca-cert.pem (copied from broker)' -Default (Join-Path $Root 'ca-cert.pem')
         } else { '../certs/ca-cert.pem' }
         Confirm-Overwrite $out
 
-        $senderId     = Prompt-Value -Question 'ID único deste emissor' -Default 'laptop-01'
-        $brokerHost  = Prompt-Value -Question 'IP/hostname do broker'
-        $brokerPort  = Prompt-Value -Question 'Porta do broker' -Default '7000'
-        $secret      = Prompt-Value -Question 'SHARED_SECRET (idêntico ao do broker)'
+        $senderId    = Prompt-Value -Question 'Unique ID for this sender' -Default 'laptop-01'
+        $brokerHost  = Prompt-Value -Question 'Broker IP/hostname'
+        $brokerPort  = Prompt-Value -Question 'Broker port' -Default '7000'
+        $secret      = Prompt-Value -Question 'SHARED_SECRET (same as the broker)'
         if ($secret.Length -lt 32) {
-            Write-Warning "SHARED_SECRET parece curto ($($secret.Length) chars). Certifique-se de copiar o valor completo gerado pelo broker."
-            $c = Read-Host 'Continuar mesmo assim? (y/N)'
-            if ($c -notin @('y','Y')) { Write-Host 'Abortado.'; exit 1 }
+            Write-Warning "SHARED_SECRET looks short ($($secret.Length) chars). Make sure you copied the full value from the broker."
+            $c = Read-Host 'Continue anyway? (y/N)'
+            if ($c -notin @('y','Y')) { Write-Host 'Aborted.'; exit 1 }
         }
-        $targetFps   = Prompt-Value -Question 'FPS alvo' -Default '30'
+        $targetFps   = Prompt-Value -Question 'Target FPS' -Default '30'
         $encoder     = Prompt-Value -Question 'Encoder (jpeg|qsv|nvenc)' -Default 'jpeg'
-        $jpegQuality = Prompt-Value -Question 'Qualidade JPEG (1-100)' -Default '75'
+        $jpegQuality = Prompt-Value -Question 'JPEG quality (1-100)' -Default '75'
 
         if (-not $Prebuilt) {
             $dir = Join-Path $Root 'sender'
@@ -181,29 +181,29 @@ JPEG_QUALITY=$jpegQuality
 "@ | Set-Content -Path $out -Encoding UTF8
 
         Write-Host ''
-        Write-Host "Gerado: $out"
+        Write-Host "Generated: $out"
         if ($Prebuilt) {
-            Write-Host "Copie ca-cert.pem do broker para: $caPath"
+            Write-Host "Copy ca-cert.pem from the broker to: $caPath"
         } else {
-            Write-Host "Lembre-se de copiar certs/ca-cert.pem do broker para esta máquina."
+            Write-Host "Remember to copy certs/ca-cert.pem from the broker to this machine."
         }
     }
 
     'receiver' {
-        # Pré-compilado: .env fica em $Root (ao lado do exe); source: em viewer/
+        # Pre-built: .env lives in $Root (next to exe); source: in viewer/
         $out    = if ($Prebuilt) { Join-Path $Root '.env' } else { Join-Path $Root 'viewer' '.env' }
         $caPath = if ($Prebuilt) {
-            Prompt-Value -Question 'Caminho para ca-cert.pem (copiado do broker)' -Default (Join-Path $Root 'ca-cert.pem')
+            Prompt-Value -Question 'Path to ca-cert.pem (copied from broker)' -Default (Join-Path $Root 'ca-cert.pem')
         } else { '../certs/ca-cert.pem' }
         Confirm-Overwrite $out
 
-        $brokerHost = Prompt-Value -Question 'IP/hostname do broker'
-        $brokerPort = Prompt-Value -Question 'Porta do broker' -Default '7000'
-        $secret     = Prompt-Value -Question 'SHARED_SECRET (idêntico ao do broker)'
+        $brokerHost = Prompt-Value -Question 'Broker IP/hostname'
+        $brokerPort = Prompt-Value -Question 'Broker port' -Default '7000'
+        $secret     = Prompt-Value -Question 'SHARED_SECRET (same as the broker)'
         if ($secret.Length -lt 32) {
-            Write-Warning "SHARED_SECRET parece curto ($($secret.Length) chars). Certifique-se de copiar o valor completo gerado pelo broker."
-            $c = Read-Host 'Continuar mesmo assim? (y/N)'
-            if ($c -notin @('y','Y')) { Write-Host 'Abortado.'; exit 1 }
+            Write-Warning "SHARED_SECRET looks short ($($secret.Length) chars). Make sure you copied the full value from the broker."
+            $c = Read-Host 'Continue anyway? (y/N)'
+            if ($c -notin @('y','Y')) { Write-Host 'Aborted.'; exit 1 }
         }
 
         if (-not $Prebuilt) {
@@ -220,11 +220,11 @@ TLS_CA_PATH=$caPath
 "@ | Set-Content -Path $out -Encoding UTF8
 
         Write-Host ''
-        Write-Host "Gerado: $out"
+        Write-Host "Generated: $out"
         if ($Prebuilt) {
-            Write-Host "Copie ca-cert.pem do broker para: $caPath"
+            Write-Host "Copy ca-cert.pem from the broker to: $caPath"
         } else {
-            Write-Host "Lembre-se de copiar certs/ca-cert.pem do broker para esta máquina."
+            Write-Host "Remember to copy certs/ca-cert.pem from the broker to this machine."
         }
     }
 }
