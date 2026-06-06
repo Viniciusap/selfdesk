@@ -124,7 +124,15 @@ if ($svc) {
     }
     Write-OK 'Servico parado.'
 } else {
-    Write-Warn "Servico '$ServiceName' nao encontrado — atualiza os arquivos sem parar/reiniciar servico."
+    Write-Warn "Servico '$ServiceName' nao encontrado — tentando matar processo diretamente."
+    $proc = Get-Process -Name 'SelfDesk.Sender' -ErrorAction SilentlyContinue
+    if ($proc) {
+        $proc | Stop-Process -Force
+        Start-Sleep -Seconds 1
+        Write-OK 'Processo SelfDesk.Sender encerrado.'
+    } else {
+        Write-Warn 'Nenhum processo SelfDesk.Sender encontrado — copiando direto.'
+    }
 }
 
 # ── 5. Preservar .env e certs/ ───────────────────────────────────────────────
