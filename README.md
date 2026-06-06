@@ -143,6 +143,21 @@ Found a vulnerability? Please report it responsibly via a [private issue](https:
 
 ### Option A — Pre-built binaries (recommended)
 
+> [!TIP]
+> **Already installed?** Update any component to the latest release with a single command — no manual steps:
+>
+> ```bash
+> # Broker (Linux)
+> curl -fsSL https://raw.githubusercontent.com/Viniciusap/selfdesk/master/scripts/update-broker.sh | bash
+> ```
+> ```powershell
+> # Sender (Windows, run as Administrator)
+> iwr https://raw.githubusercontent.com/Viniciusap/selfdesk/master/scripts/update-sender.ps1 | iex
+> ```
+> Each script stops the running process, downloads the latest release, replaces the binaries, and restarts — preserving your existing `.env` and certificates.
+
+---
+
 Setup order: **broker first**, then senders and receivers. The broker generates the `SHARED_SECRET` and `ca-cert.pem` that every other machine needs.
 
 #### Step 1 — Broker
@@ -345,13 +360,13 @@ selfdesk/
 ├── broker/                    # Node.js + TypeScript — authenticated relay
 │   ├── src/
 │   └── .env.example
-├── agent/                     # C# / .NET 10 — sender (capture + encode + inject)
+├── sender/                    # C# / .NET 10 — sender (capture + encode + inject)
 │   ├── src/
 │   └── .env.example
 ├── viewer/                    # C# / WPF / .NET 10 — receiver (render + input)
 │   ├── src/
 │   └── .env.example
-├── shared/protocol/           # Protocol constants mirrored in TS and C#
+├── shared/                    # Protocol constants + shared C# code (WireProtocol, MessageType)
 ├── selfdesk.slnx              # .NET solution (agent + viewer + tests)
 ├── LICENSE
 └── README.md
