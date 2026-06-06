@@ -150,7 +150,7 @@ Found a vulnerability? Please report it responsibly via a [private issue](https:
 ### Option A — Pre-built binaries (recommended)
 
 > [!TIP]
-> **Already installed?** Update any component to the latest release with a single command — no manual steps:
+> **Already installed?** Same one-liner updates you — `.env` and certs preserved automatically.
 >
 > ```bash
 > # Broker (Linux / WSL / Git Bash — auto-detects platform)
@@ -159,14 +159,9 @@ Found a vulnerability? Please report it responsibly via a [private issue](https:
 > > *Windows PowerShell only (no bash): `irm https://raw.githubusercontent.com/Viniciusap/selfdesk/master/scripts/install-broker.ps1 | iex`*
 >
 > ```powershell
-> # Sender — Windows (PowerShell as Administrator)
-> irm https://raw.githubusercontent.com/Viniciusap/selfdesk/master/scripts/install-sender.ps1 | iex
+> irm https://raw.githubusercontent.com/Viniciusap/selfdesk/master/scripts/install-sender.ps1 | iex   # Sender
+> irm https://raw.githubusercontent.com/Viniciusap/selfdesk/master/scripts/install-viewer.ps1 | iex   # Viewer
 > ```
-> ```powershell
-> # Viewer — Windows
-> irm https://raw.githubusercontent.com/Viniciusap/selfdesk/master/scripts/install-viewer.ps1 | iex
-> ```
-> Each script stops the running process, downloads the latest release, replaces the binaries, and restarts — preserving your existing `.env` and certificates.
 
 ---
 
@@ -178,8 +173,8 @@ Setup order: **broker first**, then senders and receivers. The broker generates 
 <summary><b>Linux</b></summary>
 
 ```bash
-curl -fsSL https://github.com/Viniciusap/selfdesk/releases/latest/download/selfdesk-broker-linux-x64.tar.gz | tar xz
-cd selfdesk-broker
+curl -fsSL https://raw.githubusercontent.com/Viniciusap/selfdesk/master/scripts/install-broker.sh | bash
+cd ~/selfdesk
 ./scripts/bootstrap.sh broker
 ```
 
@@ -193,12 +188,12 @@ node dist/index.js
 </details>
 
 <details open>
-<summary><b>Windows Server / Windows 10+</b></summary>
+<summary><b>Windows</b></summary>
 
 ```powershell
-iwr https://github.com/Viniciusap/selfdesk/releases/latest/download/selfdesk-broker-win-x64.zip -OutFile broker.zip
-Expand-Archive broker.zip -DestinationPath selfdesk-broker; cd selfdesk-broker
-powershell -ExecutionPolicy Bypass -File scripts\bootstrap.ps1 -Role broker
+irm https://raw.githubusercontent.com/Viniciusap/selfdesk/master/scripts/install-broker.ps1 | iex
+cd $env:USERPROFILE\selfdesk-broker
+powershell -File scripts\bootstrap.ps1 -Role broker
 node dist\index.js
 ```
 
@@ -211,15 +206,15 @@ After the broker starts, **copy `certs/ca-cert.pem`** to each Windows machine �
 #### Step 2 — Sender *(machine to be controlled, Windows)*
 
 ```powershell
-iwr https://github.com/Viniciusap/selfdesk/releases/latest/download/selfdesk-sender-win-x64.zip -OutFile agent.zip
-Expand-Archive agent.zip -DestinationPath selfdesk-sender; cd selfdesk-sender
+irm https://raw.githubusercontent.com/Viniciusap/selfdesk/master/scripts/install-sender.ps1 | iex
 
-# Drop ca-cert.pem from the broker into this folder, then configure:
-powershell -ExecutionPolicy Bypass -File scripts\bootstrap.ps1 -Role sender
+# Drop ca-cert.pem from the broker into C:\tools\selfdesk-sender\, then configure:
+cd C:\tools\selfdesk-sender
+powershell -File scripts\bootstrap.ps1 -Role sender
 # → prompts for broker host, SHARED_SECRET, SENDER_ID, encoder (jpeg / qsv / nvenc)
 ```
 
-Start the agent:
+Start the sender:
 
 ```powershell
 .\SelfDesk.Sender.exe
@@ -227,14 +222,14 @@ Start the agent:
 
 ---
 
-#### Step 3 — Receiver *(control machine, Windows)*
+#### Step 3 — Viewer *(control machine, Windows)*
 
 ```powershell
-iwr https://github.com/Viniciusap/selfdesk/releases/latest/download/selfdesk-viewer-win-x64.zip -OutFile viewer.zip
-Expand-Archive viewer.zip -DestinationPath selfdesk-viewer; cd selfdesk-viewer
+irm https://raw.githubusercontent.com/Viniciusap/selfdesk/master/scripts/install-viewer.ps1 | iex
 
-# Drop ca-cert.pem from the broker into this folder, then configure:
-powershell -ExecutionPolicy Bypass -File scripts\bootstrap.ps1 -Role receiver
+# Drop ca-cert.pem from the broker into C:\tools\selfdesk-viewer\, then configure:
+cd C:\tools\selfdesk-viewer
+powershell -File scripts\bootstrap.ps1 -Role receiver
 # → prompts for broker host and SHARED_SECRET
 
 .\SelfDesk.Viewer.exe

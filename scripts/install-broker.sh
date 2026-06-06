@@ -11,7 +11,7 @@
 #   irm https://raw.githubusercontent.com/Viniciusap/selfdesk/master/scripts/install-broker.ps1 | iex
 #
 # Optional environment variable:
-#   INSTALL_DIR   Installation directory. Default: ~/selfdesk (Linux) or %USERPROFILE%\selfdesk-broker (Windows)
+#   INSTALL_DIR   Installation directory. Default: ~/selfdesk
 
 set -euo pipefail
 
@@ -82,32 +82,50 @@ case "$(uname -s 2>/dev/null)" in
 
         step "Updating $INSTALL_DIR ..."
         mkdir -p "$INSTALL_DIR"
-        cp -r "$TMP_DIR/selfdesk-broker/dist"         "$INSTALL_DIR/"
-        cp -r "$TMP_DIR/selfdesk-broker/node_modules" "$INSTALL_DIR/"
-        cp    "$TMP_DIR/selfdesk-broker/package.json"  "$INSTALL_DIR/"
+
+        # Copy everything from the release except existing .env and certs/
+        SRC="$TMP_DIR/selfdesk-broker"
+        for item in "$SRC"/* "$SRC"/.[!.]*; do
+            [ -e "$item" ] || continue
+            name="$(basename "$item")"
+            [[ "$name" == ".env" || "$name" == "certs" ]] && continue
+            cp -r "$item" "$INSTALL_DIR/"
+        done
         rm -rf "$TMP_DIR"
         ok "Files updated."
 
-        step "Starting broker..."
-        cd "$INSTALL_DIR"
-        nohup node dist/index.js >> broker.log 2>&1 &
-        BROKER_PID=$!
-        sleep 1
-
-        if kill -0 "$BROKER_PID" 2>/dev/null; then
-            ok "Broker running (PID $BROKER_PID)."
+        ENV_FILE="$INSTALL_DIR/.env"
+        if [ ! -f "$ENV_FILE" ]; then
+            echo ""
+            echo "=== Broker files installed to $INSTALL_DIR ==="
+            echo ""
+            echo "Next step — generate .env, SHARED_SECRET, and TLS certificates:"
+            echo "  cd $INSTALL_DIR && ./scripts/bootstrap.sh broker"
+            echo ""
+            echo "Then open the firewall and start:"
+            echo "  sudo ufw allow from <YOUR_SUBNET>/24 to any port <LISTEN_PORT> proto tcp"
+            echo "  node dist/index.js"
         else
-            echo "ERROR: broker did not start. Check $INSTALL_DIR/broker.log" >&2
-            exit 1
-        fi
+            step "Starting broker..."
+            cd "$INSTALL_DIR"
+            nohup node dist/index.js >> broker.log 2>&1 &
+            BROKER_PID=$!
+            sleep 1
 
-        echo ""
-        echo "=== Broker install complete ==="
-        echo "  Directory : $INSTALL_DIR"
-        echo "  Log       : $INSTALL_DIR/broker.log"
-        echo ""
-        echo "To follow logs:"
-        echo "  tail -f $INSTALL_DIR/broker.log"
+            if kill -0 "$BROKER_PID" 2>/dev/null; then
+                ok "Broker running (PID $BROKER_PID)."
+                echo ""
+                echo "=== Broker update complete ==="
+                echo "  Directory : $INSTALL_DIR"
+                echo "  Log       : $INSTALL_DIR/broker.log"
+                echo ""
+                echo "To follow logs:"
+                echo "  tail -f $INSTALL_DIR/broker.log"
+            else
+                echo "ERROR: broker did not start. Check $INSTALL_DIR/broker.log" >&2
+                exit 1
+            fi
+        fi
         ;;
 
     MINGW*|MSYS*|CYGWIN*)

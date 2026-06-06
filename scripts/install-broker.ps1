@@ -150,40 +150,44 @@ Remove-Item $tmpDir -Recurse -ErrorAction SilentlyContinue
 
 # ── 8. Start broker ───────────────────────────────────────────────────────────
 
-Write-Step 'Starting broker...'
-$nodeCmd = Get-Command node -ErrorAction SilentlyContinue
-if (-not $nodeCmd) {
-    Write-Warn "node.exe not found in PATH."
-    Write-Host "   Install Node.js LTS from https://nodejs.org, then run:"
+Write-Host ''
+Write-Host '=== Broker files installed ===' -ForegroundColor Green
+Write-Host "   Directory : $InstallDir"
+Write-Host ''
+
+if (-not (Test-Path $envPath)) {
+    Write-Host 'Next step — generate .env, SHARED_SECRET, and TLS certificates:' -ForegroundColor Yellow
+    Write-Host "   cd `"$InstallDir`""
+    Write-Host "   powershell -File scripts\bootstrap.ps1 -Role broker"
+    Write-Host ''
+    Write-Host 'Then start the broker:'
     Write-Host "   node dist\index.js"
-    Write-Host "   from: $InstallDir"
 } else {
-    $indexJs = Join-Path $InstallDir 'dist' 'index.js'
-    if (Test-Path $indexJs) {
-        $logFile    = Join-Path $InstallDir 'broker.log'
-        $logErrFile = Join-Path $InstallDir 'broker-err.log'
-        $proc = Start-Process -FilePath $nodeCmd.Source `
-            -ArgumentList "`"$indexJs`"" `
-            -WorkingDirectory $InstallDir `
-            -RedirectStandardOutput $logFile `
-            -RedirectStandardError  $logErrFile `
-            -WindowStyle Hidden -PassThru
-        Start-Sleep -Seconds 2
-        if (-not $proc.HasExited) {
-            Write-OK "Broker running (PID $($proc.Id))."
-        } else {
-            Write-Warn "Broker exited immediately. Check broker.log for errors."
-        }
+    Write-Step 'Starting broker...'
+    $nodeCmd = Get-Command node -ErrorAction SilentlyContinue
+    if (-not $nodeCmd) {
+        Write-Warn "node.exe not found in PATH. Install Node.js LTS from https://nodejs.org"
+        Write-Host "   Then run: node dist\index.js  (from $InstallDir)"
     } else {
-        Write-Warn "dist\index.js not found. Run bootstrap first."
-        Write-Host "   Run: powershell -File scripts\bootstrap.ps1 -Role broker"
+        $indexJs = Join-Path $InstallDir 'dist' 'index.js'
+        if (Test-Path $indexJs) {
+            $logFile    = Join-Path $InstallDir 'broker.log'
+            $logErrFile = Join-Path $InstallDir 'broker-err.log'
+            $proc = Start-Process -FilePath $nodeCmd.Source `
+                -ArgumentList "`"$indexJs`"" `
+                -WorkingDirectory $InstallDir `
+                -RedirectStandardOutput $logFile `
+                -RedirectStandardError  $logErrFile `
+                -WindowStyle Hidden -PassThru
+            Start-Sleep -Seconds 2
+            if (-not $proc.HasExited) {
+                Write-OK "Broker running (PID $($proc.Id))."
+                Write-Host ''
+                Write-Host "   Log : $InstallDir\broker.log"
+                Write-Host "   Follow: Get-Content '$InstallDir\broker.log' -Wait"
+            } else {
+                Write-Warn "Broker exited immediately. Check broker.log for errors."
+            }
+        }
     }
 }
-
-Write-Host ''
-Write-Host '=== Broker install complete ===' -ForegroundColor Green
-Write-Host "   Directory : $InstallDir"
-Write-Host "   Log       : $InstallDir\broker.log"
-Write-Host ''
-Write-Host 'To follow logs:'
-Write-Host "   Get-Content '$InstallDir\broker.log' -Wait"
