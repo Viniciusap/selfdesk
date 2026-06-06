@@ -58,7 +58,7 @@ public static class WireProtocol
 
     public static (byte kind, ReadOnlyMemory<byte> rest) ParseInputEvent(ReadOnlyMemory<byte> payload)
     {
-        if (payload.Length == 0) throw new InvalidDataException("INPUT_EVENT payload vazio");
+        if (payload.Length == 0) throw new InvalidDataException("INPUT_EVENT payload is empty");
         return (payload.Span[0], payload[1..]);
     }
 
