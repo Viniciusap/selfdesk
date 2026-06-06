@@ -14,6 +14,12 @@ An open-source alternative to AnyDesk and TeamViewer — no third-party cloud, n
 
 </div>
 
+<div align="center">
+
+![SelfDesk demo](demo.gif)
+
+</div>
+
 > **Scope:** designed for LAN / trusted networks. Not audited or hardened for direct internet exposure. For internet access, place the broker behind a VPN or tunnel.
 
 ---
