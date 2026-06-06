@@ -28,11 +28,11 @@ printf '\033[36m  Broker Updater  —  github.com/Viniciusap/selfdesk\033[0m\n\n
 
 REPO_OWNER="Viniciusap"
 REPO_NAME="selfdesk"
-ASSET_NAME="selfdesk-broker.zip"
+ASSET_NAME="selfdesk-broker-linux-x64.tar.gz"
 INSTALL_DIR="${INSTALL_DIR:-$HOME/selfdesk}"
 DOWNLOAD_URL="https://github.com/$REPO_OWNER/$REPO_NAME/releases/latest/download/$ASSET_NAME"
 
-TMP_ZIP="/tmp/selfdesk-broker-update-$$.zip"
+TMP_TARBALL="/tmp/selfdesk-broker-update-$$.tar.gz"
 TMP_DIR="/tmp/selfdesk-broker-update-$$"
 
 step() { echo ""; echo "→ $*"; }
@@ -45,9 +45,9 @@ step "Baixando $ASSET_NAME..."
 echo "  URL: $DOWNLOAD_URL"
 
 if command -v curl &>/dev/null; then
-    curl -fsSL "$DOWNLOAD_URL" -o "$TMP_ZIP"
+    curl -fsSL "$DOWNLOAD_URL" -o "$TMP_TARBALL"
 elif command -v wget &>/dev/null; then
-    wget -q "$DOWNLOAD_URL" -O "$TMP_ZIP"
+    wget -q "$DOWNLOAD_URL" -O "$TMP_TARBALL"
 else
     echo "ERRO: curl ou wget necessário." >&2
     exit 1
@@ -59,8 +59,8 @@ ok "Download concluído."
 step "Extraindo..."
 rm -rf "$TMP_DIR"
 mkdir -p "$TMP_DIR"
-unzip -q "$TMP_ZIP" -d "$TMP_DIR"
-rm -f "$TMP_ZIP"
+tar -xzf "$TMP_TARBALL" -C "$TMP_DIR"
+rm -f "$TMP_TARBALL"
 ok "Extraído em $TMP_DIR"
 
 # ── 3. Parar broker ───────────────────────────────────────────────────────────
@@ -75,9 +75,11 @@ fi
 
 # ── 4. Atualizar dist/ ────────────────────────────────────────────────────────
 
-step "Atualizando $INSTALL_DIR/dist/ ..."
-mkdir -p "$INSTALL_DIR/dist"
-cp -r "$TMP_DIR/dist/." "$INSTALL_DIR/dist/"
+step "Atualizando $INSTALL_DIR ..."
+mkdir -p "$INSTALL_DIR"
+cp -r "$TMP_DIR/selfdesk-broker/dist"         "$INSTALL_DIR/"
+cp -r "$TMP_DIR/selfdesk-broker/node_modules" "$INSTALL_DIR/"
+cp    "$TMP_DIR/selfdesk-broker/package.json"  "$INSTALL_DIR/"
 rm -rf "$TMP_DIR"
 ok "Arquivos atualizados."
 
