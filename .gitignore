@@ -13,9 +13,10 @@ certs/
 *.pfx
 *.p12
 
-# ── Documentação de trabalho (só README.md é versionado) ────────
+# ── Working docs (only README.md and CONTRIBUTING.md are versioned) ────────
 *.md
 !README.md
+!CONTRIBUTING.md
 docs/
 
 # ── Build artifacts — Node ───────────────────────────────────────

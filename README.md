@@ -18,158 +18,57 @@ An open-source alternative to AnyDesk and TeamViewer — no third-party cloud, n
 
 ![SelfDesk demo](demo.gif)
 
+*Viewer (left) controlling a remote Windows machine via a self-hosted broker*
+
 </div>
 
-> **Scope:** designed for LAN / trusted networks. Not audited or hardened for direct internet exposure. For internet access, place the broker behind a VPN or tunnel.
+> **Scope:** designed for LAN / trusted networks. Not audited for direct internet exposure. For remote access over the internet, place the broker behind a VPN or tunnel.
 
 ---
 
-## Table of Contents
+## Install / Update
 
-- [What is it](#what-is-it)
-- [Why](#why)
-- [Architecture](#architecture)
-- [Roles](#roles)
-- [Security model](#security-model)
-- [Requirements](#requirements)
-- [Quick start](#quick-start)
-- [Configuration reference](#configuration-reference)
-- [Generating .env (bootstrap)](#generating-env-bootstrap)
-- [TLS certificates](#tls-certificates)
-- [Adding more senders](#adding-more-senders)
-- [Project structure](#project-structure)
-- [Roadmap](#roadmap)
-- [Contributing](#contributing)
-- [Responsible use](#responsible-use)
-- [License](#license)
+The same command installs or updates — your `.env` and certificates are always preserved.
+
+```bash
+# Broker — Linux, WSL, Git Bash (auto-detects platform)
+curl -fsSL https://raw.githubusercontent.com/Viniciusap/selfdesk/master/scripts/install-broker.sh | bash
+```
+
+> *Windows PowerShell (no bash): `irm https://raw.githubusercontent.com/Viniciusap/selfdesk/master/scripts/install-broker.ps1 | iex`*
+
+```powershell
+# Sender — Windows (run as Administrator)
+irm https://raw.githubusercontent.com/Viniciusap/selfdesk/master/scripts/install-sender.ps1 | iex
+
+# Viewer — Windows
+irm https://raw.githubusercontent.com/Viniciusap/selfdesk/master/scripts/install-viewer.ps1 | iex
+```
 
 ---
 
-## What is it
+## What it does
 
-SelfDesk connects a **receiver** machine (where you sit) to one or more **sender** machines (the ones you control), through a lightweight **broker** you host yourself. The receiver watches the remote screens and sends mouse and keyboard; the senders capture the screen and inject the received input.
+You run a small **broker** on any Linux box (a Raspberry Pi handles it fine). Your Windows machines connect outbound to it — nothing listens for inbound connections, no third-party cloud, nothing phones home.
 
-None of the Windows machines open inbound ports. Everything travels over TLS 1.3 with HMAC-SHA256 challenge-response authentication.
-
-## Features
-
-- **Screen capture and remote control** — mouse, keyboard, and scroll wheel
-- **Clipboard sync** — copy on any machine, paste on the other, bidirectional
+- **Screen capture and remote control** — mouse, keyboard, scroll wheel
+- **Clipboard sync** — copy on one machine, paste on the other, bidirectional
 - **File transfer** — drag files onto the video surface, progress bar included
-- **Wake-on-LAN** — wake offline machines directly from the viewer sidebar
+- **Wake-on-LAN** — wake offline machines from the viewer sidebar
 - **Hardware H.264** — Quick Sync (Intel) or NVENC (NVIDIA) via FFmpeg, selectable by `.env`
 - **Multiple senders** — control several machines from one viewer, switch with a click
 - **Automatic reconnect** — exponential backoff on broker restart or network hiccup
 
 ---
 
-## Why
-
-- **Zero inbound ports** on controlled machines — only outbound connections to the broker.
-- **Fully self-hosted** — your data never passes through a third-party server.
-- **TLS 1.3 + HMAC-SHA256** — no plaintext fallback, ever.
-- **Configuration as code** — everything in `.env`, generated locally, never committed.
-- **Scale from 1 to N senders by config alone** — no code changes needed.
-- **Pluggable codec** — JPEG to get started, hardware H.264 later, switchable via `ENCODER=`.
-- **Any machine, any role** — the `ROLE` in `.env` defines broker, sender, or receiver.
-
----
-
-## Architecture
-
-```
-  SENDER (C#/.NET Sender)               BROKER (Node.js)          RECEIVER (C#/WPF Viewer)
- ┌──────────────────────┐         ┌──────────────────────┐     ┌──────────────────────────┐
- │ Screen capture (DXGI)│         │ Authenticates conns  │     │ Renders stream(s)         │
- │ Encode (JPEG/H264)   │──TLS──▶ │ Registers by peer_id │◀TLS─│ Selects sender (list)     │
- │ Injects input        │(outbound│ Routes bytes         │outbnd│ Captures mouse + keyboard │
- └──────────▲───────────┘         │ (never decodes)      │     └─────────────┬────────────┘
-            │                      └──────────────────────┘                   │
-            └──────────────── INPUT_EVENT (peer_id = target sender) ──────────┘
-```
-
-Every message carries a `peer_id` (big-endian, 16 bytes in the header). The broker is a **dumb authenticated pipe**: it never decodes video, only routes bytes. Adding a second sender is pure configuration — no code changes.
-
-### Wire protocol (summary)
-
-Fixed 22-byte envelope on every message:
-
-| Offset | Bytes | Field |
-|--------|-------|-------|
-| 0 | 1 | VERSION = `0x01` |
-| 1 | 1 | TYPE (see table) |
-| 2 | 16 | PEER\_ID (UTF-8, padded with `\0`) |
-| 18 | 4 | LENGTH (uint32 big-endian) |
-| 22 | N | PAYLOAD |
-
-Handshake: `HELLO → CHALLENGE (32B nonce) → AUTH (HMAC-SHA256) → AUTH_OK`. The secret never travels over the wire. PING/PONG heartbeat every 5s; no PONG within 15s → connection closed.
-
----
-
-## Roles
-
-| Role | `ROLE` in `.env` | Platform | Connection direction |
-|------|-----------------|----------|---------------------|
-| Broker | `broker` | Linux (Node.js LTS) | listens on `LISTEN_PORT` |
-| Sender | `sender` | Windows 10/11 | outbound only to broker |
-| Receiver | `receiver` | Windows 10/11 | outbound only to broker |
-
-The same repository clone can play any role — just run the corresponding bootstrap.
-
----
-
-## Security model
-
-- **TLS on every connection** with a LAN-local CA (no dependency on a public CA). The broker presents `server-cert.pem`; clients pin the CA via `TLS_CA_PATH`.
-- **Challenge-response authentication (HMAC-SHA256)** — `SHARED_SECRET` never travels over the wire.
-- **Zero inbound ports on Windows machines** — outbound connections to the broker only.
-- **No secrets committed** — `.env`, keys, and certificates are in `.gitignore`.
-
-This project assumes a trusted local network. It has not been audited for public internet exposure; in that scenario, use a VPN or tunnel in front of the broker.
-
-Found a vulnerability? Open an issue or email vinicius.ap48@gmail.com.
-
----
-
-## Requirements
-
-| Component | Requirement |
-|-----------|------------|
-| Broker | Node.js LTS — installed automatically by `install.sh` if missing |
-| Sender / Receiver | Windows 10/11, .NET 10 SDK — installed automatically by `install.ps1` if missing |
-| Cert bootstrap | `openssl` in PATH (broker machine) — installed automatically by `install.sh` |
-| Network | All machines on the same LAN |
-
-> **Prerequisites are handled automatically** by the install scripts via `winget` (Windows) and `apt` / NodeSource (Linux). No manual pre-installation needed on a fresh machine.
-
----
-
 ## Quick start
 
-### Option A — Pre-built binaries (recommended)
+Setup order: **broker first**, then sender, then viewer. The broker generates the `SHARED_SECRET` and `ca-cert.pem` that the other machines need.
 
-> [!TIP]
-> **Already installed?** Same one-liner updates you — `.env` and certs preserved automatically.
->
-> ```bash
-> # Broker (Linux / WSL / Git Bash — auto-detects platform)
-> curl -fsSL https://raw.githubusercontent.com/Viniciusap/selfdesk/master/scripts/install-broker.sh | bash
-> ```
-> > *Windows PowerShell only (no bash): `irm https://raw.githubusercontent.com/Viniciusap/selfdesk/master/scripts/install-broker.ps1 | iex`*
->
-> ```powershell
-> irm https://raw.githubusercontent.com/Viniciusap/selfdesk/master/scripts/install-sender.ps1 | iex   # Sender
-> irm https://raw.githubusercontent.com/Viniciusap/selfdesk/master/scripts/install-viewer.ps1 | iex   # Viewer
-> ```
-
----
-
-Setup order: **broker first**, then senders and receivers. The broker generates the `SHARED_SECRET` and `ca-cert.pem` that every other machine needs.
-
-#### Step 1 — Broker
+### Step 1 — Broker
 
 <details open>
-<summary><b>Linux</b></summary>
+<summary><b>Linux (recommended)</b></summary>
 
 ```bash
 curl -fsSL https://raw.githubusercontent.com/Viniciusap/selfdesk/master/scripts/install-broker.sh | bash
@@ -186,7 +85,7 @@ node dist/index.js
 
 </details>
 
-<details open>
+<details>
 <summary><b>Windows</b></summary>
 
 ```powershell
@@ -198,35 +97,31 @@ node dist\index.js
 
 </details>
 
-After the broker starts, **copy `certs/ca-cert.pem`** to each Windows machine — senders and receivers need it to verify the broker's TLS certificate.
+After the broker starts, **copy `certs/ca-cert.pem`** to each Windows machine — senders and viewers need it to verify the broker's TLS certificate.
 
 ---
 
-#### Step 2 — Sender *(machine to be controlled, Windows)*
+### Step 2 — Sender *(machine to be controlled, Windows)*
 
 ```powershell
 irm https://raw.githubusercontent.com/Viniciusap/selfdesk/master/scripts/install-sender.ps1 | iex
 
-# Drop ca-cert.pem from the broker into C:\tools\selfdesk-sender\, then configure:
+# Copy ca-cert.pem from the broker into C:\tools\selfdesk-sender\, then:
 cd C:\tools\selfdesk-sender
 powershell -File scripts\bootstrap.ps1 -Role sender
 # → prompts for broker host, SHARED_SECRET, SENDER_ID, encoder (jpeg / qsv / nvenc)
-```
 
-Start the sender:
-
-```powershell
 .\SelfDesk.Sender.exe
 ```
 
 ---
 
-#### Step 3 — Viewer *(control machine, Windows)*
+### Step 3 — Viewer *(control machine, Windows)*
 
 ```powershell
 irm https://raw.githubusercontent.com/Viniciusap/selfdesk/master/scripts/install-viewer.ps1 | iex
 
-# Drop ca-cert.pem from the broker into C:\tools\selfdesk-viewer\, then configure:
+# Copy ca-cert.pem from the broker into C:\tools\selfdesk-viewer\, then:
 cd C:\tools\selfdesk-viewer
 powershell -File scripts\bootstrap.ps1 -Role receiver
 # → prompts for broker host and SHARED_SECRET
@@ -236,118 +131,97 @@ powershell -File scripts\bootstrap.ps1 -Role receiver
 
 ---
 
-### Option B — Build from source
+### Build from source
+
+<details>
+<summary>Expand</summary>
 
 ```bash
 git clone https://github.com/Viniciusap/selfdesk.git
 cd selfdesk
 ```
 
-The setup is two steps per machine: **install** (deps + build) then **bootstrap** (config + secrets).
-
-### 1. Broker (Linux)
-
+**Broker (Linux)**
 ```bash
-# Step 1 — install deps and compile (auto-installs Node.js LTS if missing)
-./scripts/install.sh broker
-
-# Step 2 — generate .env, SHARED_SECRET, and TLS certificates
-./scripts/bootstrap.sh broker
-# Note the printed SHARED_SECRET and copy certs/ca-cert.pem to your Windows machines.
-
+./scripts/install.sh broker      # installs Node.js LTS if missing, compiles
+./scripts/bootstrap.sh broker    # generates .env, SHARED_SECRET, certs/
 sudo ufw allow from <YOUR_SUBNET>/24 to any port <LISTEN_PORT> proto tcp
 cd broker && npm start
 ```
 
-### 2. Sender — machine to be controlled (Windows)
-
+**Sender (Windows)**
 ```powershell
-# Step 1 — install deps, compile, and download FFmpeg DLLs for H264 (Phase 4)
-.\scripts\install.ps1 -Role sender
-
-# Step 2 — generate sender/.env
+.\scripts\install.ps1 -Role sender     # installs .NET 10 SDK if missing, compiles
 .\scripts\bootstrap.ps1 -Role sender
-
 cd sender && dotnet run
 ```
 
-### 3. Receiver — control machine (Windows)
-
+**Viewer (Windows)**
 ```powershell
-# Step 1 — install deps, compile, and download FFmpeg DLLs for H264 (Phase 4)
 .\scripts\install.ps1 -Role receiver
-
-# Step 2 — generate viewer/.env
 .\scripts\bootstrap.ps1 -Role receiver
-
 cd viewer && dotnet run
 ```
+
+</details>
+
+---
+
+## How it works
+
+```
+  SENDER (C#/.NET)                BROKER (Node.js)          VIEWER (C#/WPF)
+ ┌─────────────────┐         ┌──────────────────────┐     ┌─────────────────┐
+ │ Screen capture  │         │ Authenticates conns  │     │ Renders stream  │
+ │ Encode (JPEG /  │──TLS──▶ │ Routes by peer_id    │◀TLS─│ Captures input  │
+ │ H264)           │outbound │ Never decodes video  │outbd│ Picks sender    │
+ │ Inject input    │         └──────────────────────┘     └────────┬────────┘
+ └────────▲────────┘                                               │
+          └──────────────── INPUT_EVENT ────────────────────────────┘
+```
+
+The broker is a **dumb authenticated pipe**: it routes bytes by `peer_id` and never decodes video. Adding a second sender is pure config — no code changes.
+
+### Security
+
+- **TLS 1.3 on every connection** with a LAN-local CA (no public CA dependency). Clients pin the CA via `TLS_CA_PATH`.
+- **HMAC-SHA256 challenge-response** — `SHARED_SECRET` never travels over the wire.
+- **Zero inbound ports on Windows machines** — outbound connections to the broker only.
+- **No secrets committed** — `.env`, keys, and certificates are in `.gitignore`.
+
+Found a vulnerability? Open an issue or email vinicius.ap48@gmail.com.
 
 ---
 
 ## Configuration reference
 
-Each component reads a `.env` in its own directory (`broker/`, `agent/`, `viewer/`). These files are **generated by bootstrap** and **never committed** — the repository only versions the `*.env.example` files.
+Bootstrap generates the `.env` files for you — you rarely need to edit them by hand. The broker bootstrap prints the `SHARED_SECRET` for you to paste into the sender and viewer `.env` files.
 
-| Variable | broker | sender | receiver | Description |
-|----------|:------:|:------:|:--------:|-------------|
+| Variable | broker | sender | viewer | Description |
+|----------|:------:|:------:|:------:|-------------|
 | `ROLE` | ✓ | ✓ | ✓ | `broker` \| `sender` \| `receiver` |
-| `SHARED_SECRET` | ✓ | ✓ | ✓ | Identical on all three machines; generated at the broker |
-| `LISTEN_PORT` | ✓ | | | TLS listen port for the broker |
-| `ALLOWED_SENDERS` | ✓ | | | CSV of permitted `SENDER_ID`s (e.g. `laptop-01,laptop-02`) |
-| `TLS_CERT_PATH` | ✓ | | | Path to `server-cert.pem` (broker) |
-| `TLS_KEY_PATH` | ✓ | | | Path to `server-key.pem` (broker) |
+| `SHARED_SECRET` | ✓ | ✓ | ✓ | Identical on all three; generated at the broker |
+| `LISTEN_PORT` | ✓ | | | TLS listen port |
+| `ALLOWED_SENDERS` | ✓ | | | Comma-separated list of permitted `SENDER_ID`s |
+| `TLS_CERT_PATH` | ✓ | | | Path to `server-cert.pem` |
+| `TLS_KEY_PATH` | ✓ | | | Path to `server-key.pem` |
 | `LOG_LEVEL` | ✓ | | | `debug` \| `info` \| `warn` \| `error` |
-| `SENDER_ID` | | ✓ | | Unique sender identifier (must be in `ALLOWED_SENDERS`) |
+| `SENDER_ID` | | ✓ | | Unique identifier (must be in `ALLOWED_SENDERS`) |
 | `BROKER_HOST` | | ✓ | ✓ | Broker IP or hostname |
 | `BROKER_PORT` | | ✓ | ✓ | Broker port |
-| `TLS_CA_PATH` | | ✓ | ✓ | Path to `ca-cert.pem` (pinning) |
-| `TARGET_FPS` | | ✓ | | Target capture FPS (default: `30`) |
+| `TLS_CA_PATH` | | ✓ | ✓ | Path to `ca-cert.pem` (CA pinning) |
 | `ENCODER` | | ✓ | | `jpeg` \| `qsv` \| `nvenc` |
+| `TARGET_FPS` | | ✓ | | Capture FPS (default: `30`) |
 | `JPEG_QUALITY` | | ✓ | | JPEG quality 1–100 (default: `75`) |
-
----
-
-## Generating .env (bootstrap)
-
-Instead of editing `.env` by hand, use the scripts in `scripts/`. They prompt for each value with sensible defaults and **never overwrite** an existing `.env` without confirmation.
-
-**Linux / macOS:**
-```bash
-./scripts/bootstrap.sh broker     # generates broker/.env + SHARED_SECRET + certs/
-./scripts/bootstrap.sh sender     # generates agent/.env
-./scripts/bootstrap.sh receiver   # generates viewer/.env
-```
-
-**Windows:**
-```powershell
-.\scripts\bootstrap.ps1 -Role broker     # generates broker\.env (requires openssl in PATH)
-.\scripts\bootstrap.ps1 -Role sender     # generates agent\.env
-.\scripts\bootstrap.ps1 -Role receiver   # generates viewer\.env
-```
-
-The `SHARED_SECRET` is generated once at the broker and must be the **same** across all three `.env` files. The broker bootstrap prints it at the end for you to paste into the other machines.
-
----
-
-## TLS certificates
-
-Communication uses TLS with a **LAN-local CA** (no public CA). The broker bootstrap generates:
-
-- `certs/ca-cert.pem` — LAN certificate authority. **Copy to every sender/receiver machine** (used for pinning via `TLS_CA_PATH`).
-- `certs/server-cert.pem` / `certs/server-key.pem` — server keypair. The private key **never leaves the broker**.
-
-The entire `certs/` folder is in `.gitignore`. Keys never go to the repository.
 
 ---
 
 ## Adding more senders
 
-1. On the new machine, run bootstrap with role `sender` and choose a unique `SENDER_ID` (e.g. `laptop-02`).
-2. Copy `certs/ca-cert.pem` from the broker to the new machine.
-3. On the broker, add the new ID to `ALLOWED_SENDERS` (e.g. `laptop-01,laptop-02`) and restart.
+1. On the new machine, run `install-sender.ps1`, copy `ca-cert.pem`, run bootstrap with a unique `SENDER_ID` (e.g. `laptop-02`).
+2. On the broker, add the new ID to `ALLOWED_SENDERS` (e.g. `laptop-01,laptop-02`) and restart.
 
-No code changes required. The receiver automatically shows the new sender in the list.
+The viewer automatically shows the new sender in the list. No code changes.
 
 ---
 
@@ -355,75 +229,53 @@ No code changes required. The receiver automatically shows the new sender in the
 
 ```
 selfdesk/
-├── .github/workflows/ci.yml   # CI: broker build+tests (Ubuntu) + .NET (Windows)
+├── .github/workflows/
+│   ├── ci.yml          # broker tests (Ubuntu) + .NET build+tests (Windows)
+│   └── release.yml     # builds release zips/tarballs on version tags
 ├── scripts/
-│   ├── bootstrap.sh           # Generates .env + certs (Linux/macOS)
-│   └── bootstrap.ps1          # Generates .env + certs (Windows)
-├── broker/                    # Node.js + TypeScript — authenticated relay
-│   ├── src/
-│   └── .env.example
-├── sender/                    # C# / .NET 10 — sender (capture + encode + inject)
-│   ├── src/
-│   └── .env.example
-├── viewer/                    # C# / WPF / .NET 10 — receiver (render + input)
-│   ├── src/
-│   └── .env.example
-├── shared/                    # Protocol constants + shared C# code (WireProtocol, MessageType)
-├── selfdesk.slnx              # .NET solution (agent + viewer + tests)
-├── LICENSE
-└── README.md
+│   ├── install-broker.sh   # broker install/update — Linux/WSL/Git Bash
+│   ├── install-broker.ps1  # broker install/update — Windows PowerShell
+│   ├── install-sender.ps1  # sender install/update — Windows
+│   ├── install-viewer.ps1  # viewer install/update — Windows
+│   ├── bootstrap.sh        # generates .env + TLS certs (Linux)
+│   └── bootstrap.ps1       # generates .env + TLS certs (Windows)
+├── broker/             # Node.js + TypeScript — authenticated relay
+├── sender/             # C# / .NET 10 — capture + encode + inject input
+├── viewer/             # C# / WPF / .NET 10 — render stream + capture input
+├── shared/
+│   ├── protocol/       # protocol.ts — authoritative message type constants
+│   └── dotnet/         # MessageType.cs + WireProtocol.cs — C# mirror
+└── selfdesk.slnx       # .NET solution (sender + viewer + tests)
 ```
 
 ---
 
 ## Roadmap
 
-| Phase | Deliverable | Status |
-|-------|-------------|--------|
-| 0 | Skeleton, TLS 1.3, HMAC auth, heartbeat, open-source packaging | ✅ Complete |
-| 1 | MVP: one-way JPEG video + mouse input | ✅ Code complete (hardware gate pending) |
-| 2 | Keyboard + latency tuning + RTT measurement | ✅ Code complete (hardware gate pending) |
-| 3 | Multiple senders + sender selector in viewer | ✅ Code complete (hardware gate pending) |
-| 4 | Hardware codec (Quick Sync / NVENC via FFmpeg) | ✅ Code complete (requires FFmpeg DLLs + hardware) |
-| 5 | Agent as Windows service (lock screen / UAC) | ✅ Code complete (hardware gate pending) |
-| — | Clipboard sync (bidirectional, 500ms polling) | ✅ Complete |
-| — | File transfer via drag & drop (chunked, progress bar) | ✅ Complete |
-| — | Wake-on-LAN (magic packet from viewer sidebar) | ✅ Complete |
-| — | Security hardening (DoS limits, handshake timeout, reconnect) | ✅ Complete |
+All core features are implemented. What's open:
+
+| Area | Issues |
+|---|---|
+| Platform | [macOS support](https://github.com/Viniciusap/selfdesk/issues/1), [Linux sender](https://github.com/Viniciusap/selfdesk/issues/11), [ARM64 broker build](https://github.com/Viniciusap/selfdesk/issues/7) |
+| Distribution | [Docker image](https://github.com/Viniciusap/selfdesk/issues/6), [Web viewer](https://github.com/Viniciusap/selfdesk/issues/12) |
+| UX | [Multi-monitor switching](https://github.com/Viniciusap/selfdesk/issues/20), [Remote cursor shape](https://github.com/Viniciusap/selfdesk/issues/22), [Ctrl+Alt+Del](https://github.com/Viniciusap/selfdesk/issues/13) |
+| Protocol | [Clipboard images](https://github.com/Viniciusap/selfdesk/issues/8), [Mic passthrough](https://github.com/Viniciusap/selfdesk/issues/21) |
+| Ops | [Prometheus metrics](https://github.com/Viniciusap/selfdesk/issues/19), [Log rotation](https://github.com/Viniciusap/selfdesk/issues/18) |
+
+See all open issues [here](https://github.com/Viniciusap/selfdesk/issues).
 
 ---
 
 ## Contributing
 
-Contributions are welcome. Workflow:
+See [CONTRIBUTING.md](CONTRIBUTING.md) for conventions, test commands, and project structure details.
 
-1. Open an issue to discuss large changes before implementing.
-2. Fork + descriptive branch (`feat/name`, `fix/name`).
-3. Follow project conventions:
-   - **Big-endian protocol** on every multi-byte field; `shared/protocol/` must stay in sync between TS and C#.
-   - **No hardcoded** secrets, IPs, or ports — everything via `.env`.
-   - **DI + IOptions** in .NET apps; no manual global singletons.
-   - **Structured logging** (`pino` in broker, `ILogger<T>` in .NET).
-   - **TLS mandatory** on every connection; no plaintext fallback.
-   - **Interfaces for Windows-only APIs** (`IScreenCapturer`, `IInputInjector`) — unit tests use fakes.
-   - **Video conflation:** Channel capacity 1; old frame is dropped, never queued.
-4. `npm test` in broker must be green. `dotnet test` on the solution must be green.
-5. `git status` after build must not show `.env`, `.pem`, `.key`, `bin/`, `obj/`, or `node_modules/`.
-6. Commit messages in English, conventional style (e.g. `feat: peer_id routing in broker`).
-7. Open the PR against `master`.
-
----
-
-## Responsible use
-
-SelfDesk is a remote access tool intended exclusively for machines that **you own or have explicit authorization to access**.
-
-Using this tool for **unauthorized access** to third-party systems, **non-consensual surveillance**, or any form of privacy invasion is expressly prohibited and is the sole responsibility of the user, potentially constituting a criminal offense under applicable law.
-
-The maintainers of this project **accept no liability** for any misuse of the tool. Use it ethically and respect others' privacy.
+Good entry points: [`good first issue`](https://github.com/Viniciusap/selfdesk/issues?q=is%3Aissue+is%3Aopen+label%3A%22good+first+issue%22) · [`help wanted`](https://github.com/Viniciusap/selfdesk/issues?q=is%3Aissue+is%3Aopen+label%3A%22help+wanted%22)
 
 ---
 
 ## License
 
 Distributed under the MIT License. See [LICENSE](LICENSE).
+
+SelfDesk is intended for machines you own or have explicit authorization to access.
