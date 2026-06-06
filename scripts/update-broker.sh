@@ -14,6 +14,18 @@
 
 set -euo pipefail
 
+# ── Banner ────────────────────────────────────────────────────────────────────
+printf '\033[36m'
+cat << 'BANNER'
+  ____       _  __ ____            _
+ / ___|  ___| |/ _|  _ \  ___  ___| | __
+ \___ \ / _ \ | |_| | | |/ _ \/ __| |/ /
+  ___) |  __/ |  _| |_| |  __/\__ \   <
+ |____/ \___|_|_||____/ \___||___/_|\_\
+BANNER
+printf '\033[36m  Broker Updater  —  github.com/Viniciusap/selfdesk\033[0m\n\n'
+# ─────────────────────────────────────────────────────────────────────────────
+
 REPO_OWNER="Viniciusap"
 REPO_NAME="selfdesk"
 ASSET_NAME="selfdesk-broker.zip"

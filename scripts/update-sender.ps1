@@ -28,6 +28,18 @@ param(
 Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
 
+# ── Banner ────────────────────────────────────────────────────────────────────
+Write-Host ""
+Write-Host "  ____       _  __ ____            _    " -ForegroundColor Cyan
+Write-Host " / ___|  ___| |/ _|  _ \  ___  ___| | __" -ForegroundColor Cyan
+Write-Host " \___ \ / _ \ | |_| | | |/ _ \/ __| |/ /" -ForegroundColor Cyan
+Write-Host "  ___) |  __/ |  _| |_| |  __/\__ \   < " -ForegroundColor Cyan
+Write-Host " |____/ \___|_|_||____/ \___||___/_|\_\" -ForegroundColor Cyan
+Write-Host ""
+Write-Host "  Sender Updater  —  github.com/Viniciusap/selfdesk" -ForegroundColor DarkCyan
+Write-Host ""
+# ─────────────────────────────────────────────────────────────────────────────
+
 $RepoOwner   = 'Viniciusap'
 $RepoName    = 'selfdesk'
 $AssetName   = 'selfdesk-sender-win-x64.zip'
