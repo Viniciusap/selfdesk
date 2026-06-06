@@ -6,16 +6,30 @@
     Requires Administrator privileges.
     Usage: .\scripts\install-service.ps1 [-Uninstall]
 
-    Reads sender/publish/.env (or sender/.env) and automatically configures
-    the service environment variables in Machine scope.
+    Reads .env and automatically configures the service environment variables
+    in Machine scope.
+
+    WARNING: Windows Services run in Session 0 and cannot use DXGI Desktop
+    Duplication (DXGI_ERROR_UNSUPPORTED). The sender will fall back to GDI,
+    which also returns a black frame in Session 0. For DXGI capture to work,
+    use install-task.ps1 (Task Scheduler) instead — it runs in the user's
+    interactive session where DXGI is available.
 #>
 
 param([switch]$Uninstall)
 
 $ServiceName = 'SelfDesk.Sender'
 $Root        = Split-Path -Parent $PSScriptRoot
-$PublishDir  = Join-Path $Root 'sender' 'publish'
-$ExePath     = Join-Path $PublishDir 'SelfDesk.Sender.exe'
+
+# Support two layouts:
+#   repo:      $Root = repo root, exe at sender/publish/SelfDesk.Sender.exe
+#   installed: $Root = C:\tools\selfdesk-sender, exe at SelfDesk.Sender.exe
+$PublishDir = if (Test-Path (Join-Path $Root 'sender' 'publish' 'SelfDesk.Sender.exe')) {
+    Join-Path $Root 'sender' 'publish'
+} else {
+    $Root
+}
+$ExePath = Join-Path $PublishDir 'SelfDesk.Sender.exe'
 
 if ($Uninstall) {
     if (Get-Service -Name $ServiceName -ErrorAction SilentlyContinue) {
@@ -56,6 +70,7 @@ $EnvVarsToSet = @('ROLE','SENDER_ID','SHARED_SECRET','BROKER_HOST','BROKER_PORT'
 $EnvFile = $null
 foreach ($candidate in @(
     (Join-Path $PublishDir '.env'),
+    (Join-Path $Root '.env'),
     (Join-Path $Root 'sender' '.env')
 )) {
     if (Test-Path $candidate) { $EnvFile = $candidate; break }

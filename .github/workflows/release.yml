@@ -121,9 +121,11 @@ jobs:
         shell: pwsh
         run: |
           New-Item -ItemType Directory -Path sender/publish/scripts -Force | Out-Null
-          Copy-Item scripts/bootstrap.ps1    sender/publish/scripts/
-          Copy-Item scripts/install.ps1      sender/publish/scripts/
+          Copy-Item scripts/bootstrap.ps1      sender/publish/scripts/
+          Copy-Item scripts/install.ps1        sender/publish/scripts/
           Copy-Item scripts/install-sender.ps1 sender/publish/scripts/
+          Copy-Item scripts/install-task.ps1   sender/publish/scripts/
+          Copy-Item scripts/install-service.ps1 sender/publish/scripts/
           Copy-Item sender/.env.example      sender/publish/
 
       - name: Include scripts and examples in Viewer
