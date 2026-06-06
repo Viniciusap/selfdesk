@@ -153,11 +153,15 @@ Found a vulnerability? Please report it responsibly via a [private issue](https:
 > **Already installed?** Update any component to the latest release with a single command — no manual steps:
 >
 > ```bash
-> # Broker (Linux)
+> # Broker — Linux
 > curl -fsSL https://raw.githubusercontent.com/Viniciusap/selfdesk/master/scripts/update-broker.sh | bash
 > ```
 > ```powershell
-> # Sender (Windows — open PowerShell as Administrator, then run:)
+> # Broker — Windows (PowerShell as Administrator)
+> iwr https://raw.githubusercontent.com/Viniciusap/selfdesk/master/scripts/update-broker.ps1 | iex
+> ```
+> ```powershell
+> # Sender — Windows (PowerShell as Administrator)
 > iwr https://raw.githubusercontent.com/Viniciusap/selfdesk/master/scripts/update-sender.ps1 | iex
 > ```
 > Each script stops the running process, downloads the latest release, replaces the binaries, and restarts — preserving your existing `.env` and certificates.
@@ -186,8 +190,8 @@ node dist/index.js
 
 </details>
 
-<details>
-<summary><b>Windows Server</b></summary>
+<details open>
+<summary><b>Windows Server / Windows 10+</b></summary>
 
 ```powershell
 iwr https://github.com/Viniciusap/selfdesk/releases/latest/download/selfdesk-broker-win-x64.zip -OutFile broker.zip
