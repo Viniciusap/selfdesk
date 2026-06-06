@@ -49,6 +49,28 @@ if (-not (Test-Path $ExePath)) {
     Pop-Location
 }
 
+# ── DXGI warning ──────────────────────────────────────────────────────────────
+Write-Host ''
+Write-Host '!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!' -ForegroundColor Yellow
+Write-Host '!                        WARNING                                !' -ForegroundColor Yellow
+Write-Host '!                                                               !' -ForegroundColor Yellow
+Write-Host '!  Windows Services run in Session 0 (no display access).      !' -ForegroundColor Yellow
+Write-Host '!  DXGI Desktop Duplication will fail -> GDI fallback -> BLACK  !' -ForegroundColor Yellow
+Write-Host '!  SCREEN sent to the viewer.                                   !' -ForegroundColor Yellow
+Write-Host '!                                                               !' -ForegroundColor Yellow
+Write-Host '!  Use install-task.ps1 instead (Task Scheduler).              !' -ForegroundColor Yellow
+Write-Host '!  It runs in the interactive session where DXGI works.        !' -ForegroundColor Yellow
+Write-Host '!                                                               !' -ForegroundColor Yellow
+Write-Host '!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!' -ForegroundColor Yellow
+Write-Host ''
+$answer = Read-Host 'Continue installing as service anyway? [y/N]'
+if ($answer -notmatch '^[Yy]$') {
+    Write-Host 'Aborted. Run .\scripts\install-task.ps1 for the recommended setup.' -ForegroundColor Cyan
+    exit 0
+}
+Write-Host ''
+# ─────────────────────────────────────────────────────────────────────────────
+
 if (Get-Service -Name $ServiceName -ErrorAction SilentlyContinue) {
     Write-Warning "Service '$ServiceName' already exists. Use -Uninstall first to reinstall."
     exit 1
