@@ -30,16 +30,16 @@ $ErrorActionPreference = 'Stop'
 
 # ── Banner ────────────────────────────────────────────────────────────────────
 Write-Host ""
-Write-Host "/-\|/-\|/-\|/-\|/-\|/-\|/-\|/-\|/-\|/-\|/-\|/-\|/-\|/-\|/-\" -ForegroundColor Cyan
-Write-Host "|                                                         |" -ForegroundColor Cyan
-Write-Host "\  ___           _      ___  ___                 _        /" -ForegroundColor Cyan
-Write-Host "- (  _`\        (_ )  /'___)(  _`\              ( )       -" -ForegroundColor Cyan
-Write-Host "/ | (_(_)   __   | | | (__  | | ) |   __    ___ | |/')    \" -ForegroundColor Cyan
-Write-Host "| `\__ \  /'__`\ | | | ,__) | | | ) /'__`\/',__)| , <     |" -ForegroundColor Cyan
-Write-Host "\ ( )_) |(  ___/ | | | |    | |_) |(  ___/\__, \| |\`\    /" -ForegroundColor Cyan
-Write-Host "- `\____)`\____)(___)(_)    (____/'`\____)(____/(_) (_)   -" -ForegroundColor Cyan
-Write-Host "/                                                         \" -ForegroundColor Cyan
-Write-Host "|                                                         |" -ForegroundColor Cyan
+Write-Host '/-\|/-\|/-\|/-\|/-\|/-\|/-\|/-\|/-\|/-\|/-\|/-\|/-\|/-\|/-\' -ForegroundColor Cyan
+Write-Host '|                                                         |' -ForegroundColor Cyan
+Write-Host '\  ___           _      ___  ___                 _        /' -ForegroundColor Cyan
+Write-Host '- (  _`\        (_ )  /''___)(  _`\              ( )       -' -ForegroundColor Cyan
+Write-Host '/ | (_(_)   __   | | | (__  | | ) |   __    ___ | |/'')    \' -ForegroundColor Cyan
+Write-Host '| `\__ \  /''__`\ | | | ,__) | | | ) /''__`\/'',__)| , <     |' -ForegroundColor Cyan
+Write-Host '\ ( )_) |(  ___/ | | | |    | |_) |(  ___/\__, \| |\`\    /' -ForegroundColor Cyan
+Write-Host '- `\____)`\____)(___)(_)    (____/''`\____)(____/(_) (_)   -' -ForegroundColor Cyan
+Write-Host '/                                                         \' -ForegroundColor Cyan
+Write-Host '|                                                         |' -ForegroundColor Cyan
 Write-Host "\-/|\-/|\-/|\-/|\-/|\-/|\-/|\-/|\-/|\-/|\-/|\-/|\-/|\-/|\-/" -ForegroundColor Cyan
 Write-Host ""
 Write-Host "  Sender Installer  —  github.com/Viniciusap/selfdesk" -ForegroundColor DarkCyan
@@ -81,7 +81,7 @@ Expand-Archive -Path $tmpZip -DestinationPath $tmpDir
 Remove-Item $tmpZip -ErrorAction SilentlyContinue
 
 # Normalize: zip may or may not have a root subdirectory
-$extracted = Get-ChildItem -Path $tmpDir
+$extracted = @(Get-ChildItem -Path $tmpDir)
 if ($extracted.Count -eq 1 -and $extracted[0].PSIsContainer) {
     $srcDir = $extracted[0].FullName
 } else {
