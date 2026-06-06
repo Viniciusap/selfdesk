@@ -5,8 +5,8 @@ using Microsoft.Extensions.Logging;
 namespace SelfDesk.Sender.FileTransfer;
 
 /// <summary>
-/// Recebe transferências de arquivo do viewer via broker e salva em disco.
-/// Protocolo: FILE_HEADER → FILE_CHUNK* → FILE_DONE
+/// Receives file transfers from the viewer via the broker and saves them to disk.
+/// Protocol: FILE_HEADER → FILE_CHUNK* → FILE_DONE
 /// </summary>
 public sealed class FileTransferReceiver
 {
@@ -89,7 +89,7 @@ public sealed class FileTransferReceiver
 
     public void OnFileError(ReadOnlyMemory<byte> payload)
     {
-        _log.LogWarning("Transferência cancelada pelo remetente.");
+        _log.LogWarning("Transfer cancelled by the sender.");
         AbortCurrent();
     }
 

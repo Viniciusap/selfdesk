@@ -2,8 +2,8 @@ using System.Runtime.InteropServices;
 
 namespace SelfDesk.Sender.Capture;
 
-// BUG1: handles GDI e buffer BGRA cacheados no construtor — zero alocação por frame.
-// BUG2: usa monitor rect via MonitorEnumerator em vez de SM_CXSCREEN — suporta multi-monitor.
+// BUG1: GDI handles and BGRA buffer cached in constructor — zero allocation per frame.
+// BUG2: uses monitor rect via MonitorEnumerator instead of SM_CXSCREEN — supports multi-monitor.
 public sealed class GdiScreenCapturer : IScreenCapturer
 {
     private int    _left;

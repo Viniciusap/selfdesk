@@ -27,7 +27,7 @@ public sealed class Win32InputInjector : IInputInjector, IDisposable
 
     public Win32InputInjector()
     {
-        MonitorIndex = 0; // inicializa _monitor com o monitor primário
+        MonitorIndex = 0; // initializes _monitor with the primary monitor
         _stuckKeyTimer = new System.Threading.Timer(
             ReleaseStuckKeys, null,
             TimeSpan.FromSeconds(10), TimeSpan.FromSeconds(10));
@@ -91,9 +91,9 @@ public sealed class Win32InputInjector : IInputInjector, IDisposable
         }
     }
 
-    // Remapeia coords normalizadas [0,65535] do frame capturado para o espaço virtual.
-    // Sem remap, normX=65535 mapeia para a borda direita do virtual screen (todos os monitores),
-    // mas deveria mapear para a borda direita do monitor selecionado.
+    // Remaps normalized coords [0,65535] from the captured frame to the virtual screen space.
+    // Without remap, normX=65535 maps to the right edge of the virtual screen (all monitors),
+    // but should map to the right edge of the selected monitor only.
     private (int ax, int ay) Remap(ushort normX, ushort normY)
     {
         var m = _monitor;

@@ -121,8 +121,8 @@ public partial class MainWindow : Window
         if (!_isFullscreen)
         {
             _prevWindowState = WindowState;
-            // WPF bug: WindowStyle=None DEPOIS de Maximized deixa taskbar visível.
-            // Reset para Normal primeiro, depois aplica fullscreen.
+            // WPF bug: WindowStyle=None AFTER Maximized leaves the taskbar visible.
+            // Reset to Normal first, then apply fullscreen.
             WindowState  = WindowState.Normal;
             WindowStyle  = WindowStyle.None;
             ResizeMode   = ResizeMode.NoResize;

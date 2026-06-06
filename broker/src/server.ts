@@ -30,7 +30,7 @@ export function createServer(
       const ip  = socket.remoteAddress ?? 'unknown';
       const now = Date.now();
 
-      // Purgar entradas expiradas para evitar crescimento ilimitado
+      // Purge expired entries to prevent unbounded growth
       for (const [k, v] of rateMap) {
         if (now > v.blockedUntil + FAIL_WINDOW) rateMap.delete(k);
       }
@@ -73,13 +73,13 @@ export function createServer(
       });
 
       conn.on('error', (err) => {
-        log.warn({ err: err.message }, 'erro de conexão');
+        log.warn({ err: err.message }, 'connection error');
       });
     },
   );
 
   server.on('error', (err) => {
-    log.error({ err: err.message }, 'erro no servidor TLS');
+    log.error({ err: err.message }, 'TLS server error');
   });
 
   return server;

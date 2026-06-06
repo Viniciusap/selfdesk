@@ -1,6 +1,6 @@
 /**
- * Testes de integração: broker real com TLS, cliente mock fazendo handshake completo.
- * Usa `selfsigned` para gerar certificados de teste em memória.
+ * Integration tests: real broker with TLS, mock client performing a full handshake.
+ * Uses `selfsigned` to generate in-memory test certificates.
  */
 
 import * as tls from 'node:tls';
@@ -102,14 +102,14 @@ describe('Handshake completo', () => {
     sock.destroy();
   });
 
-  it('receiver autentica com segredo correto → AUTH_OK', async () => {
+  it('receiver authenticates with correct secret → AUTH_OK', async () => {
     const sock   = await tlsConnect();
     const result = await doHandshake(sock, 'receiver', 'receiver', SECRET);
     expect(result.type).toBe(MessageType.AUTH_OK);
     sock.destroy();
   });
 
-  it('sender com segredo errado → AUTH_FAIL', async () => {
+  it('sender with wrong secret → AUTH_FAIL', async () => {
     const sock   = await tlsConnect();
     const result = await doHandshake(sock, 'sender', 'laptop-01', 'wrong-secret');
     expect(result.type).toBe(MessageType.AUTH_FAIL);
@@ -118,7 +118,7 @@ describe('Handshake completo', () => {
     sock.destroy();
   });
 
-  it('agentId não permitido → AUTH_FAIL imediato (sem challenge)', async () => {
+  it('disallowed agentId → immediate AUTH_FAIL (no challenge)', async () => {
     const sock = await tlsConnect();
     sock.write(buildEnvelope(MessageType.HELLO, 'unknown-agent', Buffer.from(JSON.stringify({ version: 1, role: 'sender', agentId: 'unknown-agent' }))));
     const result = await readFrame(sock);

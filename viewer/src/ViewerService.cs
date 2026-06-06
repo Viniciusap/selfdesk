@@ -117,7 +117,7 @@ public sealed class ViewerService : BackgroundService
                 var mac = doc.RootElement.TryGetProperty("mac", out var macEl) ? macEl.GetString() : null;
                 var ver = doc.RootElement.TryGetProperty("version", out var verEl) ? verEl.GetString() : null;
                 Application.Current?.Dispatcher.InvokeAsync(() => _vm.AddSender(id, mac, ver));
-                // BUG4: REQUEST_IDR garante IDR imediato — sem artefatos H264 ao conectar/reconectar
+                // BUG4: REQUEST_IDR guarantees immediate IDR — no H264 artifacts on connect/reconnect
                 _ = conn.SendAsync(ViewerWire.BuildRequestIdr(id), ct);
                 return;
             }
@@ -320,7 +320,7 @@ public sealed class ViewerService : BackgroundService
 
         var rtt = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds() - ts;
 
-        // BUG3: InvokeAsync desacopla o receive loop do UI thread — sem stutter por espera de blit
+        // BUG3: InvokeAsync decouples the receive loop from the UI thread — no stutter waiting for blit
         _ = Application.Current?.Dispatcher.InvokeAsync(() =>
         {
             var sender = _vm.Senders.FirstOrDefault(s => s.AgentId == senderId);

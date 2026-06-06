@@ -138,14 +138,14 @@ public class ViewModelTests
         vm.AddSender("laptop-01");
         vm.AddSender("laptop-02");
 
-        // Foco inicial no primeiro
+        // Initial focus on the first sender
         Assert.Equal("laptop-01", vm.SelectedSender?.AgentId);
 
-        // Alternar para o segundo
+        // Switch to the second sender
         vm.SelectedSender = vm.Senders.First(s => s.AgentId == "laptop-02");
         Assert.Equal("laptop-02", vm.SelectedSender?.AgentId);
 
-        // INPUT_EVENT usaria peer_id = laptop-02
+        // INPUT_EVENT would use peer_id = laptop-02
         var inputMsg = ViewerWire.BuildMouseMove(vm.SelectedSender!.AgentId, 100, 200);
         var (_, peerId, _) = WireProtocol.ParseHeader(inputMsg);
         Assert.Equal("laptop-02", peerId);

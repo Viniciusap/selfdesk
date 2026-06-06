@@ -8,7 +8,7 @@ import type { Registry } from './registry.js';
 import type { Connection } from './connection.js';
 import type { Logger } from 'pino';
 
-// Tipos roteados do sender para o receiver (além de VIDEO_FRAME e AUDIO_FRAME)
+// Types routed from sender to receiver (in addition to VIDEO_FRAME and AUDIO_FRAME)
 const SENDER_TO_RECEIVER_TYPES = new Set<number>([
   MessageType.CLIPBOARD,
   MessageType.FILE_HEADER,
@@ -18,7 +18,7 @@ const SENDER_TO_RECEIVER_TYPES = new Set<number>([
   MessageType.MONITOR_LIST,
 ]);
 
-// Tipos roteados do receiver para sender alvo específico (ou broadcast)
+// Types routed from receiver to a specific target sender (or broadcast)
 const RECEIVER_TO_SENDER_FILE_TYPES = new Set<number>([
   MessageType.CLIPBOARD,
   MessageType.FILE_HEADER,
@@ -89,7 +89,7 @@ export class Router {
       const targetId = header.peerId;
       const sender   = this.registry.getSender(targetId);
       if (!sender) {
-        this.log.warn({ targetId, type: header.type }, 'sender alvo não encontrado');
+        this.log.warn({ targetId, type: header.type }, 'target sender not found');
         return;
       }
       sender.send(buildEnvelope(header.type, targetId, payload));

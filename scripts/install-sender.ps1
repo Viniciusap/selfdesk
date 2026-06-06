@@ -1,11 +1,11 @@
 <#
 .SYNOPSIS
-    Updates the SelfDesk Sender from the latest GitHub release.
+    Installs or updates the SelfDesk Sender from the latest GitHub release.
 
 .DESCRIPTION
     Usage (run on the sender machine as Administrator):
-      .\update-sender.ps1
-      .\update-sender.ps1 -InstallDir C:\tools\selfdesk-sender
+      irm https://raw.githubusercontent.com/Viniciusap/selfdesk/master/scripts/install-sender.ps1 | iex
+      .\install-sender.ps1 -InstallDir C:\tools\selfdesk-sender
 
     What it does:
       1. Downloads selfdesk-sender-win-x64.zip from the latest release (GitHub)
@@ -30,13 +30,19 @@ $ErrorActionPreference = 'Stop'
 
 # ── Banner ────────────────────────────────────────────────────────────────────
 Write-Host ""
-Write-Host "  ____       _  __ ____            _    " -ForegroundColor Cyan
-Write-Host " / ___|  ___| |/ _|  _ \  ___  ___| | __" -ForegroundColor Cyan
-Write-Host " \___ \ / _ \ | |_| | | |/ _ \/ __| |/ /" -ForegroundColor Cyan
-Write-Host "  ___) |  __/ |  _| |_| |  __/\__ \   < " -ForegroundColor Cyan
-Write-Host " |____/ \___|_|_||____/ \___||___/_|\_\" -ForegroundColor Cyan
+Write-Host "/-\|/-\|/-\|/-\|/-\|/-\|/-\|/-\|/-\|/-\|/-\|/-\|/-\|/-\|/-\" -ForegroundColor Cyan
+Write-Host "|                                                         |" -ForegroundColor Cyan
+Write-Host "\  ___           _      ___  ___                 _        /" -ForegroundColor Cyan
+Write-Host "- (  _`\        (_ )  /'___)(  _`\              ( )       -" -ForegroundColor Cyan
+Write-Host "/ | (_(_)   __   | | | (__  | | ) |   __    ___ | |/')    \" -ForegroundColor Cyan
+Write-Host "| `\__ \  /'__`\ | | | ,__) | | | ) /'__`\/',__)| , <     |" -ForegroundColor Cyan
+Write-Host "\ ( )_) |(  ___/ | | | |    | |_) |(  ___/\__, \| |\`\    /" -ForegroundColor Cyan
+Write-Host "- `\____)`\____)(___)(_)    (____/'`\____)(____/(_) (_)   -" -ForegroundColor Cyan
+Write-Host "/                                                         \" -ForegroundColor Cyan
+Write-Host "|                                                         |" -ForegroundColor Cyan
+Write-Host "\-/|\-/|\-/|\-/|\-/|\-/|\-/|\-/|\-/|\-/|\-/|\-/|\-/|\-/|\-/" -ForegroundColor Cyan
 Write-Host ""
-Write-Host "  Sender Updater  —  github.com/Viniciusap/selfdesk" -ForegroundColor DarkCyan
+Write-Host "  Sender Installer  —  github.com/Viniciusap/selfdesk" -ForegroundColor DarkCyan
 Write-Host ""
 # ─────────────────────────────────────────────────────────────────────────────
 
@@ -61,8 +67,8 @@ if (-not $principal.IsInRole([Security.Principal.WindowsBuiltInRole]::Administra
 Write-Step "Downloading $AssetName..."
 Write-Host "   URL: $DownloadUrl"
 
-$tmpZip = Join-Path $env:TEMP "selfdesk-sender-update-$([System.Guid]::NewGuid().ToString('N')[0..7] -join '').zip"
-$tmpDir = Join-Path $env:TEMP 'selfdesk-sender-update'
+$tmpZip = Join-Path $env:TEMP "selfdesk-sender-install-$([System.Guid]::NewGuid().ToString('N').Substring(0,8)).zip"
+$tmpDir = Join-Path $env:TEMP 'selfdesk-sender-install'
 
 Invoke-WebRequest -Uri $DownloadUrl -OutFile $tmpZip -UseBasicParsing
 Write-OK "Download complete: $tmpZip"
@@ -204,7 +210,7 @@ if ($svc) {
 }
 
 Write-Host ''
-Write-Host '=== Update complete ===' -ForegroundColor Green
+Write-Host '=== Sender install complete ===' -ForegroundColor Green
 if ($newVer) { Write-Host "   Version installed : $newVer" }
 Write-Host "   Directory         : $InstallDir"
 Write-Host ''

@@ -6,14 +6,14 @@ on:
 
 jobs:
   protocol-sync:
-    name: Verificar sync TS ↔ C# do protocolo
+    name: Verify TS ↔ C# protocol sync
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v6
       - uses: actions/setup-node@v6
         with:
           node-version: lts/*
-      - name: Verificar sincronização de MessageType
+      - name: Verify MessageType sync
         run: node scripts/verify-protocol-sync.js
 
   broker:
@@ -29,7 +29,7 @@ jobs:
           cache: npm
           cache-dependency-path: broker/package-lock.json
 
-      - name: Instalar dependências
+      - name: Install dependencies
         run: npm ci
         working-directory: broker
 
@@ -41,7 +41,7 @@ jobs:
         run: npm run lint
         working-directory: broker
 
-      - name: Testes
+      - name: Tests
         run: npm test
         working-directory: broker
 
@@ -62,5 +62,5 @@ jobs:
       - name: Build
         run: dotnet build selfdesk.slnx --configuration Release --no-restore
 
-      - name: Testes
+      - name: Tests
         run: dotnet test selfdesk.slnx --configuration Release --no-build --logger "trx;LogFileName=results.trx"

@@ -17,12 +17,12 @@ export function loadConfig(envFile?: string): BrokerConfig {
 
   const port = parseInt(process.env.LISTEN_PORT ?? '7000', 10);
   if (isNaN(port) || port < 1 || port > 65535) {
-    throw new Error(`LISTEN_PORT inválida: ${process.env.LISTEN_PORT}`);
+    throw new Error(`Invalid LISTEN_PORT: ${process.env.LISTEN_PORT}`);
   }
 
   const secret = process.env.SHARED_SECRET;
   if (!secret || secret.length < 32) {
-    throw new Error('SHARED_SECRET ausente ou muito curto (mínimo 32 caracteres)');
+    throw new Error('SHARED_SECRET missing or too short (minimum 32 characters)');
   }
 
   const senders = (process.env.ALLOWED_SENDERS ?? '')
@@ -33,7 +33,7 @@ export function loadConfig(envFile?: string): BrokerConfig {
   const certPath = process.env.TLS_CERT_PATH;
   const keyPath  = process.env.TLS_KEY_PATH;
   if (!certPath || !keyPath) {
-    throw new Error('TLS_CERT_PATH e TLS_KEY_PATH são obrigatórios');
+    throw new Error('TLS_CERT_PATH and TLS_KEY_PATH are required');
   }
 
   const envDir = path.dirname(file);

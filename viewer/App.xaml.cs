@@ -39,8 +39,8 @@ public partial class App : Application
             })
             .Build();
 
-        // Cria a janela ANTES de iniciar o host para que ViewerService
-        // receba a instância já existente via DI (sem race condition).
+        // Create the window BEFORE starting the host so ViewerService
+        // receives the already-created instance via DI (no race condition).
         var window = _host.Services.GetRequiredService<MainWindow>();
         await _host.StartAsync();
         window.Show();

@@ -1,6 +1,6 @@
-// Protocolo de fio SelfDesk — constantes autoritativas (seção 5 do SPEC).
-// Todos os campos multibyte são big-endian.
-// Espelhar alterações em shared/protocol/protocol.ts.
+// SelfDesk wire protocol — authoritative constants (SPEC section 5).
+// All multi-byte fields are big-endian.
+// Mirror changes in shared/protocol/protocol.ts.
 
 namespace SelfDesk.Protocol;
 

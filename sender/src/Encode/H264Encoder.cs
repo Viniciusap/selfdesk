@@ -120,7 +120,7 @@ public sealed unsafe class H264Encoder : IFrameEncoder
         }
 
         _dstFrame->pts = _pts++;
-        // força IDR imediatamente quando o viewer pede (REQUEST_IDR ao conectar/reconectar)
+        // force IDR immediately when the viewer requests it (REQUEST_IDR on connect/reconnect)
         var forceKey = _forceKeyframe;
         _forceKeyframe = false;
         _dstFrame->pict_type = forceKey

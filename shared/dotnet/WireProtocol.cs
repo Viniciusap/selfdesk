@@ -6,8 +6,8 @@ using System.Text.Json;
 namespace SelfDesk.Protocol;
 
 /// <summary>
-/// Framing e mensagens de controle compartilhadas entre sender e viewer.
-/// Todos os campos multibyte são big-endian (seção 5 do SPEC).
+/// Shared framing and control messages between sender and viewer.
+/// All multi-byte fields are big-endian (SPEC section 5).
 /// </summary>
 public static class WireProtocol
 {

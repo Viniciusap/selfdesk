@@ -4,7 +4,7 @@ using System.Windows.Data;
 
 namespace SelfDesk.Viewer.Converters;
 
-/// <summary>Converte TransferProgress (int, -1 = sem transferência) → Visibility.</summary>
+/// <summary>Converts TransferProgress (int, -1 = no transfer in progress) → Visibility.</summary>
 public sealed class ProgressVisibilityConverter : IValueConverter
 {
     public object Convert(object value, Type targetType, object parameter, CultureInfo culture) =>

@@ -78,7 +78,7 @@ export class Connection extends EventEmitter {
 
     this.handshakeTimer = setTimeout(() => {
       if (this.state !== 'ACTIVE' && this.state !== 'CLOSED') {
-        this.log.warn({ id: this.id }, 'handshake timeout — encerrando conexão');
+        this.log.warn({ id: this.id }, 'handshake timeout — closing connection');
         this.close();
       }
     }, HANDSHAKE_TIMEOUT_MS);
@@ -120,7 +120,7 @@ export class Connection extends EventEmitter {
       const header = parseHeader(buf);
 
       if (header.length > MAX_FRAME_BYTES) {
-        this.log.warn({ id: this.id, length: header.length }, 'frame oversized — encerrando conexão');
+        this.log.warn({ id: this.id, length: header.length }, 'frame oversized — closing connection');
         this.close();
         return;
       }
@@ -161,19 +161,19 @@ export class Connection extends EventEmitter {
     switch (this.state) {
       case 'CONNECTING': {
         if (header.type !== MessageType.HELLO) {
-          this.rejectAuth('Esperava HELLO');
+          this.rejectAuth('Expected HELLO');
           return;
         }
         let hello: HelloPayload;
         try {
           hello = JSON.parse(payload.toString('utf8')) as HelloPayload;
         } catch {
-          this.rejectAuth('Payload HELLO inválido');
+          this.rejectAuth('Invalid HELLO payload');
           return;
         }
 
         if (hello.role === 'sender' && !this.allowedSenders.has(hello.agentId)) {
-          this.rejectAuth(`agentId '${hello.agentId}' não está em ALLOWED_SENDERS`);
+          this.rejectAuth(`agentId '${hello.agentId}' is not in ALLOWED_SENDERS`);
           return;
         }
 
@@ -191,34 +191,34 @@ export class Connection extends EventEmitter {
 
       case 'CHALLENGE_SENT': {
         if (header.type !== MessageType.AUTH) {
-          this.rejectAuth('Esperava AUTH');
+          this.rejectAuth('Expected AUTH');
           return;
         }
         if (payload.length !== 32) {
-          this.rejectAuth('AUTH payload deve ter 32 bytes');
+          this.rejectAuth('AUTH payload must be 32 bytes');
           return;
         }
         if (!this.nonce || !verifyHmac(this.nonce, payload, this.secret)) {
-          this.rejectAuth('HMAC inválido — segredo incorreto');
+          this.rejectAuth('Invalid HMAC — wrong secret');
           return;
         }
 
         this.state = 'ACTIVE';
         clearTimeout(this.handshakeTimer);
         this.send(build.authOk(this.agentId ?? ''));
-        this.log.info({ agentId: this.agentId, role: this.role }, 'autenticado');
+        this.log.info({ agentId: this.agentId, role: this.role }, 'authenticated');
         this.emit('authenticated', this.role!, this.agentId!);
         this.startHeartbeat();
         break;
       }
 
       default:
-        this.rejectAuth('Sequência de handshake inesperada');
+        this.rejectAuth('Unexpected handshake sequence');
     }
   }
 
   private rejectAuth(reason: string): void {
-    this.log.warn({ reason, id: this.id }, 'auth falhou');
+    this.log.warn({ reason, id: this.id }, 'auth failed');
     this.send(build.authFail(this.agentId ?? '', reason));
     this.close();
   }

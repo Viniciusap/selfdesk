@@ -28,7 +28,7 @@ internal static class AudioPipeline
         }
         catch (Exception ex)
         {
-            log.LogWarning(ex, "WASAPI loopback não disponível — áudio desativado");
+            log.LogWarning(ex, "WASAPI loopback unavailable — audio disabled");
             return;
         }
 
@@ -94,7 +94,7 @@ internal static class AudioPipeline
             }, ct);
 
             capture.StartRecording();
-            log.LogInformation("Áudio: captura iniciada ({Format})", capture.WaveFormat);
+            log.LogInformation("Audio: capture started ({Format})", capture.WaveFormat);
 
             try { await Task.Delay(Timeout.Infinite, ct); }
             catch (OperationCanceledException) { }
@@ -103,7 +103,7 @@ internal static class AudioPipeline
                 capture.StopRecording();
                 frameChannel.Writer.Complete();
                 await sender.ConfigureAwait(false);
-                log.LogInformation("Áudio: captura encerrada");
+                log.LogInformation("Audio: capture stopped");
             }
         }
     }

@@ -4,9 +4,9 @@ using Vortice.DXGI;
 
 namespace SelfDesk.Sender.Capture;
 
-// DXGI Desktop Duplication — GPU-acelerado, zero GPU copy por frame (apenas staging→_bgra).
-// Requer Windows 8+ e GPU com suporte D3D11. Use CAPTURER=dxgi no .env.
-// Falha silenciosamente e cai para GDI em RDP/VM (ver Program.cs).
+// DXGI Desktop Duplication — GPU-accelerated, zero GPU copy per frame (staging→_bgra only).
+// Requires Windows 8+ and a D3D11-capable GPU. Set CAPTURER=dxgi in .env.
+// Fails silently and falls back to GDI in RDP/VM sessions (see Program.cs).
 public sealed class DxgiScreenCapturer : IScreenCapturer
 {
     private readonly ID3D11Device        _device;

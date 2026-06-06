@@ -33,8 +33,8 @@ function makeReceiver() {
   return conn;
 }
 
-describe('Router — roteamento de VIDEO_FRAME', () => {
-  it('entrega VIDEO_FRAME do sender para o receiver', () => {
+describe('Router — VIDEO_FRAME routing', () => {
+  it('delivers VIDEO_FRAME from sender to receiver', () => {
     const registry = new Registry(log);
     const router   = new Router(registry, log);
 
@@ -55,7 +55,7 @@ describe('Router — roteamento de VIDEO_FRAME', () => {
     expect(hdr.peerId).toBe('laptop-01');
   });
 
-  it('descarta VIDEO_FRAME se receiver não conectado', () => {
+  it('discards VIDEO_FRAME when receiver is not connected', () => {
     const registry = new Registry(log);
     const router   = new Router(registry, log);
     const sender   = makeConn('laptop-01');
@@ -63,12 +63,12 @@ describe('Router — roteamento de VIDEO_FRAME', () => {
 
     const payload = Buffer.from([0xAA]);
     sender.emit('message', { version: 1, type: MessageType.VIDEO_FRAME, peerId: '', length: 1 }, payload);
-    // sem crash = OK (sem receiver, descarta)
+    // no crash = OK (no receiver, frame is discarded)
   });
 });
 
-describe('Router — roteamento de INPUT_EVENT', () => {
-  it('entrega INPUT_EVENT do receiver para o sender correto', () => {
+describe('Router — INPUT_EVENT routing', () => {
+  it('delivers INPUT_EVENT from receiver to the correct sender', () => {
     const registry = new Registry(log);
     const router   = new Router(registry, log);
 
@@ -88,7 +88,7 @@ describe('Router — roteamento de INPUT_EVENT', () => {
     expect(hdr.type).toBe(MessageType.INPUT_EVENT);
   });
 
-  it('loga aviso se sender alvo não encontrado', () => {
+  it('logs warning when target sender is not found', () => {
     const registry = new Registry(log);
     const router   = new Router(registry, log);
     const receiver = makeReceiver();
@@ -96,12 +96,12 @@ describe('Router — roteamento de INPUT_EVENT', () => {
 
     const payload = Buffer.from([0x01]);
     receiver.emit('message', { version: 1, type: MessageType.INPUT_EVENT, peerId: 'inexistente', length: 1 }, payload);
-    // sem crash = OK
+    // no crash = OK
   });
 });
 
 describe('Router — SENDER_UP / SENDER_DOWN', () => {
-  it('envia SENDER_UP para receiver quando sender conecta', () => {
+  it('sends SENDER_UP to receiver when sender connects', () => {
     const registry = new Registry(log);
     const router   = new Router(registry, log);
     const receiver = makeReceiver();
@@ -116,7 +116,7 @@ describe('Router — SENDER_UP / SENDER_DOWN', () => {
     expect(body.agentId).toBe('laptop-01');
   });
 
-  it('envia SENDER_DOWN para receiver quando sender desconecta', () => {
+  it('sends SENDER_DOWN to receiver when sender disconnects', () => {
     const registry = new Registry(log);
     const router   = new Router(registry, log);
     const receiver = makeReceiver();
@@ -130,7 +130,7 @@ describe('Router — SENDER_UP / SENDER_DOWN', () => {
     expect(downMsg).toBeDefined();
   });
 
-  it('receiver recebe SENDER_UP de todos os senders já conectados', () => {
+  it('receiver gets SENDER_UP for all already-connected senders', () => {
     const registry = new Registry(log);
     const router   = new Router(registry, log);
 

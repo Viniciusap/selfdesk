@@ -7,8 +7,8 @@ namespace SelfDesk.Sender.Capture;
 
 public static class MonitorEnumerator
 {
-    // Tenta DXGI primeiro — funciona de Session 0 (Windows Service).
-    // GDI (EnumDisplayMonitors) só vê monitores da sessão interativa — inútil de serviços.
+    // Try DXGI first — works from Session 0 (Windows Service).
+    // GDI (EnumDisplayMonitors) only sees monitors in the interactive session — useless from services.
     public static IReadOnlyList<MonitorInfo> Enumerate()
     {
         try { return EnumerateViaDxgi(); }

@@ -12,7 +12,7 @@ using SelfDesk.Sender.Inject;
 // DPI-aware: captura em pixels físicos, coordenadas de input corretas
 SetProcessDpiAwarenessContext(-4); // DPI_AWARENESS_CONTEXT_PER_MONITOR_AWARE_V2
 
-// Carrega .env se existir (ignorado quando rodando como serviço — usar variáveis de ambiente do serviço)
+// Load .env if present (ignored when running as a service — use service environment variables instead)
 if (!WindowsServiceHelpers.IsWindowsService())
     DotNetEnv.Env.Load();
 

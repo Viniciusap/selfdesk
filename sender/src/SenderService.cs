@@ -181,7 +181,7 @@ public sealed class SenderService : BackgroundService
             }
         }, sCt);
 
-        // fire-and-forget: falha de áudio não encerra a sessão de vídeo
+        // fire-and-forget: audio failure must not terminate the video session
         _ = AudioPipeline.Start(conn, _cfg.SenderId, _log, sCt);
 
         try

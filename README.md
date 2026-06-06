@@ -153,16 +153,18 @@ Found a vulnerability? Please report it responsibly via a [private issue](https:
 > **Already installed?** Update any component to the latest release with a single command — no manual steps:
 >
 > ```bash
-> # Broker — Linux, Git Bash, WSL (auto-detects platform)
+> # Broker (Linux / WSL / Git Bash — auto-detects platform)
 > curl -fsSL https://raw.githubusercontent.com/Viniciusap/selfdesk/master/scripts/install-broker.sh | bash
 > ```
-> ```powershell
-> # Broker — Windows PowerShell (no bash available)
-> iwr https://raw.githubusercontent.com/Viniciusap/selfdesk/master/scripts/update-broker.ps1 | iex
-> ```
+> > *Windows PowerShell only (no bash): `irm https://raw.githubusercontent.com/Viniciusap/selfdesk/master/scripts/install-broker.ps1 | iex`*
+>
 > ```powershell
 > # Sender — Windows (PowerShell as Administrator)
-> iwr https://raw.githubusercontent.com/Viniciusap/selfdesk/master/scripts/update-sender.ps1 | iex
+> irm https://raw.githubusercontent.com/Viniciusap/selfdesk/master/scripts/install-sender.ps1 | iex
+> ```
+> ```powershell
+> # Viewer — Windows
+> irm https://raw.githubusercontent.com/Viniciusap/selfdesk/master/scripts/install-viewer.ps1 | iex
 > ```
 > Each script stops the running process, downloads the latest release, replaces the binaries, and restarts — preserving your existing `.env` and certificates.
 
@@ -417,8 +419,8 @@ Contributions are welcome. Workflow:
    - **Video conflation:** Channel capacity 1; old frame is dropped, never queued.
 4. `npm test` in broker must be green. `dotnet test` on the solution must be green.
 5. `git status` after build must not show `.env`, `.pem`, `.key`, `bin/`, `obj/`, or `node_modules/`.
-6. Commit messages in Portuguese, conventional style (e.g. `feat: peer_id routing in broker`).
-7. Open the PR against `main`.
+6. Commit messages in English, conventional style (e.g. `feat: peer_id routing in broker`).
+7. Open the PR against `master`.
 
 ---
 

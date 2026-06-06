@@ -24,7 +24,7 @@ public sealed unsafe class H264Decoder : IFrameDecoder, IDisposable
     {
         ffmpeg.RootPath = AppContext.BaseDirectory;
 
-        // Tenta NVDEC primeiro; fallback automático para software
+        // Try NVDEC first; automatic fallback to software decoder
         AVCodec* codec = ffmpeg.avcodec_find_decoder_by_name("h264_cuvid");
         bool triedHw   = codec != null;
 
@@ -92,7 +92,7 @@ public sealed unsafe class H264Decoder : IFrameDecoder, IDisposable
             if (ret < 0)             throw new InvalidOperationException($"avcodec_receive_frame error: {ret}");
         }
 
-        // Se cuvid retornou CUDA surface, transfere para CPU (NV12)
+        // If cuvid returned a CUDA surface, transfer to CPU (NV12)
         AVFrame* decodeFrame;
         if (_hwDecode && _hwFrame->format == (int)AVPixelFormat.AV_PIX_FMT_CUDA)
         {
