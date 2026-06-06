@@ -151,7 +151,7 @@ Found a vulnerability? Please report it responsibly via a [private issue](https:
 > curl -fsSL https://raw.githubusercontent.com/Viniciusap/selfdesk/master/scripts/update-broker.sh | bash
 > ```
 > ```powershell
-> # Sender (Windows, run as Administrator)
+> # Sender (Windows — open PowerShell as Administrator, then run:)
 > iwr https://raw.githubusercontent.com/Viniciusap/selfdesk/master/scripts/update-sender.ps1 | iex
 > ```
 > Each script stops the running process, downloads the latest release, replaces the binaries, and restarts — preserving your existing `.env` and certificates.
