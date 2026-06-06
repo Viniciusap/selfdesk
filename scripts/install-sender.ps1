@@ -30,17 +30,17 @@ $ErrorActionPreference = 'Stop'
 
 # ── Banner ────────────────────────────────────────────────────────────────────
 Write-Host ""
-Write-Host '/-\|/-\|/-\|/-\|/-\|/-\|/-\|/-\|/-\|/-\|/-\|/-\|/-\|/-\|/-\' -ForegroundColor Cyan
-Write-Host '|                                                         |' -ForegroundColor Cyan
-Write-Host '\  ___           _      ___  ___                 _        /' -ForegroundColor Cyan
-Write-Host '- (  _`\        (_ )  /''___)(  _`\              ( )       -' -ForegroundColor Cyan
-Write-Host '/ | (_(_)   __   | | | (__  | | ) |   __    ___ | |/'')    \' -ForegroundColor Cyan
-Write-Host '| `\__ \  /''__`\ | | | ,__) | | | ) /''__`\/'',__)| , <     |' -ForegroundColor Cyan
-Write-Host '\ ( )_) |(  ___/ | | | |    | |_) |(  ___/\__, \| |\`\    /' -ForegroundColor Cyan
-Write-Host '- `\____)`\____)(___)(_)    (____/''`\____)(____/(_) (_)   -' -ForegroundColor Cyan
-Write-Host '/                                                         \' -ForegroundColor Cyan
-Write-Host '|                                                         |' -ForegroundColor Cyan
-Write-Host "\-/|\-/|\-/|\-/|\-/|\-/|\-/|\-/|\-/|\-/|\-/|\-/|\-/|\-/|\-/" -ForegroundColor Cyan
+Write-Host '/-\|/-\|/-\|/-\|/-\|/-\|/-\|/-\|/-\|/-\|/-\|/-\|/-\|/-\|/-\|/-\' -ForegroundColor Cyan
+Write-Host '|                                                             |' -ForegroundColor Cyan
+Write-Host '\  ___           _      ___  ___                 _            /' -ForegroundColor Cyan
+Write-Host '- (  _`\        (_ )  /''___)(  _`\              ( )          -' -ForegroundColor Cyan
+Write-Host '/ | (_(_)   __   | | | (__  | | ) |   __    ___ | |/'')       \' -ForegroundColor Cyan
+Write-Host '| `\__ \  /''__`\ | | | ,__) | | | ) /''__`\/'',__)| , <      |' -ForegroundColor Cyan
+Write-Host '\ ( )_) |(  ___/ | | | |    | |_) |(  ___/\__, \| |\`\        /' -ForegroundColor Cyan
+Write-Host '- `\____)`\____)(___)(_)    (____/''`\____)(____/(_) (_)      -' -ForegroundColor Cyan
+Write-Host '/                                                             \' -ForegroundColor Cyan
+Write-Host '|                                                             |' -ForegroundColor Cyan
+Write-Host '\-/|\-/|\-/|\-/|\-/|\-/|\-/|\-/|\-/|\-/|\-/|\-/|\-/|\-/|\-/|/-\' -ForegroundColor Cyan
 Write-Host ""
 Write-Host "  Sender Installer  —  github.com/Viniciusap/selfdesk" -ForegroundColor DarkCyan
 Write-Host ""
