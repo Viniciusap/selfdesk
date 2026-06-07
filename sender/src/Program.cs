@@ -16,6 +16,12 @@ SetProcessDpiAwarenessContext(-4); // DPI_AWARENESS_CONTEXT_PER_MONITOR_AWARE_V2
 if (!WindowsServiceHelpers.IsWindowsService())
     DotNetEnv.Env.Load();
 
+// S25: fail fast if SHARED_SECRET is missing or too short
+var _startupSecret = Environment.GetEnvironmentVariable("SHARED_SECRET");
+if (string.IsNullOrEmpty(_startupSecret) || _startupSecret.Length < 32)
+    throw new InvalidOperationException(
+        "SHARED_SECRET missing or too short (minimum 32 chars). Run bootstrap.ps1 -Role sender.");
+
 var builder = Host.CreateApplicationBuilder(args);
 
 builder.Services.Configure<SenderConfig>(cfg =>
@@ -40,7 +46,7 @@ builder.Services.AddSingleton<IScreenCapturer>(sp =>
         try { return new DxgiScreenCapturer(); }
         catch (Exception ex)
         {
-            log.LogWarning(ex, "DXGI capturer falhou, usando GDI como fallback");
+            log.LogWarning(ex, "DXGI capturer failed, falling back to GDI");
         }
     }
     return new GdiScreenCapturer();

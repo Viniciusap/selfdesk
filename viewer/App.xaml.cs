@@ -17,6 +17,12 @@ public partial class App : Application
         base.OnStartup(e);
         DotNetEnv.Env.Load();
 
+        // S25: fail fast if SHARED_SECRET is missing or too short
+        var startupSecret = Environment.GetEnvironmentVariable("SHARED_SECRET");
+        if (string.IsNullOrEmpty(startupSecret) || startupSecret.Length < 32)
+            throw new InvalidOperationException(
+                "SHARED_SECRET missing or too short (minimum 32 chars). Run bootstrap.ps1 -Role receiver.");
+
         _host = Host.CreateDefaultBuilder()
             .ConfigureServices(services =>
             {

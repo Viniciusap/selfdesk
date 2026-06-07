@@ -60,7 +60,7 @@ public sealed class FileTransferReceiver
         var destPath = UniquePath(_outputDir, safeName);
         _stream = new FileStream(destPath, FileMode.Create, FileAccess.Write, FileShare.None);
 
-        _log.LogInformation("Receiving file {Name} ({Size:N0} bytes) → {Path}", safeName, totalSize, destPath);
+        _log.LogInformation("Receiving file {Name} ({Size:N0} bytes)", safeName, totalSize);
     }
 
     // Payload: [0..3] transfer_id + data
