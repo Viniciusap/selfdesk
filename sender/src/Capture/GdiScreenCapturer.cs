@@ -38,8 +38,18 @@ public sealed class GdiScreenCapturer : IScreenCapturer
         _bgra   = new byte[_width * _height * 4];
 
         _hdcScreen  = GetDC(IntPtr.Zero);
-        _hdcMem     = CreateCompatibleDC(_hdcScreen);
-        _hBitmap    = CreateCompatibleBitmap(_hdcScreen, _width, _height);
+        if (_hdcScreen == IntPtr.Zero)
+            throw new InvalidOperationException(
+                "GetDC(NULL) failed — GDI unavailable (Session 0 or RDP without display redirection)");
+
+        _hdcMem = CreateCompatibleDC(_hdcScreen);
+        if (_hdcMem == IntPtr.Zero)
+            throw new InvalidOperationException("CreateCompatibleDC failed");
+
+        _hBitmap = CreateCompatibleBitmap(_hdcScreen, _width, _height);
+        if (_hBitmap == IntPtr.Zero)
+            throw new InvalidOperationException("CreateCompatibleBitmap failed");
+
         _hOldBitmap = SelectObject(_hdcMem, _hBitmap);
 
         _bi = new BITMAPINFOHEADER
