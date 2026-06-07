@@ -49,6 +49,12 @@ public sealed class Win32InputInjector : IInputInjector, IDisposable
                     BinaryPrimitives.ReadUInt16BigEndian(rest[2..]));
                 break;
 
+            case InputEventKind.MouseMoveRel when rest.Length >= 4:
+                InjectMouseMoveRel(
+                    BinaryPrimitives.ReadInt16BigEndian(rest),
+                    BinaryPrimitives.ReadInt16BigEndian(rest[2..]));
+                break;
+
             case InputEventKind.MouseButton when rest.Length >= 6:
                 InjectMouseButton(
                     rest[0],
@@ -125,6 +131,16 @@ public sealed class Win32InputInjector : IInputInjector, IDisposable
                 dy      = ay,
                 dwFlags = MOUSEEVENTF_MOVE | MOUSEEVENTF_ABSOLUTE | MOUSEEVENTF_VIRTUALDESK,
             },
+        };
+        SendInput(1, ref input, Marshal.SizeOf<INPUT>());
+    }
+
+    private void InjectMouseMoveRel(short dx, short dy)
+    {
+        var input = new INPUT
+        {
+            type = INPUT_MOUSE,
+            mi   = new MOUSEINPUT { dx = dx, dy = dy, dwFlags = MOUSEEVENTF_MOVE },
         };
         SendInput(1, ref input, Marshal.SizeOf<INPUT>());
     }

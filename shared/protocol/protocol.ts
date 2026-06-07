@@ -65,10 +65,11 @@ export const VideoFrame = {
 
 /** Payload de INPUT_EVENT — primeiro byte = KIND. */
 export const InputEvent = {
-  MOUSE_MOVE:   0x01,
-  MOUSE_BUTTON: 0x02,
-  MOUSE_WHEEL:  0x03,
-  KEY:          0x10,
+  MOUSE_MOVE:     0x01,
+  MOUSE_BUTTON:   0x02,
+  MOUSE_WHEEL:    0x03,
+  MOUSE_MOVE_REL: 0x04,
+  KEY:            0x10,
   STATE_UP:     0,
   STATE_DOWN:   1,
   BTN_LEFT:     0,

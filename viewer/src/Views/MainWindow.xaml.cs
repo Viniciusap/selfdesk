@@ -14,6 +14,7 @@ public partial class MainWindow : Window
     private byte _modsTracked;
     private bool _isFullscreen;
     private WindowState _prevWindowState;
+    private System.Windows.Point? _lastMousePos;
 
     public MainWindow(MainWindowViewModel vm)
     {
@@ -72,8 +73,25 @@ public partial class MainWindow : Window
     private void OnVideoMouseMove(object sender, MouseEventArgs e)
     {
         if (_vm.SelectedSender is null) return;
-        var (x, y) = NormalizePosition(e.GetPosition(VideoImage));
-        Send(ViewerWire.BuildMouseMove(_vm.SelectedSender.AgentId, x, y));
+        var pos = e.GetPosition(VideoImage);
+
+        if (_vm.IsRelativeMouse)
+        {
+            if (_lastMousePos.HasValue)
+            {
+                var dx = (short)(pos.X - _lastMousePos.Value.X);
+                var dy = (short)(pos.Y - _lastMousePos.Value.Y);
+                if (dx != 0 || dy != 0)
+                    Send(ViewerWire.BuildMouseMoveRel(_vm.SelectedSender.AgentId, dx, dy));
+            }
+            _lastMousePos = pos;
+        }
+        else
+        {
+            _lastMousePos = null;
+            var (x, y) = NormalizePosition(pos);
+            Send(ViewerWire.BuildMouseMove(_vm.SelectedSender.AgentId, x, y));
+        }
     }
 
     private void OnVideoMouseDown(object sender, MouseButtonEventArgs e)

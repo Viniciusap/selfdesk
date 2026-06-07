@@ -21,6 +21,7 @@ public sealed partial class MainWindowViewModel : ObservableObject
     [ObservableProperty] private int              _transferProgress = -1;
     [ObservableProperty] private string           _transferStatus   = string.Empty;
     [ObservableProperty] private bool             _isMuted          = false;
+    [ObservableProperty] private bool             _isRelativeMouse  = false;
 
     partial void OnIsMutedChanged(bool value) => _audioPlayer.IsMuted = value;
 

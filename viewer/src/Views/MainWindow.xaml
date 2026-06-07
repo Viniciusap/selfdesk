@@ -70,8 +70,17 @@
                            FontSize="12" Foreground="{StaticResource BrushTextSecondary}"
                            HorizontalAlignment="Center" VerticalAlignment="Center"/>
 
-                <ToggleButton Grid.Column="2"
-                              IsChecked="{Binding IsMuted, Mode=TwoWay}"
+                <StackPanel Grid.Column="2" Orientation="Horizontal" VerticalAlignment="Center">
+                <ToggleButton IsChecked="{Binding IsRelativeMouse, Mode=TwoWay}"
+                              Content="Rel"
+                              FontSize="11"
+                              Padding="6,0"
+                              Margin="0,0,4,0"
+                              Background="Transparent"
+                              BorderThickness="0"
+                              Foreground="{StaticResource BrushTextSecondary}"
+                              ToolTip="Toggle relative mouse mode (for games)"/>
+                <ToggleButton IsChecked="{Binding IsMuted, Mode=TwoWay}"
                               FontSize="13"
                               Padding="8,0"
                               Margin="0,0,8,0"
@@ -91,6 +100,7 @@
                         </Style>
                     </ToggleButton.Style>
                 </ToggleButton>
+                </StackPanel>
             </Grid>
         </Border>
 

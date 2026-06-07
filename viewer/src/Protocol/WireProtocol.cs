@@ -22,6 +22,14 @@ public static class WireProtocol
         return SelfDesk.Protocol.WireProtocol.BuildEnvelope(MessageType.InputEvent, targetPeerId, payload);
     }
 
+    public static byte[] BuildMouseMoveRel(string targetPeerId, short dx, short dy)
+    {
+        var data = new byte[4];
+        BinaryPrimitives.WriteInt16BigEndian(data, dx);
+        BinaryPrimitives.WriteInt16BigEndian(data.AsSpan(2), dy);
+        return BuildInputEvent(InputEventKind.MouseMoveRel, targetPeerId, data);
+    }
+
     public static byte[] BuildMouseMove(string targetPeerId, ushort x, ushort y)
     {
         var data = new byte[4];

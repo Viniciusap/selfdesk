@@ -75,10 +75,11 @@ public static class AudioFrameOffsets
 
 public static class InputEventKind
 {
-    public const byte MouseMove   = 0x01;
-    public const byte MouseButton = 0x02;
-    public const byte MouseWheel  = 0x03;
-    public const byte Key         = 0x10;
+    public const byte MouseMove    = 0x01;
+    public const byte MouseButton  = 0x02;
+    public const byte MouseWheel   = 0x03;
+    public const byte MouseMoveRel = 0x04;
+    public const byte Key          = 0x10;
 
     public const byte StateUp   = 0;
     public const byte StateDown = 1;
