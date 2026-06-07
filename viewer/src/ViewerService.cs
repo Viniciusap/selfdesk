@@ -113,13 +113,19 @@ public sealed class ViewerService : BackgroundService
             }
             if (type == MessageType.SenderUp)
             {
-                var doc = System.Text.Json.JsonDocument.Parse(payload.ToArray());
-                var id  = doc.RootElement.GetProperty("agentId").GetString() ?? peerId;
-                var mac = doc.RootElement.TryGetProperty("mac", out var macEl) ? macEl.GetString() : null;
-                var ver = doc.RootElement.TryGetProperty("version", out var verEl) ? verEl.GetString() : null;
-                Application.Current?.Dispatcher.InvokeAsync(() => _vm.AddSender(id, mac, ver));
-                // BUG4: REQUEST_IDR guarantees immediate IDR — no H264 artifacts on connect/reconnect
-                _ = conn.SendAsync(ViewerWire.BuildRequestIdr(id), ct);
+                try
+                {
+                    var doc = System.Text.Json.JsonDocument.Parse(payload.ToArray());
+                    if (!doc.RootElement.TryGetProperty("agentId", out var agentEl)) return;
+                    var displayId = agentEl.GetString() ?? peerId;
+                    if (displayId.Length > 64) { _log.LogWarning("SENDER_UP agentId too long — ignored"); return; }
+                    var mac = doc.RootElement.TryGetProperty("mac", out var macEl) ? macEl.GetString() : null;
+                    var ver = doc.RootElement.TryGetProperty("version", out var verEl) ? verEl.GetString() : null;
+                    Application.Current?.Dispatcher.InvokeAsync(() => _vm.AddSender(displayId, mac, ver));
+                    // S63: use envelope peerId for routing, JSON agentId only for display
+                    _ = conn.SendAsync(ViewerWire.BuildRequestIdr(peerId), ct);
+                }
+                catch (Exception ex) { _log.LogWarning(ex, "Malformed SENDER_UP payload"); }
                 return;
             }
             if (type == MessageType.MonitorList)
@@ -128,6 +134,7 @@ public sealed class ViewerService : BackgroundService
                 {
                     var monitors = System.Text.Json.JsonDocument.Parse(payload.ToArray())
                         .RootElement.EnumerateArray()
+                        .Take(16) // S61: cap monitor list to prevent UI freeze
                         .Select(el => new ViewModels.MonitorViewModel
                         {
                             Index     = el.GetProperty("index").GetInt32(),
@@ -272,9 +279,14 @@ public sealed class ViewerService : BackgroundService
         {
             case MessageType.SenderDown:
             {
-                var doc = System.Text.Json.JsonDocument.Parse(payload.ToArray());
-                var id  = doc.RootElement.GetProperty("agentId").GetString() ?? peerId;
-                Application.Current?.Dispatcher.Invoke(() => _vm.RemoveSender(id));
+                try
+                {
+                    var doc = System.Text.Json.JsonDocument.Parse(payload.ToArray());
+                    if (!doc.RootElement.TryGetProperty("agentId", out var agentEl)) break;
+                    var id = agentEl.GetString() ?? peerId;
+                    Application.Current?.Dispatcher.Invoke(() => _vm.RemoveSender(id));
+                }
+                catch (Exception ex) { _log.LogWarning(ex, "Malformed SENDER_DOWN payload"); }
                 break;
             }
             case MessageType.VideoFrame:
