@@ -88,18 +88,25 @@ public sealed class SenderService : BackgroundService
         var clipboard = new ClipboardService(conn, _log);
         var fileRx    = new FileTransferReceiver(_log);
 
+        var shutdownExe   = Path.Combine(
+            Environment.GetFolderPath(Environment.SpecialFolder.System), "shutdown.exe");
+        var rebootScheduled = false;
+
         conn.MessageReceived += (type, payload) =>
         {
             switch (type)
             {
                 case MessageType.InputEvent:  _injector.Inject(payload.Span); break;
                 case MessageType.RemoteReboot:
-                    _log.LogWarning("Remote reboot requested — rebooting in 5 seconds");
-                    System.Diagnostics.Process.Start("shutdown", "/r /t 5 /c \"SelfDesk remote reboot\"");
+                    if (!rebootScheduled)
+                    {
+                        rebootScheduled = true;
+                        _log.LogWarning("Remote reboot requested — rebooting in 5 seconds");
+                        System.Diagnostics.Process.Start(shutdownExe, "/r /t 5 /c \"SelfDesk remote reboot\"");
+                    }
                     break;
                 case MessageType.RequestIdr:
                     _encoder.RequestKeyframe();
-                    // Viewer acabou de conectar — reenviar lista de monitores
                     _ = conn.SendAsync(SenderWire.BuildMonitorList(
                         MonitorEnumerator.Enumerate(), _cfg.SenderId), sCt);
                     break;
