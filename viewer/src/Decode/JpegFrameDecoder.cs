@@ -11,7 +11,15 @@ public sealed class JpegFrameDecoder : IFrameDecoder
         if (bitmap is null)
             throw new InvalidDataException("Failed to decode JPEG frame");
 
-        var bgra = new byte[bitmap.Width * bitmap.Height * 4];
+        const int MaxDim = 7680; // 8K
+        if (bitmap.Width <= 0 || bitmap.Height <= 0 || bitmap.Width > MaxDim || bitmap.Height > MaxDim)
+            throw new InvalidDataException(
+                $"JPEG dimensions {bitmap.Width}×{bitmap.Height} exceed limit ({MaxDim}px)");
+
+        long bgraSize = (long)bitmap.Width * bitmap.Height * 4;
+        if (bgraSize > int.MaxValue)
+            throw new InvalidDataException($"Frame too large to allocate ({bgraSize:N0} bytes)");
+        var bgra = new byte[(int)bgraSize];
 
         using var converted = bitmap.Copy(SKColorType.Bgra8888);
         unsafe
