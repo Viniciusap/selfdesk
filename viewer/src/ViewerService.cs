@@ -27,7 +27,8 @@ public sealed class ViewerService : BackgroundService
     private readonly IFrameDecoder           _decoder;
     private readonly IAudioPlayer            _audioPlayer;
     private          IOpusDecoder?            _audioDecoder;
-    private          string                   _lastClipboard = string.Empty;
+    private const int MaxClipboardBytes = 1 * 1024 * 1024; // 1 MB
+    private volatile string                   _lastClipboard = string.Empty;
 
     public ViewerService(
         IOptions<ViewerConfig> cfg,
@@ -180,8 +181,11 @@ public sealed class ViewerService : BackgroundService
                 });
                 if (text is null || text == _lastClipboard) continue;
                 _lastClipboard = text;
-                var targetId = _vm.SelectedSender?.AgentId ?? string.Empty;
-                var msg = WireProtocol.BuildClipboard(Encoding.UTF8.GetBytes(text), targetId);
+                var targetId = _vm.SelectedSender?.AgentId;
+                if (string.IsNullOrEmpty(targetId)) continue;
+                var clipBytes = Encoding.UTF8.GetBytes(text);
+                if (clipBytes.Length > MaxClipboardBytes) continue;
+                var msg = WireProtocol.BuildClipboard(clipBytes, targetId);
                 try { await conn.SendAsync(msg, ct); }
                 catch { break; }
             }

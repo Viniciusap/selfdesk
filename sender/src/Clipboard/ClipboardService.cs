@@ -10,9 +10,11 @@ namespace SelfDesk.Sender.Clipboard;
 /// </summary>
 public sealed class ClipboardService
 {
+    private const int MaxClipboardBytes = 1 * 1024 * 1024; // 1 MB
+
     private readonly BrokerConnection _conn;
     private readonly ILogger _log;
-    private string _lastText = string.Empty;
+    private volatile string _lastText = string.Empty;
 
     public ClipboardService(BrokerConnection conn, ILogger log)
     {
@@ -40,6 +42,7 @@ public sealed class ClipboardService
             _lastText = text;
 
             var payload = Encoding.UTF8.GetBytes(text);
+            if (payload.Length > MaxClipboardBytes) continue;
             var msg = WireProtocol.BuildClipboard(payload, agentId);
             try { await _conn.SendAsync(msg, ct); }
             catch (Exception ex) { _log.LogWarning(ex, "Failed to send clipboard"); }
