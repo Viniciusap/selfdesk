@@ -339,8 +339,11 @@ public sealed class ViewerService : BackgroundService
                 _vm.VideoFrame.PixelWidth  != decoded.Width ||
                 _vm.VideoFrame.PixelHeight != decoded.Height)
             {
+                var src  = PresentationSource.FromVisual(_window);
+                var dpiX = src is not null ? 96.0 * src.CompositionTarget.TransformToDevice.M11 : 96.0;
+                var dpiY = src is not null ? 96.0 * src.CompositionTarget.TransformToDevice.M22 : 96.0;
                 _vm.VideoFrame = new WriteableBitmap(
-                    decoded.Width, decoded.Height, 96, 96, PixelFormats.Bgra32, null);
+                    decoded.Width, decoded.Height, dpiX, dpiY, PixelFormats.Bgra32, null);
             }
 
             _vm.VideoFrame.Lock();
