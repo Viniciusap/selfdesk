@@ -37,17 +37,36 @@ export function loadConfig(envFile?: string): BrokerConfig {
   }
 
   const envDir = path.dirname(file);
+  const resolvedCert = path.resolve(envDir, certPath);
+  const resolvedKey  = path.resolve(envDir, keyPath);
+
+  // S27: verify resolved paths are regular files, not devices or FIFOs
+  for (const [label, p] of [['TLS_CERT_PATH', resolvedCert], ['TLS_KEY_PATH', resolvedKey]] as const) {
+    if (!fs.existsSync(p) || !fs.statSync(p).isFile()) {
+      throw new Error(`${label} '${p}' does not exist or is not a regular file`);
+    }
+  }
+
   return {
     listenPort:     port,
     sharedSecret:  secret,
     allowedSenders: new Set(senders),
-    tlsCertPath:   path.resolve(envDir, certPath),
-    tlsKeyPath:    path.resolve(envDir, keyPath),
+    tlsCertPath:   resolvedCert,
+    tlsKeyPath:    resolvedKey,
     logLevel:      process.env.LOG_LEVEL ?? 'info',
   };
 }
 
 export function loadTlsMaterial(cfg: BrokerConfig): { cert: Buffer; key: Buffer } {
+  // S29: warn if TLS private key is group/world-readable on Unix
+  if (process.platform !== 'win32') {
+    const stat = fs.statSync(cfg.tlsKeyPath);
+    if ((stat.mode & 0o077) !== 0) {
+      throw new Error(
+        `TLS private key '${cfg.tlsKeyPath}' must be accessible only by the owner (chmod 600)`,
+      );
+    }
+  }
   return {
     cert: fs.readFileSync(cfg.tlsCertPath),
     key:  fs.readFileSync(cfg.tlsKeyPath),
