@@ -11,6 +11,7 @@ public sealed class DxgiScreenCapturer : IScreenCapturer
 {
     private readonly ID3D11Device        _device;
     private readonly ID3D11DeviceContext _context;
+    private readonly SemaphoreSlim       _monitorLock = new(1, 1);
     private          IDXGIOutputDuplication _duplication = null!;
     private          ID3D11Texture2D?    _staging;
 
@@ -28,9 +29,17 @@ public sealed class DxgiScreenCapturer : IScreenCapturer
 
     public void SwitchMonitor(int monitorIndex)
     {
-        _staging?.Dispose();
-        _staging = null;
-        InitDuplication(monitorIndex);
+        _monitorLock.Wait();
+        try
+        {
+            _staging?.Dispose();
+            _staging = null;
+            InitDuplication(monitorIndex);
+        }
+        finally
+        {
+            _monitorLock.Release();
+        }
     }
 
     private void InitDuplication(int outputIndex)
@@ -54,6 +63,13 @@ public sealed class DxgiScreenCapturer : IScreenCapturer
     }
 
     public CapturedFrame CaptureFrame()
+    {
+        _monitorLock.Wait();
+        try { return CaptureFrameCore(); }
+        finally { _monitorLock.Release(); }
+    }
+
+    private CapturedFrame CaptureFrameCore()
     {
         var now = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
 
@@ -117,6 +133,7 @@ public sealed class DxgiScreenCapturer : IScreenCapturer
 
     public void Dispose()
     {
+        _monitorLock.Dispose();
         _staging?.Dispose();
         _duplication.Dispose();
         _context.Dispose();
