@@ -20,7 +20,7 @@ public sealed unsafe class H264Encoder : IFrameEncoder
     private int  _height;
     private long _pts;
     private bool _initialized;
-    private volatile bool _forceKeyframe;
+    private int _forceKeyframe; // 0/1; Interlocked.Exchange for atomic read-and-clear
     private long _currentBitrate = 4_000_000;
     private long _pendingBitrate;
 
@@ -95,6 +95,9 @@ public sealed unsafe class H264Encoder : IFrameEncoder
 
     public EncodedFrame Encode(CapturedFrame frame)
     {
+        if (frame.Width <= 0 || frame.Height <= 0)
+            return new EncodedFrame(Array.Empty<byte>(), VideoFrameOffsets.CodecH264, 0, 0, 0, frame.TimestampMs);
+
         var pending = Interlocked.Exchange(ref _pendingBitrate, 0);
         if (pending > 0 && _initialized && Math.Abs(pending - _currentBitrate) > _currentBitrate / 5)
         {
@@ -120,9 +123,7 @@ public sealed unsafe class H264Encoder : IFrameEncoder
         }
 
         _dstFrame->pts = _pts++;
-        // force IDR immediately when the viewer requests it (REQUEST_IDR on connect/reconnect)
-        var forceKey = _forceKeyframe;
-        _forceKeyframe = false;
+        var forceKey = Interlocked.Exchange(ref _forceKeyframe, 0) == 1;
         _dstFrame->pict_type = forceKey
             ? AVPictureType.AV_PICTURE_TYPE_I
             : AVPictureType.AV_PICTURE_TYPE_NONE;
@@ -153,7 +154,7 @@ public sealed unsafe class H264Encoder : IFrameEncoder
             frame.TimestampMs);
     }
 
-    public void RequestKeyframe() => _forceKeyframe = true;
+    public void RequestKeyframe() => Interlocked.Exchange(ref _forceKeyframe, 1);
 
     public void UpdateBitrate(long bitsPerSecond)
     {
