@@ -1,4 +1,6 @@
 using System.Windows;
+using System.Reflection;
+using System.Diagnostics;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using SelfDesk.Viewer.Audio;
@@ -15,6 +17,18 @@ public partial class App : Application
     protected override async void OnStartup(StartupEventArgs e)
     {
         base.OnStartup(e);
+        // Print version and exit early when requested (avoid building the host)
+        if (e.Args is { Length: > 0 } && (Array.IndexOf(e.Args, "--version") >= 0 || Array.IndexOf(e.Args, "-v") >= 0))
+        {
+            var asm = Assembly.GetEntryAssembly();
+            var version = asm != null
+                ? FileVersionInfo.GetVersionInfo(asm.Location).ProductVersion ?? asm.GetName().Version?.ToString()
+                : "0.0.0";
+            Console.WriteLine($"SelfDesk Viewer v{version}");
+            Shutdown();
+            return;
+        }
+
         DotNetEnv.Env.Load();
 
         _host = Host.CreateDefaultBuilder()
@@ -23,9 +37,9 @@ public partial class App : Application
                 services.Configure<ViewerConfig>(cfg =>
                 {
                     cfg.SharedSecret = GetEnv("SHARED_SECRET", string.Empty);
-                    cfg.BrokerHost   = GetEnv("BROKER_HOST",   "localhost");
-                    cfg.BrokerPort   = int.TryParse(GetEnv("BROKER_PORT", "7000"), out var p) ? p : 7000;
-                    cfg.TlsCaPath    = GetEnv("TLS_CA_PATH",   string.Empty);
+                    cfg.BrokerHost = GetEnv("BROKER_HOST", "localhost");
+                    cfg.BrokerPort = int.TryParse(GetEnv("BROKER_PORT", "7000"), out var p) ? p : 7000;
+                    cfg.TlsCaPath = GetEnv("TLS_CA_PATH", string.Empty);
                 });
                 var encoderEnv = GetEnv("ENCODER", "jpeg").ToLowerInvariant();
                 if (encoderEnv is "qsv" or "nvenc")
