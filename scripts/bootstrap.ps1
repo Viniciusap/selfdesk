@@ -54,6 +54,19 @@ function New-RandomSecret {
     return [Convert]::ToBase64String($bytes)
 }
 
+function Set-OwnerOnly {
+    param([string]$FilePath)
+    $acl = Get-Acl $FilePath
+    $acl.SetAccessRuleProtection($true, $false)
+    $currentUser = [Security.Principal.WindowsIdentity]::GetCurrent().Name
+    $rule = New-Object Security.AccessControl.FileSystemAccessRule(
+        $currentUser,
+        [Security.AccessControl.FileSystemRights]::FullControl,
+        [Security.AccessControl.AccessControlType]::Allow)
+    $acl.AddAccessRule($rule)
+    Set-Acl -Path $FilePath -AclObject $acl
+}
+
 function New-Certs {
     if (-not (Test-Path $CertDir)) { New-Item -ItemType Directory -Path $CertDir | Out-Null }
 
@@ -93,9 +106,18 @@ function New-Certs {
     $extFile = Join-Path $CertDir 'san.ext'
 
     & openssl req -x509 -newkey rsa:4096 -nodes -keyout $caKey -out $caCert -days 730 -subj '/CN=selfdesk-lan-ca' 2>$null
+    if ($LASTEXITCODE -ne 0 -or -not (Test-Path $caCert)) {
+        throw "Failed to generate CA certificate. Check openssl installation."
+    }
     & openssl req -newkey rsa:4096 -nodes -keyout $srvKey -out $srvCsr -subj "/CN=$ip" 2>$null
+    if ($LASTEXITCODE -ne 0 -or -not (Test-Path $srvCsr)) {
+        throw "Failed to generate server CSR."
+    }
     Set-Content -Path $extFile -Value "subjectAltName=IP:$ip"
-    & openssl x509 -req -in $srvCsr -CA $caCert -CAkey $caKey -CAcreateserial -out $srvCrt -days 825 -extfile $extFile 2>$null
+    & openssl x509 -req -in $srvCsr -CA $caCert -CAkey $caKey -CAcreateserial -out $srvCrt -days 365 -extfile $extFile 2>$null
+    if ($LASTEXITCODE -ne 0 -or -not (Test-Path $srvCrt)) {
+        throw "Failed to sign server certificate."
+    }
 
     Remove-Item $srvCsr, $extFile -ErrorAction SilentlyContinue
     Write-Host "Done. Distribute '$caCert' to sender/receiver machines (TLS_CA_PATH pinning)."
@@ -134,12 +156,14 @@ TLS_CERT_PATH=$certRel
 TLS_KEY_PATH=$keyRel
 LOG_LEVEL=info
 "@ | Set-Content -Path $out -Encoding UTF8
+        Set-OwnerOnly $out
 
         Write-Host ''
-        Write-Host "Generated: $out"
+        Write-Host "Generated: $out (permissions restricted to owner)"
         Write-Host ''
-        Write-Host '==> SHARED_SECRET (paste into sender and receiver .env files):'
-        Write-Host "    $secret"
+        Write-Host '==> SHARED_SECRET saved to the .env file.'
+        Write-Host '    Copy it manually to sender/receiver .env files.'
+        Write-Host '    Do not share via chat, email, or screen recording.'
     }
 
     'sender' {
@@ -179,9 +203,10 @@ TARGET_FPS=$targetFps
 ENCODER=$encoder
 JPEG_QUALITY=$jpegQuality
 "@ | Set-Content -Path $out -Encoding UTF8
+        Set-OwnerOnly $out
 
         Write-Host ''
-        Write-Host "Generated: $out"
+        Write-Host "Generated: $out (permissions restricted to owner)"
         if ($Prebuilt) {
             Write-Host "Copy ca-cert.pem from the broker to: $caPath"
         } else {
@@ -218,9 +243,10 @@ BROKER_HOST=$brokerHost
 BROKER_PORT=$brokerPort
 TLS_CA_PATH=$caPath
 "@ | Set-Content -Path $out -Encoding UTF8
+        Set-OwnerOnly $out
 
         Write-Host ''
-        Write-Host "Generated: $out"
+        Write-Host "Generated: $out (permissions restricted to owner)"
         if ($Prebuilt) {
             Write-Host "Copy ca-cert.pem from the broker to: $caPath"
         } else {

@@ -39,7 +39,14 @@ confirm_overwrite() {
   fi
 }
 
-gen_secret() { openssl rand -base64 48 2>/dev/null | tr -d '\n'; }
+gen_secret() {
+  local out
+  out="$(openssl rand -base64 48 2>&1)" || {
+    echo "ERROR: openssl rand failed — install openssl before running bootstrap." >&2
+    exit 1
+  }
+  printf '%s' "$out" | tr -d '\n'
+}
 
 gen_certs() {
   mkdir -p "$CERT_DIR"
@@ -51,14 +58,22 @@ gen_certs() {
   echo "Generating CA and server certificate..."
   openssl req -x509 -newkey rsa:4096 -nodes \
     -keyout "$CERT_DIR/ca-key.pem" -out "$CERT_DIR/ca-cert.pem" \
-    -days 730 -subj "/CN=selfdesk-lan-ca" >/dev/null 2>&1
+    -days 730 -subj "/CN=selfdesk-lan-ca" >/dev/null 2>&1 ||
+    { echo "ERROR: Failed to generate CA certificate. Check openssl installation." >&2; exit 1; }
+  [ -f "$CERT_DIR/ca-cert.pem" ] || { echo "ERROR: ca-cert.pem was not created." >&2; exit 1; }
+
   openssl req -newkey rsa:4096 -nodes \
     -keyout "$CERT_DIR/server-key.pem" -out "$CERT_DIR/server.csr" \
-    -subj "/CN=$ip" >/dev/null 2>&1
+    -subj "/CN=$ip" >/dev/null 2>&1 ||
+    { echo "ERROR: Failed to generate server CSR." >&2; exit 1; }
+
   openssl x509 -req -in "$CERT_DIR/server.csr" \
     -CA "$CERT_DIR/ca-cert.pem" -CAkey "$CERT_DIR/ca-key.pem" -CAcreateserial \
-    -out "$CERT_DIR/server-cert.pem" -days 825 \
-    -extfile <(printf "subjectAltName=IP:%s" "$ip") >/dev/null 2>&1
+    -out "$CERT_DIR/server-cert.pem" -days 365 \
+    -extfile <(printf "subjectAltName=IP:%s" "$ip") >/dev/null 2>&1 ||
+    { echo "ERROR: Failed to sign server certificate." >&2; exit 1; }
+  [ -f "$CERT_DIR/server-cert.pem" ] || { echo "ERROR: server-cert.pem was not created." >&2; exit 1; }
+
   rm -f "$CERT_DIR/server.csr"
   echo "Done. Distribute certs/ca-cert.pem to sender/receiver machines (TLS pinning)."
 }
@@ -72,6 +87,8 @@ case "$ROLE" in
     gen_certs
     SECRET="$(gen_secret)"
     mkdir -p "$ROOT/broker"
+    local _old_umask; _old_umask=$(umask)
+    umask 077
     cat > "$OUT" <<EOF
 ROLE=broker
 SHARED_SECRET=$SECRET
@@ -81,10 +98,12 @@ TLS_CERT_PATH=../certs/server-cert.pem
 TLS_KEY_PATH=../certs/server-key.pem
 LOG_LEVEL=info
 EOF
-    echo "Generated: $OUT"
+    umask "$_old_umask"
+    echo "Generated: $OUT (permissions restricted to owner)"
     echo
-    echo "==> SHARED_SECRET (paste into sender and receiver .env files):"
-    echo "    $SECRET"
+    echo "==> SHARED_SECRET saved to $OUT"
+    echo "    Copy it manually to sender/receiver .env files."
+    echo "    Do not share via chat, email, or screen recording."
     ;;
 
   sender)
@@ -103,6 +122,8 @@ EOF
     prompt ENCODER       "Encoder (jpeg|qsv|nvenc)" "jpeg"
     prompt JPEG_QUALITY  "JPEG quality (1-100)" "75"
     mkdir -p "$ROOT/sender"
+    local _old_umask; _old_umask=$(umask)
+    umask 077
     cat > "$OUT" <<EOF
 ROLE=sender
 SENDER_ID=$SENDER_ID
@@ -114,7 +135,8 @@ TARGET_FPS=$TARGET_FPS
 ENCODER=$ENCODER
 JPEG_QUALITY=$JPEG_QUALITY
 EOF
-    echo "Generated: $OUT"
+    umask "$_old_umask"
+    echo "Generated: $OUT (permissions restricted to owner)"
     echo "Remember to copy certs/ca-cert.pem from the broker to this machine."
     ;;
 
@@ -130,6 +152,8 @@ EOF
       [[ "$_confirm" == "y" || "$_confirm" == "Y" ]] || { echo "Aborted."; exit 1; }
     fi
     mkdir -p "$ROOT/viewer"
+    local _old_umask; _old_umask=$(umask)
+    umask 077
     cat > "$OUT" <<EOF
 ROLE=receiver
 SHARED_SECRET=$SHARED_SECRET
@@ -137,7 +161,8 @@ BROKER_HOST=$BROKER_HOST
 BROKER_PORT=$BROKER_PORT
 TLS_CA_PATH=../certs/ca-cert.pem
 EOF
-    echo "Generated: $OUT"
+    umask "$_old_umask"
+    echo "Generated: $OUT (permissions restricted to owner)"
     echo "Remember to copy certs/ca-cert.pem from the broker to this machine."
     ;;
 
