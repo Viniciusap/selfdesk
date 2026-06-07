@@ -43,17 +43,17 @@ public sealed class BrokerConnection : IAsyncDisposable
                 "TLS_CA_PATH not set or file not found — CA pinning is required. " +
                 "Run bootstrap.ps1 -Role sender to generate the correct .env.");
 
-        _ssl = new SslStream(_tcp.GetStream(), false, (_, cert, _, _) =>
-        {
-            if (cert is null) return false;
-            var serverCert = new X509Certificate2(cert);
-            return caBundle.Any(ca => IsSignedBy(serverCert, ca));
-        });
+        _ssl = new SslStream(_tcp.GetStream(), false);
 
         await _ssl.AuthenticateAsClientAsync(new SslClientAuthenticationOptions
         {
-            TargetHost              = _cfg.BrokerHost,
-            RemoteCertificateValidationCallback = null,
+            TargetHost = _cfg.BrokerHost,
+            RemoteCertificateValidationCallback = (_, cert, _, _) =>
+            {
+                if (cert is null) return false;
+                var serverCert = new X509Certificate2(cert);
+                return caBundle.Any(ca => IsSignedBy(serverCert, ca));
+            },
         }, ct);
 
         await SendRawAsync(SenderWire.BuildHello(_cfg.SenderId, "sender", SenderWire.GetLocalMac()), ct);
@@ -62,7 +62,7 @@ public sealed class BrokerConnection : IAsyncDisposable
         if (type != MessageType.Challenge)
             throw new InvalidDataException($"Expected CHALLENGE, got 0x{type:X2}");
 
-        var nonce = await ReadPayloadAsync(ProtocolSizes.NonceSize, ct);
+        var nonce = await ReadPayloadAsync((uint)ProtocolSizes.NonceSize, ct);
         await SendRawAsync(WireProtocol.BuildAuth(nonce, _cfg.SharedSecret), ct);
 
         var (authType, _, _) = await ReadHeaderAsync(ct);
@@ -82,7 +82,7 @@ public sealed class BrokerConnection : IAsyncDisposable
         while (!ct.IsCancellationRequested)
         {
             var (type, _, length) = await ReadHeaderAsync(ct);
-            var payload = length > 0 ? await ReadPayloadAsync((int)length, ct) : Array.Empty<byte>();
+            var payload = length > 0 ? await ReadPayloadAsync(length, ct) : Array.Empty<byte>();
 
             switch (type)
             {
@@ -123,11 +123,11 @@ public sealed class BrokerConnection : IAsyncDisposable
 
     private const int MaxPayloadBytes = 10 * 1024 * 1024; // 10 MB
 
-    private async Task<byte[]> ReadPayloadAsync(int length, CancellationToken ct)
+    private async Task<byte[]> ReadPayloadAsync(uint length, CancellationToken ct)
     {
         if (length > MaxPayloadBytes)
-            throw new InvalidDataException($"Payload de {length} bytes excede limite de {MaxPayloadBytes} bytes");
-        var buf = new byte[length];
+            throw new InvalidDataException($"Payload {length}B exceeds {MaxPayloadBytes}B limit");
+        var buf = new byte[(int)length];
         await ReadExactAsync(buf, ct);
         return buf;
     }

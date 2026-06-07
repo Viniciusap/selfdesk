@@ -39,34 +39,35 @@ public sealed class BrokerConnection : IAsyncDisposable
                 "TLS_CA_PATH not set or file not found — CA pinning is required. " +
                 "Run bootstrap.ps1 -Role receiver to generate the correct .env.");
 
-        _ssl = new SslStream(_tcp.GetStream(), false, (_, cert, _, _) =>
-        {
-            if (cert is null) return false;
-            var serverCert = new X509Certificate2(cert);
-            return caBundle.Any(ca => IsSignedBy(serverCert, ca));
-        });
+        _ssl = new SslStream(_tcp.GetStream(), false);
 
         await _ssl.AuthenticateAsClientAsync(new SslClientAuthenticationOptions
         {
             TargetHost = _cfg.BrokerHost,
+            RemoteCertificateValidationCallback = (_, cert, _, _) =>
+            {
+                if (cert is null) return false;
+                var serverCert = new X509Certificate2(cert);
+                return caBundle.Any(ca => IsSignedBy(serverCert, ca));
+            },
         }, ct);
 
         await SendRawAsync(ViewerWire.BuildHello("receiver", "receiver"), ct);
 
         var (type, _, _) = await ReadHeaderAsync(ct);
         if (type != MessageType.Challenge)
-            throw new InvalidDataException($"Esperava CHALLENGE, recebeu 0x{type:X2}");
+            throw new InvalidDataException($"Expected CHALLENGE, got 0x{type:X2}");
 
-        var nonce = await ReadPayloadAsync(ProtocolSizes.NonceSize, ct);
+        var nonce = await ReadPayloadAsync((uint)ProtocolSizes.NonceSize, ct);
         await SendRawAsync(WireProtocol.BuildAuth(nonce, _cfg.SharedSecret), ct);
 
         var (authType, _, _) = await ReadHeaderAsync(ct);
         if (authType == MessageType.AuthFail)
-            throw new UnauthorizedAccessException("AUTH_FAIL: segredo incorreto");
+            throw new UnauthorizedAccessException("AUTH_FAIL: wrong secret or agentId not allowed");
         if (authType != MessageType.AuthOk)
-            throw new InvalidDataException($"Esperava AUTH_OK, recebeu 0x{authType:X2}");
+            throw new InvalidDataException($"Expected AUTH_OK, got 0x{authType:X2}");
 
-        _log.LogInformation("Viewer autenticado no broker");
+        _log.LogInformation("Viewer authenticated with broker");
     }
 
     public async Task RunReceiveLoopAsync(CancellationToken ct)
@@ -74,7 +75,7 @@ public sealed class BrokerConnection : IAsyncDisposable
         while (!ct.IsCancellationRequested)
         {
             var (type, peerId, length) = await ReadHeaderAsync(ct);
-            var payload = length > 0 ? await ReadPayloadAsync((int)length, ct) : Array.Empty<byte>();
+            var payload = length > 0 ? await ReadPayloadAsync(length, ct) : Array.Empty<byte>();
 
             switch (type)
             {
@@ -84,7 +85,7 @@ public sealed class BrokerConnection : IAsyncDisposable
                 case MessageType.Pong:
                     break;
                 case MessageType.Bye:
-                    _log.LogInformation("BYE recebido");
+                    _log.LogInformation("BYE received");
                     return;
                 default:
                     MessageReceived?.Invoke(type, peerId, payload.AsMemory());
@@ -115,11 +116,11 @@ public sealed class BrokerConnection : IAsyncDisposable
 
     private const int MaxPayloadBytes = 10 * 1024 * 1024; // 10 MB
 
-    private async Task<byte[]> ReadPayloadAsync(int length, CancellationToken ct)
+    private async Task<byte[]> ReadPayloadAsync(uint length, CancellationToken ct)
     {
         if (length > MaxPayloadBytes)
-            throw new InvalidDataException($"Payload de {length} bytes excede limite de {MaxPayloadBytes} bytes");
-        var buf = new byte[length];
+            throw new InvalidDataException($"Payload {length}B exceeds {MaxPayloadBytes}B limit");
+        var buf = new byte[(int)length];
         await ReadExactAsync(buf, ct);
         return buf;
     }
