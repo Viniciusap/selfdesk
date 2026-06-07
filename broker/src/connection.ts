@@ -172,14 +172,17 @@ export class Connection extends EventEmitter {
           return;
         }
 
-        if (hello.role === 'sender' && !this.allowedSenders.has(hello.agentId)) {
-          this.rejectAuth(`agentId '${hello.agentId}' is not in ALLOWED_SENDERS`);
+        // S6: protocol constraint — agentId must fit in 16-byte PEER_ID field
+        if (typeof hello.agentId === 'string' && hello.agentId.length > 16) {
+          this.rejectAuth('agentId exceeds 16 characters');
           return;
         }
 
         this.role          = hello.role;
         this.agentId       = hello.agentId;
-        this.mac           = hello.mac;
+        // S59: validate MAC format; ignore if malformed
+        const macRegex = /^([0-9A-Fa-f]{2}:){5}[0-9A-Fa-f]{2}$/;
+        this.mac           = hello.mac && macRegex.test(hello.mac) ? hello.mac : undefined;
         this.senderVersion = hello.senderVersion;
         this.state   = 'HELLO_RECEIVED';
 
@@ -202,6 +205,11 @@ export class Connection extends EventEmitter {
           this.rejectAuth('Invalid HMAC — wrong secret');
           return;
         }
+        // S26: ALLOWED_SENDERS check deferred here so all senders receive CHALLENGE
+        if (this.role === 'sender' && !this.allowedSenders.has(this.agentId!)) {
+          this.rejectAuth(`agentId '${this.agentId}' is not in ALLOWED_SENDERS`);
+          return;
+        }
 
         this.state = 'ACTIVE';
         clearTimeout(this.handshakeTimer);
@@ -219,7 +227,8 @@ export class Connection extends EventEmitter {
 
   private rejectAuth(reason: string): void {
     this.log.warn({ reason, id: this.id }, 'auth failed');
-    this.send(build.authFail(this.agentId ?? '', reason));
+    // S32: send generic reason to client; detail stays in server log only
+    this.send(build.authFail(this.agentId ?? '', 'Authentication failed'));
     this.close();
   }
 
@@ -230,7 +239,7 @@ export class Connection extends EventEmitter {
       this.send(build.ping(BigInt(Date.now())));
 
       this.pongTimer = setTimeout(() => {
-        this.log.warn({ agentId: this.agentId }, 'PONG timeout — encerrando');
+        this.log.warn({ agentId: this.agentId }, 'PONG timeout — closing');
         this.close();
       }, PONG_TIMEOUT_MS);
     }, PING_INTERVAL_MS);

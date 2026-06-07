@@ -118,9 +118,14 @@ describe('Handshake completo', () => {
     sock.destroy();
   });
 
-  it('disallowed agentId → immediate AUTH_FAIL (no challenge)', async () => {
+  it('disallowed agentId → AUTH_FAIL after challenge (uniform timing)', async () => {
+    // S26: broker now sends CHALLENGE even for unknown agentIds to prevent enumeration
     const sock = await tlsConnect();
     sock.write(buildEnvelope(MessageType.HELLO, 'unknown-agent', Buffer.from(JSON.stringify({ version: 1, role: 'sender', agentId: 'unknown-agent' }))));
+    const challenge = await readFrame(sock);
+    expect(challenge.type).toBe(MessageType.CHALLENGE);
+    // respond with 32 zero bytes (wrong HMAC — unknown-agent can't know the secret)
+    sock.write(buildEnvelope(MessageType.AUTH, 'unknown-agent', Buffer.alloc(32, 0)));
     const result = await readFrame(sock);
     expect(result.type).toBe(MessageType.AUTH_FAIL);
     sock.destroy();
