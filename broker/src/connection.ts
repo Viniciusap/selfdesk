@@ -85,6 +85,10 @@ export class Connection extends EventEmitter {
     this.handshakeTimer.unref?.();
   }
 
+  get writableLength(): number {
+    return this.socket.writableLength;
+  }
+
   send(buf: Buffer): void {
     if (this.state !== 'CLOSED') {
       this.socket.write(buf);

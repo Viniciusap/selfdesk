@@ -71,15 +71,22 @@ export class Router {
     header: ParsedHeader,
     payload: Buffer,
   ): void {
-    if (header.type === MessageType.VIDEO_FRAME ||
-        header.type === MessageType.AUDIO_FRAME ||
-        SENDER_TO_RECEIVER_TYPES.has(header.type)) {
-      const receiver = this.registry.getReceiver();
-      if (!receiver) return;
+    const receiver = this.registry.getReceiver();
+    if (!receiver) return;
+
+    if (header.type === MessageType.VIDEO_FRAME || header.type === MessageType.AUDIO_FRAME) {
+      // S58: drop frame under backpressure to prevent broker OOM
+      if (receiver.writableLength > 32 * 1024 * 1024) return;
       receiver.send(buildEnvelope(header.type, agentId, payload));
       return;
     }
-    this.log.debug({ type: header.type, agentId }, 'mensagem de sender ignorada');
+
+    if (SENDER_TO_RECEIVER_TYPES.has(header.type)) {
+      receiver.send(buildEnvelope(header.type, agentId, payload));
+      return;
+    }
+
+    this.log.debug({ type: header.type, agentId }, 'unknown sender message type — ignored');
   }
 
   private routeReceiverMessage(header: ParsedHeader, payload: Buffer): void {
@@ -97,17 +104,20 @@ export class Router {
       return;
     }
     if (RECEIVER_TO_SENDER_FILE_TYPES.has(header.type)) {
+      // S57: require explicit PEER_ID for file transfers — no broadcast
       const targetId = header.peerId;
-      const sender   = targetId ? this.registry.getSender(targetId) : undefined;
-      if (sender) {
-        sender.send(buildEnvelope(header.type, targetId, payload));
-      } else {
-        for (const id of this.registry.getSenderIds()) {
-          this.registry.getSender(id)?.send(buildEnvelope(header.type, id, payload));
-        }
+      if (!targetId) {
+        this.log.warn({ type: header.type }, 'file message without target PEER_ID — discarded');
+        return;
       }
+      const sender = this.registry.getSender(targetId);
+      if (!sender) {
+        this.log.warn({ targetId, type: header.type }, 'target sender not found');
+        return;
+      }
+      sender.send(buildEnvelope(header.type, targetId, payload));
       return;
     }
-    this.log.debug({ type: header.type }, 'mensagem de receiver ignorada');
+    this.log.debug({ type: header.type }, 'unknown receiver message type — ignored');
   }
 }

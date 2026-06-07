@@ -13,29 +13,37 @@ export class Registry {
   }
 
   registerSender(agentId: string, conn: Connection): void {
+    const old = this.senders.get(agentId);
+    if (old && old.conn.state !== 'CLOSED') {
+      this.log.warn({ agentId }, 'sender reconnecting — closing previous connection');
+      old.conn.close();
+    }
     this.senders.set(agentId, { conn, mac: conn.mac, version: conn.senderVersion });
-    this.log.info({ agentId }, 'sender registrado');
-    conn.once('closed', () => this.removeSender(agentId));
+    this.log.info({ agentId }, 'sender registered');
+    // S56: check ref identity so a stale 'closed' event from the old conn doesn't evict the new one
+    conn.once('closed', () => {
+      if (this.senders.get(agentId)?.conn === conn) this.removeSender(agentId);
+    });
   }
 
   registerReceiver(conn: Connection): void {
     if (this.receiver && this.receiver.state !== 'CLOSED') {
-      this.log.warn('segundo receiver conectou — encerrando receiver anterior');
+      this.log.warn('second receiver connected — closing previous receiver');
       this.receiver.close();
     }
     this.receiver = conn;
-    this.log.info('receiver registrado');
+    this.log.info('receiver registered');
     conn.once('closed', () => {
       if (this.receiver === conn) {
         this.receiver = undefined;
-        this.log.info('receiver desconectado');
+        this.log.info('receiver disconnected');
       }
     });
   }
 
   removeSender(agentId: string): void {
     this.senders.delete(agentId);
-    this.log.info({ agentId }, 'sender removido');
+    this.log.info({ agentId }, 'sender removed');
   }
 
   getSender(agentId: string): Connection | undefined {
