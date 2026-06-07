@@ -73,6 +73,8 @@ public static class WireProtocol
     public static byte[] BuildFileHeader(uint transferId, long totalSize, string fileName, string targetPeerId)
     {
         var nameBytes = Encoding.UTF8.GetBytes(fileName);
+        if (nameBytes.Length > ushort.MaxValue)
+            throw new ArgumentException($"File name UTF-8 encoding exceeds {ushort.MaxValue} bytes", nameof(fileName));
         var payload   = new byte[4 + 8 + 2 + nameBytes.Length];
         BinaryPrimitives.WriteUInt32BigEndian(payload, transferId);
         BinaryPrimitives.WriteInt64BigEndian(payload.AsSpan(4), totalSize);

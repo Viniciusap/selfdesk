@@ -10,6 +10,8 @@ namespace SelfDesk.Sender.FileTransfer;
 /// </summary>
 public sealed class FileTransferReceiver
 {
+    private const long MaxFileSizeBytes = 10L * 1024 * 1024 * 1024; // 10 GB
+
     private readonly string _outputDir;
     private readonly ILogger _log;
 
@@ -42,6 +44,11 @@ public sealed class FileTransferReceiver
         var fileName  = Encoding.UTF8.GetString(span.Slice(14, nameLen));
         var safeName  = Path.GetFileName(fileName);
         if (string.IsNullOrWhiteSpace(safeName)) return;
+        if (totalSize < 0 || totalSize > MaxFileSizeBytes)
+        {
+            _log.LogWarning("File header rejected: totalSize={Size} exceeds limit", totalSize);
+            return;
+        }
 
         AbortCurrent();
 
@@ -53,7 +60,7 @@ public sealed class FileTransferReceiver
         var destPath = UniquePath(_outputDir, safeName);
         _stream = new FileStream(destPath, FileMode.Create, FileAccess.Write, FileShare.None);
 
-        _log.LogInformation("Recebendo arquivo {Name} ({Size} bytes) → {Path}", safeName, totalSize, destPath);
+        _log.LogInformation("Receiving file {Name} ({Size:N0} bytes) → {Path}", safeName, totalSize, destPath);
     }
 
     // Payload: [0..3] transfer_id + data
@@ -65,6 +72,12 @@ public sealed class FileTransferReceiver
         if (id != _activeId || _stream is null) return;
 
         var data = span[4..];
+        if (_received + data.Length > _totalSize)
+        {
+            _log.LogWarning("File chunk overrun for {Name} — aborting", _fileName);
+            AbortCurrent();
+            return;
+        }
         _stream.Write(data);
         _received += data.Length;
     }
@@ -79,7 +92,7 @@ public sealed class FileTransferReceiver
         _stream.Flush();
         _stream.Dispose();
         _stream = null;
-        _log.LogInformation("Arquivo recebido com sucesso: {Name} ({Bytes} bytes)", _fileName, _received);
+        _log.LogInformation("File received: {Name} ({Bytes:N0} bytes)", _fileName, _received);
 
         _fileName  = null;
         _activeId  = 0;
