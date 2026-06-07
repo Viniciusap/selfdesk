@@ -12,9 +12,10 @@ using SelfDesk.Sender.Inject;
 // DPI-aware: captures in physical pixels, input coordinates are correct
 SetProcessDpiAwarenessContext(-4); // DPI_AWARENESS_CONTEXT_PER_MONITOR_AWARE_V2
 
-// Load .env if present (ignored when running as a service — use service environment variables instead)
-if (!WindowsServiceHelpers.IsWindowsService())
-    DotNetEnv.Env.Load();
+// Load .env from application directory (works for both direct run and Windows Service)
+// S46: service no longer relies on Machine-scope env vars (world-readable in registry)
+var _envFile = Path.Combine(AppContext.BaseDirectory, ".env");
+if (File.Exists(_envFile)) DotNetEnv.Env.Load(_envFile);
 
 // S25: fail fast if SHARED_SECRET is missing or too short
 var _startupSecret = Environment.GetEnvironmentVariable("SHARED_SECRET");

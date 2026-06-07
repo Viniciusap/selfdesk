@@ -84,41 +84,15 @@ New-Service -Name $ServiceName `
 
 Write-Host "Service '$ServiceName' installed."
 
-# Environment variables relevant to the service (read from .env)
-$EnvVarsToSet = @('ROLE','SENDER_ID','SHARED_SECRET','BROKER_HOST','BROKER_PORT',
-                  'TLS_CA_PATH','TARGET_FPS','ENCODER','JPEG_QUALITY','CAPTURER')
+# S53: restrict service control to Administrators and SYSTEM only (prevent non-admin stop/start)
+& sc.exe sdset $ServiceName 'D:(A;;CCLCSWRPWPDTLOCRRC;;;SY)(A;;CCDCLCSWRPWPDTLOCRSDRCWDWO;;;BA)' | Out-Null
+Write-Host "Service DACL restricted to Administrators and SYSTEM."
 
-# Look for .env: first in publish/, then in sender/
-$EnvFile = $null
-foreach ($candidate in @(
-    (Join-Path $PublishDir '.env'),
-    (Join-Path $Root '.env'),
-    (Join-Path $Root 'sender' '.env')
-)) {
-    if (Test-Path $candidate) { $EnvFile = $candidate; break }
-}
-
-if ($null -eq $EnvFile) {
-    Write-Warning ".env not found. Run .\scripts\bootstrap.ps1 -Role sender before continuing."
-    Write-Warning "After generating the .env, run install-service.ps1 again to configure the variables."
-    exit 1
-}
-
+# S46: service reads config from .env in PublishDir directly (no Machine-scope env vars)
+# Machine-scope env vars are readable by all local users — keep secrets only in .env with ACLs
 Write-Host ""
-Write-Host "Configuring service environment variables from: $EnvFile"
-
-foreach ($line in Get-Content $EnvFile) {
-    $line = $line.Trim()
-    if ($line -match '^\s*#' -or $line -notmatch '=') { continue }
-    $idx = $line.IndexOf('=')
-    $key = $line.Substring(0, $idx).Trim()
-    $val = $line.Substring($idx + 1).Trim()
-    if ($key -notin $EnvVarsToSet) { continue }
-
-    [Environment]::SetEnvironmentVariable($key, $val, 'Machine')
-    $display = if ($key -eq 'SHARED_SECRET') { '***' } else { $val }
-    Write-Host "  $key = $display"
-}
+Write-Host "NOTE: Service reads config from .env in $PublishDir"
+Write-Host "      Run bootstrap.ps1 -Role sender to generate it if not done yet."
 
 Write-Host ""
 Write-Host "Starting service..."

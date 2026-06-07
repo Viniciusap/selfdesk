@@ -59,7 +59,7 @@ function Set-EnvKey([string]$File, [string]$Key, [string]$Value) {
     $written = $false
     $out     = [System.Collections.Generic.List[string]]::new()
     foreach ($line in $lines) {
-        if ($line -match "^\s*$Key\s*=") {
+        if ($line -match "^\s*$([regex]::Escape($Key))\s*=") {
             if (-not $written) { $out.Add("$Key = $Value"); $written = $true }
             # drop duplicates
         } else {
@@ -87,6 +87,26 @@ $tmpDir = Join-Path $env:TEMP 'selfdesk-sender-install'
 
 Invoke-WebRequest -Uri $DownloadUrl -OutFile $tmpZip -UseBasicParsing
 Write-OK "Download complete: $tmpZip"
+
+# S48: verify SHA256 against published checksums (if available)
+$checksumUrl = $DownloadUrl -replace [regex]::Escape($AssetName), 'SHA256SUMS'
+try {
+    $checksumContent = Invoke-WebRequest -Uri $checksumUrl -UseBasicParsing -ErrorAction Stop
+    $expectedLine = ($checksumContent.Content -split "`n") | Where-Object { $_ -match [regex]::Escape($AssetName) }
+    if ($expectedLine) {
+        $expectedHash = ($expectedLine -split '\s+')[0].ToUpper()
+        $actualHash   = (Get-FileHash $tmpZip -Algorithm SHA256).Hash.ToUpper()
+        if ($actualHash -ne $expectedHash) {
+            Remove-Item $tmpZip -ErrorAction SilentlyContinue
+            throw "SHA256 mismatch for $AssetName. Expected: $expectedHash, Got: $actualHash. Aborting."
+        }
+        Write-OK "SHA256 verified: $actualHash"
+    } else {
+        Write-Warn "SHA256SUMS found but no entry for $AssetName — skipping verification."
+    }
+} catch [System.Net.WebException], [Microsoft.PowerShell.Commands.HttpResponseException] {
+    Write-Warn "SHA256SUMS not available at release — skipping hash verification."
+}
 
 # ── 2. Extract to temp directory ─────────────────────────────────────────────
 
@@ -185,6 +205,16 @@ Write-Step "Copying to $InstallDir..."
 if (-not (Test-Path $InstallDir)) {
     New-Item -ItemType Directory -Path $InstallDir -Force | Out-Null
 }
+# S47: restrict directory to Administrators and SYSTEM only
+$acl = Get-Acl $InstallDir
+$acl.SetAccessRuleProtection($true, $false)
+foreach ($sid in @('S-1-5-18', 'S-1-5-32-544')) {  # SYSTEM, Administrators
+    $rule = New-Object Security.AccessControl.FileSystemAccessRule(
+        $sid, 'FullControl',
+        'ContainerInherit,ObjectInherit', 'None', 'Allow')
+    $acl.AddAccessRule($rule)
+}
+Set-Acl $InstallDir $acl
 
 Get-ChildItem -Path $srcDir -Exclude '.env', 'certs' |
     Copy-Item -Destination $InstallDir -Recurse -Force
@@ -343,21 +373,8 @@ switch ($choice) {
                     | Out-Null
             }
 
-            # Configure env vars from .env
-            $envVarsToSet = @('ROLE','SENDER_ID','SHARED_SECRET','BROKER_HOST','BROKER_PORT',
-                              'TLS_CA_PATH','TARGET_FPS','ENCODER','JPEG_QUALITY','CAPTURER')
-            if (Test-Path $envPath) {
-                foreach ($line in Get-Content $envPath) {
-                    $line = $line.Trim()
-                    if ($line -match '^\s*#' -or $line -notmatch '=') { continue }
-                    $idx = $line.IndexOf('=')
-                    $key = $line.Substring(0, $idx).Trim()
-                    $val = $line.Substring($idx + 1).Trim()
-                    if ($key -notin $envVarsToSet) { continue }
-                    [Environment]::SetEnvironmentVariable($key, $val, 'Machine')
-                }
-            }
-
+            # Service reads config from .env in $InstallDir directly (DotNetEnv loads at startup)
+            # S46: do NOT use Machine-scope env vars — they are world-readable in the registry
             Start-Service -Name $ServiceName
             Write-OK "Service '$ServiceName' started."
         }
