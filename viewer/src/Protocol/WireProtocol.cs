@@ -52,6 +52,9 @@ public static class WireProtocol
     public static byte[] BuildRequestIdr(string targetPeerId) =>
         SelfDesk.Protocol.WireProtocol.BuildEnvelope(MessageType.RequestIdr, targetPeerId, ReadOnlySpan<byte>.Empty);
 
+    public static byte[] BuildRemoteReboot(string targetPeerId) =>
+        SelfDesk.Protocol.WireProtocol.BuildEnvelope(MessageType.RemoteReboot, targetPeerId, ReadOnlySpan<byte>.Empty);
+
     public static byte[] BuildSelectMonitor(string targetPeerId, int monitorIndex)
     {
         var json = JsonSerializer.Serialize(new { monitorIndex });

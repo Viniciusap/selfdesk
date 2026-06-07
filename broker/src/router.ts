@@ -83,9 +83,10 @@ export class Router {
   }
 
   private routeReceiverMessage(header: ParsedHeader, payload: Buffer): void {
-    if (header.type === MessageType.INPUT_EVENT  ||
-        header.type === MessageType.REQUEST_IDR  ||
-        header.type === MessageType.SELECT_MONITOR) {
+    if (header.type === MessageType.INPUT_EVENT    ||
+        header.type === MessageType.REQUEST_IDR    ||
+        header.type === MessageType.SELECT_MONITOR ||
+        header.type === MessageType.REMOTE_REBOOT) {
       const targetId = header.peerId;
       const sender   = this.registry.getSender(targetId);
       if (!sender) {

@@ -175,6 +175,15 @@
                                                 Visibility="{Binding CanWake,
                                                     Converter={StaticResource BoolToVisConverter}}"
                                                 Click="OnWakeClick"/>
+                                        <Button x:Name="RebootBtn"
+                                                Content="Reboot"
+                                                FontSize="10"
+                                                Padding="4,1"
+                                                Margin="0,2,0,0"
+                                                Tag="{Binding}"
+                                                Visibility="{Binding IsConnected,
+                                                    Converter={StaticResource BoolToVisConverter}}"
+                                                Click="OnRebootClick"/>
                                     </StackPanel>
                                 </Grid>
                             </DataTemplate>

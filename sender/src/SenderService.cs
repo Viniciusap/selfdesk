@@ -93,6 +93,10 @@ public sealed class SenderService : BackgroundService
             switch (type)
             {
                 case MessageType.InputEvent:  _injector.Inject(payload.Span); break;
+                case MessageType.RemoteReboot:
+                    _log.LogWarning("Remote reboot requested — rebooting in 5 seconds");
+                    System.Diagnostics.Process.Start("shutdown", "/r /t 5 /c \"SelfDesk remote reboot\"");
+                    break;
                 case MessageType.RequestIdr:
                     _encoder.RequestKeyframe();
                     // Viewer acabou de conectar — reenviar lista de monitores

@@ -32,6 +32,7 @@ public static class MessageType
     public const byte MonitorList   = 0x70;
     public const byte SelectMonitor = 0x71;
     public const byte AudioFrame    = 0x80;
+    public const byte RemoteReboot  = 0x90;
 }
 
 public static class ProtocolSizes

@@ -185,6 +185,18 @@ public partial class MainWindow : Window
         _ => 0,
     };
 
+    private void OnRebootClick(object sender, RoutedEventArgs e)
+    {
+        if (sender is not Button btn || btn.Tag is not SenderViewModel vm) return;
+        var result = MessageBox.Show(
+            $"Reboot '{vm.AgentId}' remotely?\n\nThe machine will restart in 5 seconds.",
+            "Remote Reboot",
+            MessageBoxButton.YesNo,
+            MessageBoxImage.Warning);
+        if (result != MessageBoxResult.Yes) return;
+        InputSend?.Invoke(ViewerWire.BuildRemoteReboot(vm.AgentId));
+    }
+
     private async void OnWakeClick(object sender, RoutedEventArgs e)
     {
         if (sender is Button btn && btn.Tag is SenderViewModel vm && !string.IsNullOrEmpty(vm.MacAddress))

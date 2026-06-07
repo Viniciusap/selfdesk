@@ -28,6 +28,7 @@ export const MessageType = {
   MONITOR_LIST:    0x70,
   SELECT_MONITOR:  0x71,
   AUDIO_FRAME:     0x80,
+  REMOTE_REBOOT:   0x90,
 } as const;
 
 export type MessageTypeValue = (typeof MessageType)[keyof typeof MessageType];
