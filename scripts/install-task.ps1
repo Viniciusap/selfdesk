@@ -52,6 +52,15 @@ if (-not (Test-Path (Join-Path $InstallDir '.env'))) {
     throw ".env not found in '$InstallDir'. Run bootstrap.ps1 -Role sender first."
 }
 
+# Migrate: remove Windows Service if present (Session 0 = black screen)
+$ServiceName = 'SelfDesk.Sender'
+if (Get-Service -Name $ServiceName -ErrorAction SilentlyContinue) {
+    Write-Host "Removing Windows Service '$ServiceName' (Session 0 — no screen access)..."
+    Stop-Service  -Name $ServiceName -Force -ErrorAction SilentlyContinue
+    & sc.exe delete $ServiceName | Out-Null
+    Write-Host "  Service removed."
+}
+
 $action  = New-ScheduledTaskAction -Execute $ExePath -WorkingDirectory $InstallDir
 $trigger = New-ScheduledTaskTrigger -AtLogOn -User $env:USERNAME
 
