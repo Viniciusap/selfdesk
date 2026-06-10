@@ -24,7 +24,11 @@ public partial class App : Application
             var version = asm != null
                 ? FileVersionInfo.GetVersionInfo(asm.Location).ProductVersion ?? asm.GetName().Version?.ToString()
                 : "0.0.0";
+            // WinExe has no console by default; attach to parent terminal so output is visible
+            AttachConsole(-1);
             Console.WriteLine($"SelfDesk Viewer v{version}");
+            Console.Out.Flush();
+            FreeConsole();
             Shutdown();
             return;
         }
@@ -78,4 +82,10 @@ public partial class App : Application
 
     private static string GetEnv(string key, string def) =>
         Environment.GetEnvironmentVariable(key) is { Length: > 0 } v ? v : def;
+
+    [System.Runtime.InteropServices.DllImport("kernel32.dll")]
+    private static extern bool AttachConsole(int dwProcessId);
+
+    [System.Runtime.InteropServices.DllImport("kernel32.dll")]
+    private static extern bool FreeConsole();
 }
