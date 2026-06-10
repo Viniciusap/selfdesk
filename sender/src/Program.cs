@@ -1,4 +1,6 @@
 using DotNetEnv;
+using System.Reflection;
+using System.Diagnostics;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Hosting.WindowsServices;
@@ -23,19 +25,30 @@ if (string.IsNullOrEmpty(_startupSecret) || _startupSecret.Length < 32)
     throw new InvalidOperationException(
         "SHARED_SECRET missing or too short (minimum 32 chars). Run bootstrap.ps1 -Role sender.");
 
+// Support: print version and exit early when requested (avoid building the host)
+if (args is { Length: > 0 } && (Array.IndexOf(args, "--version") >= 0 || Array.IndexOf(args, "-v") >= 0))
+{
+    var asm = Assembly.GetEntryAssembly();
+    var version = asm != null
+        ? FileVersionInfo.GetVersionInfo(asm.Location).ProductVersion ?? asm.GetName().Version?.ToString()
+        : "0.0.0";
+    Console.WriteLine($"SelfDesk Sender v{version}");
+    return;
+}
+
 var builder = Host.CreateApplicationBuilder(args);
 
 builder.Services.Configure<SenderConfig>(cfg =>
 {
-    cfg.SenderId      = GetEnv("SENDER_ID",      "laptop-01");
+    cfg.SenderId = GetEnv("SENDER_ID", "laptop-01");
     cfg.SharedSecret = GetEnv("SHARED_SECRET", string.Empty);
-    cfg.BrokerHost   = GetEnv("BROKER_HOST",   "localhost");
-    cfg.BrokerPort   = int.TryParse(GetEnv("BROKER_PORT", "7000"), out var p) ? p : 7000;
-    cfg.TlsCaPath    = GetEnv("TLS_CA_PATH",   string.Empty);
-    cfg.TargetFps    = int.TryParse(GetEnv("TARGET_FPS",  "30"),   out var fps) ? fps : 30;
-    cfg.Encoder      = GetEnv("ENCODER",       "jpeg");
-    cfg.JpegQuality  = int.TryParse(GetEnv("JPEG_QUALITY", "75"),  out var q) ? q : 75;
-    cfg.Capturer     = GetEnv("CAPTURER",      "gdi");
+    cfg.BrokerHost = GetEnv("BROKER_HOST", "localhost");
+    cfg.BrokerPort = int.TryParse(GetEnv("BROKER_PORT", "7000"), out var p) ? p : 7000;
+    cfg.TlsCaPath = GetEnv("TLS_CA_PATH", string.Empty);
+    cfg.TargetFps = int.TryParse(GetEnv("TARGET_FPS", "30"), out var fps) ? fps : 30;
+    cfg.Encoder = GetEnv("ENCODER", "jpeg");
+    cfg.JpegQuality = int.TryParse(GetEnv("JPEG_QUALITY", "75"), out var q) ? q : 75;
+    cfg.Capturer = GetEnv("CAPTURER", "gdi");
 });
 
 builder.Services.AddSingleton<IScreenCapturer>(sp =>
@@ -54,7 +67,7 @@ builder.Services.AddSingleton<IScreenCapturer>(sp =>
 });
 builder.Services.AddSingleton<IFrameEncoder>(sp =>
 {
-    var cfg     = sp.GetRequiredService<IOptions<SenderConfig>>().Value;
+    var cfg = sp.GetRequiredService<IOptions<SenderConfig>>().Value;
     var logFact = sp.GetRequiredService<ILoggerFactory>();
     return cfg.Encoder.ToLowerInvariant() switch
     {
