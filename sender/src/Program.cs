@@ -33,15 +33,15 @@ var builder = Host.CreateApplicationBuilder(args);
 
 builder.Services.Configure<SenderConfig>(cfg =>
 {
-    cfg.SenderId = GetEnv("SENDER_ID", "laptop-01");
+    cfg.SenderId      = GetEnv("SENDER_ID",      "laptop-01");
     cfg.SharedSecret = GetEnv("SHARED_SECRET", string.Empty);
-    cfg.BrokerHost = GetEnv("BROKER_HOST", "localhost");
-    cfg.BrokerPort = int.TryParse(GetEnv("BROKER_PORT", "7000"), out var p) ? p : 7000;
-    cfg.TlsCaPath = GetEnv("TLS_CA_PATH", string.Empty);
-    cfg.TargetFps = int.TryParse(GetEnv("TARGET_FPS", "30"), out var fps) ? fps : 30;
-    cfg.Encoder = GetEnv("ENCODER", "jpeg");
-    cfg.JpegQuality = int.TryParse(GetEnv("JPEG_QUALITY", "75"), out var q) ? q : 75;
-    cfg.Capturer = GetEnv("CAPTURER", "gdi");
+    cfg.BrokerHost   = GetEnv("BROKER_HOST",   "localhost");
+    cfg.BrokerPort   = int.TryParse(GetEnv("BROKER_PORT", "7000"), out var p) ? p : 7000;
+    cfg.TlsCaPath    = GetEnv("TLS_CA_PATH",   string.Empty);
+    cfg.TargetFps    = int.TryParse(GetEnv("TARGET_FPS",  "30"),   out var fps) ? fps : 30;
+    cfg.Encoder      = GetEnv("ENCODER",       "jpeg");
+    cfg.JpegQuality  = int.TryParse(GetEnv("JPEG_QUALITY", "75"),  out var q) ? q : 75;
+    cfg.Capturer     = GetEnv("CAPTURER",      "gdi");
 });
 
 builder.Services.AddSingleton<IScreenCapturer>(sp =>
