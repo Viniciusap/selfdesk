@@ -97,6 +97,34 @@ node dist\index.js
 
 </details>
 
+<details>
+<summary><b>Docker</b></summary>
+
+The bootstrap step still has to run once on the host to generate `certs/` and
+`broker/.env` — the image itself carries no secrets.
+
+```bash
+git clone https://github.com/Viniciusap/selfdesk.git
+cd selfdesk
+./scripts/bootstrap.sh broker
+docker compose up -d
+```
+
+`docker-compose.yml` builds `broker/Dockerfile` (multi-stage, non-root user) and
+mounts `certs/` and `broker/.env` read-only. Note that `broker/.env`'s
+`TLS_CERT_PATH`/`TLS_KEY_PATH` default to `../certs/...` (one level up from the
+`.env` file), which inside the container is `/certs/...` — hence the compose
+file mounts `./certs` to `/certs`, not `/app/certs`.
+
+A pre-built image is published to `ghcr.io/viniciusap/selfdesk-broker` on every
+tagged release. To use it directly instead of building locally, edit the
+`build:` block out of `docker-compose.yml` and set `image:` to a specific tag.
+
+If `HEALTH_PORT` is set in `broker/.env` (see [Configuration reference](#configuration-reference)),
+the container's `HEALTHCHECK` polls `GET /health` automatically.
+
+</details>
+
 After the broker starts, **copy `certs/ca-cert.pem`** to each Windows machine — senders and viewers need it to verify the broker's TLS certificate.
 
 ---
