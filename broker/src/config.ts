@@ -17,14 +17,22 @@ export interface BrokerConfig {
   wsPort?:       number;
 }
 
+// Sonar-style dedup: LISTEN_PORT/HEALTH_PORT/METRICS_PORT/WS_PORT each used to
+// hand-roll the same parseInt + isNaN + range-check + throw block.
+function parsePort(envValue: string | undefined, label: string): number | undefined {
+  if (!envValue) return undefined;
+  const port = parseInt(envValue, 10);
+  if (isNaN(port) || port < 1 || port > 65535) {
+    throw new Error(`Invalid ${label}: ${envValue}`);
+  }
+  return port;
+}
+
 export function loadConfig(envFile?: string): BrokerConfig {
   const file = envFile ?? path.join(__dirname, '..', '.env');
   dotenvConfig({ path: file });
 
-  const port = parseInt(process.env.LISTEN_PORT ?? '7000', 10);
-  if (isNaN(port) || port < 1 || port > 65535) {
-    throw new Error(`Invalid LISTEN_PORT: ${process.env.LISTEN_PORT}`);
-  }
+  const port = parsePort(process.env.LISTEN_PORT ?? '7000', 'LISTEN_PORT') ?? 7000;
 
   const secret = process.env.SHARED_SECRET;
   if (!secret || secret.length < 32) {
@@ -65,13 +73,7 @@ export function loadConfig(envFile?: string): BrokerConfig {
     }
   }
 
-  let healthPort: number | undefined;
-  if (process.env.HEALTH_PORT) {
-    healthPort = parseInt(process.env.HEALTH_PORT, 10);
-    if (isNaN(healthPort) || healthPort < 1 || healthPort > 65535) {
-      throw new Error(`Invalid HEALTH_PORT: ${process.env.HEALTH_PORT}`);
-    }
-  }
+  const healthPort = parsePort(process.env.HEALTH_PORT, 'HEALTH_PORT');
 
   // Issue #18: optional rotating file log (in addition to stdout), cross-platform via pino-roll.
   const logFile = process.env.LOG_FILE
@@ -79,24 +81,12 @@ export function loadConfig(envFile?: string): BrokerConfig {
     : undefined;
   const logMaxFiles = parseInt(process.env.LOG_MAX_FILES ?? '5', 10);
 
-  let metricsPort: number | undefined;
-  if (process.env.METRICS_PORT) {
-    metricsPort = parseInt(process.env.METRICS_PORT, 10);
-    if (isNaN(metricsPort) || metricsPort < 1 || metricsPort > 65535) {
-      throw new Error(`Invalid METRICS_PORT: ${process.env.METRICS_PORT}`);
-    }
-  }
+  const metricsPort = parsePort(process.env.METRICS_PORT, 'METRICS_PORT');
 
   // Issue #12: optional WSS listener + static web viewer, off by default —
   // it's an extra TLS-terminated listener with its own attack surface, so it
   // stays opt-in same as HEALTH_PORT/METRICS_PORT.
-  let wsPort: number | undefined;
-  if (process.env.WS_PORT) {
-    wsPort = parseInt(process.env.WS_PORT, 10);
-    if (isNaN(wsPort) || wsPort < 1 || wsPort > 65535) {
-      throw new Error(`Invalid WS_PORT: ${process.env.WS_PORT}`);
-    }
-  }
+  const wsPort = parsePort(process.env.WS_PORT, 'WS_PORT');
 
   return {
     listenPort:     port,
