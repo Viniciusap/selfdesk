@@ -28,16 +28,32 @@ An open-source alternative to AnyDesk and TeamViewer — no third-party cloud, n
 
 ## Install / Update
 
-The same command installs or updates — your `.env` and certificates are always preserved.
+One command takes a fresh machine from zero to a configured, running role — it asks which role this machine is (broker / sender / viewer), downloads the matching release build, and walks through bootstrap (host/port/secret/encoder). Existing `.env` and certificates are never overwritten without confirmation.
 
 ```bash
-# Broker — Linux, WSL, Git Bash (auto-detects platform)
+# Linux, WSL, Git Bash (auto-detects platform, delegates to PowerShell on Windows)
+curl -fsSL https://raw.githubusercontent.com/Viniciusap/selfdesk/master/scripts/setup.sh | bash
+```
+
+```powershell
+# Windows PowerShell
+irm https://raw.githubusercontent.com/Viniciusap/selfdesk/master/scripts/setup.ps1 | iex
+```
+
+Non-interactive (scripted installs): set `SELFDESK_ROLE=broker|sender|viewer` (bash) or `$env:SELFDESK_ROLE` (PowerShell) before running.
+
+<details>
+<summary>Advanced — per-role scripts (custom install dir, systemd/autostart flags, etc.)</summary>
+
+```bash
+# Broker — Linux, WSL, Git Bash
 curl -fsSL https://raw.githubusercontent.com/Viniciusap/selfdesk/master/scripts/install-broker.sh | bash
 ```
 
-> *Windows PowerShell (no bash): `irm https://raw.githubusercontent.com/Viniciusap/selfdesk/master/scripts/install-broker.ps1 | iex`*
-
 ```powershell
+# Broker — Windows PowerShell (no bash)
+irm https://raw.githubusercontent.com/Viniciusap/selfdesk/master/scripts/install-broker.ps1 | iex
+
 # Sender — Windows (run as Administrator)
 irm https://raw.githubusercontent.com/Viniciusap/selfdesk/master/scripts/install-sender.ps1 | iex
 
@@ -45,11 +61,15 @@ irm https://raw.githubusercontent.com/Viniciusap/selfdesk/master/scripts/install
 irm https://raw.githubusercontent.com/Viniciusap/selfdesk/master/scripts/install-viewer.ps1 | iex
 ```
 
+Each of these still needs a separate `bootstrap.sh`/`bootstrap.ps1 -Role <role>` run afterward — see [Quick start](#quick-start) below. `setup.sh`/`setup.ps1` chain both steps automatically; the per-role scripts are for when you want just one of them (e.g. re-running bootstrap only, or a non-default install directory).
+
+</details>
+
 ---
 
 ## What it does
 
-You run a small **broker** on any Linux box (a Raspberry Pi handles it fine — [ARM64 build](https://github.com/Viniciusap/selfdesk/issues/7) coming). Your Windows machines connect outbound to it — nothing listens for inbound connections, no third-party cloud, nothing phones home.
+You run a small **broker** on any Linux box (a Raspberry Pi handles it fine — ARM64 and x64 tarballs are both published on every release). Your Windows machines connect outbound to it — nothing listens for inbound connections, no third-party cloud, nothing phones home.
 
 - **Screen capture and remote control** — mouse, keyboard, scroll wheel
 - **Clipboard sync** — copy on one machine, paste on the other, bidirectional
