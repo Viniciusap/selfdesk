@@ -21,6 +21,8 @@ public sealed partial class MainWindowViewModel : ObservableObject
     [ObservableProperty] private int              _transferProgress = -1;
     [ObservableProperty] private string           _transferStatus   = string.Empty;
     [ObservableProperty] private bool             _isMuted          = false;
+    // Issue #21: mic passthrough is opt-in — muted (i.e. not sending) by default.
+    [ObservableProperty] private bool             _isMicMuted       = true;
     [ObservableProperty] private bool             _isRelativeMouse  = false;
     [ObservableProperty] private string            _certWarning      = string.Empty;
 

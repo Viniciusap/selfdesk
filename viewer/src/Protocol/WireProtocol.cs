@@ -60,6 +60,21 @@ public static class WireProtocol
     public static byte[] BuildSendSas(string targetPeerId) =>
         BuildInputEvent(InputEventKind.SendSas, targetPeerId, ReadOnlySpan<byte>.Empty);
 
+    public static byte[] BuildAudioMic(long timestampMs, ReadOnlySpan<byte> opusData, string targetPeerId)
+    {
+        var header = new byte[AudioFrameOffsets.Data];
+        BinaryPrimitives.WriteInt64BigEndian(header.AsSpan(AudioFrameOffsets.Timestamp), timestampMs);
+        header[AudioFrameOffsets.Channels]     = 2;
+        header[AudioFrameOffsets.SampleRateId] = 0; // 0 = 48000 Hz
+        BinaryPrimitives.WriteUInt16BigEndian(header.AsSpan(AudioFrameOffsets.FrameSamples), 960);
+
+        var payload = new byte[header.Length + opusData.Length];
+        header.CopyTo(payload, 0);
+        opusData.CopyTo(payload.AsSpan(header.Length));
+
+        return SelfDesk.Protocol.WireProtocol.BuildEnvelope(MessageType.AudioMic, targetPeerId, payload);
+    }
+
     public static byte[] BuildQualityHint(string targetPeerId, byte quality, byte fps)
     {
         var data = new byte[2];

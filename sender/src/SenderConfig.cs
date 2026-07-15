@@ -12,4 +12,5 @@ public sealed class SenderConfig
     public int    JpegQuality  { get; set; } = 75;
     public string Capturer     { get; set; } = "gdi";
     public bool   AudioEnabled { get; set; } = true;
+    public bool   MicEnabled   { get; set; } = false; // issue #21: opt-in, off by default
 }

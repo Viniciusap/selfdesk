@@ -50,6 +50,7 @@ builder.Services.Configure<SenderConfig>(cfg =>
     cfg.JpegQuality = int.TryParse(GetEnv("JPEG_QUALITY", "75"), out var q) ? q : 75;
     cfg.Capturer = GetEnv("CAPTURER", "gdi");
     cfg.AudioEnabled = bool.TryParse(GetEnv("AUDIO_ENABLED", "true"), out var audioEnabled) ? audioEnabled : true;
+    cfg.MicEnabled = bool.TryParse(GetEnv("MIC_ENABLED", "false"), out var micEnabled) && micEnabled;
 });
 
 builder.Services.AddSingleton<IScreenCapturer>(sp =>

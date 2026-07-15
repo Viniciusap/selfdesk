@@ -98,6 +98,23 @@ public class WireProtocolTests
     }
 
     [Fact]
+    public void BuildAudioMic_Layout_BigEndian()
+    {
+        var opus = new byte[] { 1, 2, 3, 4 };
+        var msg  = ViewerWire.BuildAudioMic(12345L, opus, "laptop-01");
+        var payload = msg.AsSpan(ProtocolSizes.HeaderSize);
+
+        var ts = BinaryPrimitives.ReadInt64BigEndian(payload[AudioFrameOffsets.Timestamp..]);
+        Assert.Equal(12345L, ts);
+        Assert.Equal(2, payload[AudioFrameOffsets.Channels]);
+        Assert.True(payload[AudioFrameOffsets.Data..].SequenceEqual(opus));
+
+        var (type, peerId, _) = WireProtocol.ParseHeader(msg);
+        Assert.Equal(MessageType.AudioMic, type);
+        Assert.Equal("laptop-01", peerId);
+    }
+
+    [Fact]
     public void BuildQualityHint_Layout()
     {
         var msg     = ViewerWire.BuildQualityHint("laptop-01", 40, 15);

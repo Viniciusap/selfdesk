@@ -92,6 +92,9 @@ public sealed class SenderService : BackgroundService
         var clipboard = new ClipboardService(conn, _log);
         var fileRx    = new FileTransferReceiver(_log);
 
+        // Issue #21: opt-in, off by default — see MIC_ENABLED in SenderConfig.
+        using var remoteAudio = _cfg.MicEnabled ? new RemoteAudioPlayer(_log) : null;
+
         var shutdownExe   = Path.Combine(
             Environment.GetFolderPath(Environment.SpecialFolder.System), "shutdown.exe");
         var rebootScheduled = false;
@@ -129,6 +132,7 @@ public sealed class SenderService : BackgroundService
                 case MessageType.FileChunk:   fileRx.OnFileChunk(payload); break;
                 case MessageType.FileDone:    fileRx.OnFileDone(payload); break;
                 case MessageType.FileError:   fileRx.OnFileError(payload); break;
+                case MessageType.AudioMic:    remoteAudio?.OnAudioMic(payload); break;
                 case MessageType.SelectMonitor:
                     try
                     {
