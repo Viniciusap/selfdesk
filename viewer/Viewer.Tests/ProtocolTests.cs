@@ -77,6 +77,15 @@ public class WireProtocolTests
         Assert.Equal(InputEventKind.BtnRight,    payload[1]);
         Assert.Equal(InputEventKind.StateDown,   payload[2]);
     }
+
+    [Fact]
+    public void BuildSendSas_HasCorrectKindAndEmptyPayload()
+    {
+        var msg     = ViewerWire.BuildSendSas("laptop-01");
+        var payload = msg.AsSpan(ProtocolSizes.HeaderSize);
+        Assert.Equal(1, payload.Length);
+        Assert.Equal(InputEventKind.SendSas, payload[0]);
+    }
 }
 
 public class ViewModelTests
