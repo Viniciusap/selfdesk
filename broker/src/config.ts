@@ -36,9 +36,17 @@ export function loadConfig(envFile?: string): BrokerConfig {
     throw new Error('TLS_CERT_PATH and TLS_KEY_PATH are required');
   }
 
-  const envDir = path.dirname(file);
+  const envDir = path.resolve(path.dirname(file));
   const resolvedCert = path.resolve(envDir, certPath);
   const resolvedKey  = path.resolve(envDir, keyPath);
+
+  // M6: resolved paths must stay within envDir — reject '../..' escapes via TLS_CERT_PATH/TLS_KEY_PATH
+  const envDirWithSep = envDir.endsWith(path.sep) ? envDir : envDir + path.sep;
+  for (const [label, p] of [['TLS_CERT_PATH', resolvedCert], ['TLS_KEY_PATH', resolvedKey]] as const) {
+    if (!p.startsWith(envDirWithSep)) {
+      throw new Error(`${label} '${p}' resolves outside the .env directory (${envDir})`);
+    }
+  }
 
   // S27: verify resolved paths are regular files, not devices or FIFOs
   for (const [label, p] of [['TLS_CERT_PATH', resolvedCert], ['TLS_KEY_PATH', resolvedKey]] as const) {

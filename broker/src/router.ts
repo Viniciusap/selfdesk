@@ -8,24 +8,23 @@ import type { Registry } from './registry.js';
 import type { Connection } from './connection.js';
 import type { Logger } from 'pino';
 
-// Types routed from sender to receiver (in addition to VIDEO_FRAME and AUDIO_FRAME)
-const SENDER_TO_RECEIVER_TYPES = new Set<number>([
+// M7: shared by both routing directions — kept as one list so the two Sets below can't drift apart
+const CLIPBOARD_FILE_TYPES = [
   MessageType.CLIPBOARD,
   MessageType.FILE_HEADER,
   MessageType.FILE_CHUNK,
   MessageType.FILE_DONE,
   MessageType.FILE_ERROR,
+];
+
+// Types routed from sender to receiver (in addition to VIDEO_FRAME and AUDIO_FRAME)
+const SENDER_TO_RECEIVER_TYPES = new Set<number>([
+  ...CLIPBOARD_FILE_TYPES,
   MessageType.MONITOR_LIST,
 ]);
 
 // Types routed from receiver to a specific target sender (or broadcast)
-const RECEIVER_TO_SENDER_FILE_TYPES = new Set<number>([
-  MessageType.CLIPBOARD,
-  MessageType.FILE_HEADER,
-  MessageType.FILE_CHUNK,
-  MessageType.FILE_DONE,
-  MessageType.FILE_ERROR,
-]);
+const RECEIVER_TO_SENDER_FILE_TYPES = new Set<number>(CLIPBOARD_FILE_TYPES);
 
 export class Router {
   private readonly registry: Registry;
