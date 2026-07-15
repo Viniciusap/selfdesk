@@ -21,8 +21,14 @@ export function createLogger(
   if (!logFile) return pino(opts);
 
   const transport = pino.transport({
-    target: 'pino-roll',
-    options: { file: logFile, size: logMaxSize, mkdir: true, limit: { count: logMaxFiles } },
+    targets: [
+      {
+        target: 'pino-roll',
+        options: { file: logFile, size: logMaxSize, mkdir: true, limit: { count: logMaxFiles } },
+        level,
+      },
+      { target: 'pino/file', options: { destination: 1 }, level },
+    ],
   });
 
   return pino(opts, transport);
