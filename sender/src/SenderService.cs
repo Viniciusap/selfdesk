@@ -197,7 +197,8 @@ public sealed class SenderService : BackgroundService
 
         try
         {
-            await Task.WhenAny(producer, consumer, heartbeat, recvLoop, clipboardLoop, rttMonitor);
+            var done = await Task.WhenAny(producer, consumer, heartbeat, recvLoop, clipboardLoop, rttMonitor);
+            await done;
         }
         finally
         {

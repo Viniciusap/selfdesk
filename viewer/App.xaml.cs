@@ -1,8 +1,10 @@
 using System.Windows;
+using System.Windows.Threading;
 using System.Reflection;
 using System.Diagnostics;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
+using Microsoft.Extensions.Logging;
 using SelfDesk.Viewer.Audio;
 using SelfDesk.Viewer.Decode;
 using SelfDesk.Viewer.ViewModels;
@@ -13,6 +15,27 @@ namespace SelfDesk.Viewer;
 public partial class App : Application
 {
     private IHost? _host;
+
+    public App()
+    {
+        DispatcherUnhandledException += OnDispatcherUnhandledException;
+        AppDomain.CurrentDomain.UnhandledException += OnDomainUnhandledException;
+    }
+
+    private void OnDispatcherUnhandledException(object sender, DispatcherUnhandledExceptionEventArgs e)
+    {
+        _host?.Services.GetService<ILoggerFactory>()?.CreateLogger("App")
+            .LogError(e.Exception, "Unhandled UI-thread exception");
+        // Recoverable faults (network, decode) are already handled by ViewerService's
+        // own reconnect loop; keep the window alive rather than crashing on a UI-thread fault.
+        e.Handled = true;
+    }
+
+    private void OnDomainUnhandledException(object sender, UnhandledExceptionEventArgs e)
+    {
+        _host?.Services.GetService<ILoggerFactory>()?.CreateLogger("App")
+            .LogCritical(e.ExceptionObject as Exception, "Unhandled non-UI exception, terminating={IsTerminating}", e.IsTerminating);
+    }
 
     protected override async void OnStartup(StartupEventArgs e)
     {

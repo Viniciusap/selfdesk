@@ -200,7 +200,8 @@ public sealed class ViewerService : BackgroundService
 
         try
         {
-            await Task.WhenAny(recvLoop, clipboardLoop, heartbeat);
+            var done = await Task.WhenAny(recvLoop, clipboardLoop, heartbeat);
+            await done;
         }
         finally
         {
