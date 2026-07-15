@@ -130,6 +130,19 @@ describe('Handshake completo', () => {
     expect(result.type).toBe(MessageType.AUTH_FAIL);
     sock.destroy();
   });
+
+  it.each([
+    { role: 'admin', agentId: 'laptop-01' },
+    { role: 'sender', agentId: '' },
+    { role: 'sender' }, // agentId missing entirely
+    { agentId: 'laptop-01' }, // role missing entirely
+  ])('malformed HELLO ($role/$agentId) → AUTH_FAIL, not accepted as garbage state', async (body) => {
+    const sock = await tlsConnect();
+    sock.write(buildEnvelope(MessageType.HELLO, 'x', Buffer.from(JSON.stringify({ version: 1, ...body }))));
+    const result = await readFrame(sock);
+    expect(result.type).toBe(MessageType.AUTH_FAIL);
+    sock.destroy();
+  });
 });
 
 describe('SENDER_UP ao conectar', () => {

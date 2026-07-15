@@ -190,6 +190,20 @@ export class Connection extends EventEmitter {
           return;
         }
 
+        // Sonar-style hardening: `as HelloPayload` above is just a compile-time cast —
+        // JSON.parse returns `any`, so nothing has actually checked hello.role/agentId
+        // are the right shape yet. Reject anything malformed here instead of letting
+        // an unvalidated role/agentId flow into this.role/this.agentId and the
+        // non-null assertions further down (not an auth bypass — the HMAC gate below
+        // is unaffected — but garbage state shouldn't reach ACTIVE either way).
+        if (
+          (hello.role !== 'sender' && hello.role !== 'receiver') ||
+          typeof hello.agentId !== 'string' || hello.agentId.length === 0
+        ) {
+          this.rejectAuth('Malformed HELLO — role must be sender|receiver and agentId a non-empty string');
+          return;
+        }
+
         // S6: protocol constraint — agentId must fit in 16-byte PEER_ID field.
         // Checked by UTF-8 byte length, not JS string char count — a multi-byte
         // agentId could exceed PEER_ID_SIZE bytes while passing a char-count check.
