@@ -250,6 +250,8 @@ public sealed class ViewerService : BackgroundService
 
         var heartbeat = conn.StartHeartbeatAsync(ct);
         var recvLoop = conn.RunReceiveLoopAsync(ct);
+        var micLoop  = MicCapturePipeline.Start(
+            conn, () => _vm.SelectedSender?.AgentId, () => _vm.IsMicMuted, _log, ct);
 
         var clipboardLoop = Task.Run(async () =>
         {
@@ -307,7 +309,7 @@ public sealed class ViewerService : BackgroundService
 
         try
         {
-            var done = await Task.WhenAny(recvLoop, clipboardLoop, heartbeat);
+            var done = await Task.WhenAny(recvLoop, clipboardLoop, heartbeat, micLoop);
             await done;
         }
         finally

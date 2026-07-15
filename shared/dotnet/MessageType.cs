@@ -34,6 +34,7 @@ public static class MessageType
     public const byte MonitorList   = 0x70;
     public const byte SelectMonitor = 0x71;
     public const byte AudioFrame    = 0x80;
+    public const byte AudioMic      = 0x81; // issue #21: viewer mic -> sender speakers
     public const byte RemoteReboot  = 0x90;
 }
 

@@ -94,7 +94,8 @@ export class Router {
         header.type === MessageType.REQUEST_IDR    ||
         header.type === MessageType.SELECT_MONITOR ||
         header.type === MessageType.REMOTE_REBOOT  ||
-        header.type === MessageType.QUALITY_HINT) {
+        header.type === MessageType.QUALITY_HINT   ||
+        header.type === MessageType.AUDIO_MIC) {
       const targetId = header.peerId;
       const sender   = this.registry.getSender(targetId);
       if (!sender) {

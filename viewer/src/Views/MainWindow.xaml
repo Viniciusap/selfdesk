@@ -148,6 +148,46 @@
                         </Style>
                     </ToggleButton.Style>
                 </ToggleButton>
+                <ToggleButton IsChecked="{Binding IsMicMuted, Mode=TwoWay}"
+                              Padding="6,4"
+                              Margin="0,0,8,0"
+                              VerticalAlignment="Center"
+                              Background="Transparent"
+                              BorderThickness="0"
+                              ToolTip="Mic passthrough to selected sender (issue #21) — muted by default">
+                    <ToggleButton.Style>
+                        <Style TargetType="ToggleButton">
+                            <Setter Property="Content">
+                                <Setter.Value>
+                                    <Viewbox Width="15" Height="15">
+                                        <Canvas Width="16" Height="16">
+                                            <Path Data="M8,1 C9.1,1 10,1.9 10,3 L10,7 C10,8.1 9.1,9 8,9 C6.9,9 6,8.1 6,7 L6,3 C6,1.9 6.9,1 8,1 Z"
+                                                  Fill="{StaticResource BrushError}"/>
+                                            <Path Data="M4,7 C4,9.8 6.2,12 9,12 M8,12 L8,14 M5.5,14 L10.5,14"
+                                                  Stroke="{StaticResource BrushError}" StrokeThickness="1.3"/>
+                                        </Canvas>
+                                    </Viewbox>
+                                </Setter.Value>
+                            </Setter>
+                            <Style.Triggers>
+                                <Trigger Property="IsChecked" Value="False">
+                                    <Setter Property="Content">
+                                        <Setter.Value>
+                                            <Viewbox Width="15" Height="15">
+                                                <Canvas Width="16" Height="16">
+                                                    <Path Data="M8,1 C9.1,1 10,1.9 10,3 L10,7 C10,8.1 9.1,9 8,9 C6.9,9 6,8.1 6,7 L6,3 C6,1.9 6.9,1 8,1 Z"
+                                                          Fill="{StaticResource BrushSuccess}"/>
+                                                    <Path Data="M4,7 C4,9.8 6.2,12 9,12 M8,12 L8,14 M5.5,14 L10.5,14"
+                                                          Stroke="{StaticResource BrushSuccess}" StrokeThickness="1.3"/>
+                                                </Canvas>
+                                            </Viewbox>
+                                        </Setter.Value>
+                                    </Setter>
+                                </Trigger>
+                            </Style.Triggers>
+                        </Style>
+                    </ToggleButton.Style>
+                </ToggleButton>
                 </StackPanel>
             </Grid>
         </Border>
