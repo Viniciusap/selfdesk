@@ -44,9 +44,19 @@
     <Grid x:Name="RootGrid">
         <Grid.RowDefinitions>
             <RowDefinition Height="32"/>
+            <RowDefinition Height="Auto"/>
             <RowDefinition Height="*"/>
             <RowDefinition Height="24"/>
         </Grid.RowDefinitions>
+
+        <!-- Cert expiry banner (issue #17) -->
+        <Border Grid.Row="1" Background="{StaticResource BrushErrorSubtle}"
+                BorderBrush="{StaticResource BrushError}" BorderThickness="0,0,0,1"
+                Padding="12,4"
+                Visibility="{Binding HasCertWarning, Converter={StaticResource BoolToVisConverter}}">
+            <TextBlock Text="{Binding CertWarning}" FontSize="11"
+                       Foreground="{StaticResource BrushError}" TextWrapping="Wrap"/>
+        </Border>
 
         <!-- TitleBar -->
         <Border Grid.Row="0" Background="{StaticResource BrushSurface}"
@@ -137,7 +147,7 @@
         </Border>
 
         <!-- Main content -->
-        <Grid x:Name="ContentGrid" Grid.Row="1">
+        <Grid x:Name="ContentGrid" Grid.Row="2">
             <Grid.ColumnDefinitions>
                 <ColumnDefinition Width="200"/>
                 <ColumnDefinition Width="Auto"/>
@@ -253,7 +263,7 @@
         </Grid>
 
         <!-- StatusBar -->
-        <Border Grid.Row="2" Background="{StaticResource BrushBase}"
+        <Border Grid.Row="3" Background="{StaticResource BrushBase}"
                 BorderBrush="{StaticResource BrushBorderSubtle}" BorderThickness="0,1,0,0">
             <Grid Margin="12,0">
                 <TextBlock Text="{Binding StatusBarText}"

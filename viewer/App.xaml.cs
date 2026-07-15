@@ -91,6 +91,11 @@ public partial class App : Application
         var window = _host.Services.GetRequiredService<MainWindow>();
         ApplyWindowSettings(window);
         window.Closing += (_, _) => SaveWindowSettings(window);
+
+        var vm = _host.Services.GetRequiredService<MainWindowViewModel>();
+        var caPath = GetEnv("TLS_CA_PATH", string.Empty);
+        vm.CertWarning = SelfDesk.Viewer.Settings.CertExpiryChecker.CheckCaExpiry(caPath) ?? string.Empty;
+
         await _host.StartAsync();
         window.Show();
     }
