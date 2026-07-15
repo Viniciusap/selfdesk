@@ -28,6 +28,16 @@ const SENDER_TO_RECEIVER_TYPES = new Set<number>([
 // Types routed from receiver to a specific target sender (or broadcast)
 const RECEIVER_TO_SENDER_FILE_TYPES = new Set<number>(CLIPBOARD_FILE_TYPES);
 
+// Types routed from receiver to whichever sender header.peerId names
+const RECEIVER_TO_TARGETED_SENDER_TYPES = new Set<number>([
+  MessageType.INPUT_EVENT,
+  MessageType.REQUEST_IDR,
+  MessageType.SELECT_MONITOR,
+  MessageType.REMOTE_REBOOT,
+  MessageType.QUALITY_HINT,
+  MessageType.AUDIO_MIC,
+]);
+
 export class Router {
   private readonly registry: Registry;
   private readonly log: Logger;
@@ -94,36 +104,29 @@ export class Router {
   }
 
   private routeReceiverMessage(header: ParsedHeader, payload: Buffer): void {
-    if (header.type === MessageType.INPUT_EVENT    ||
-        header.type === MessageType.REQUEST_IDR    ||
-        header.type === MessageType.SELECT_MONITOR ||
-        header.type === MessageType.REMOTE_REBOOT  ||
-        header.type === MessageType.QUALITY_HINT   ||
-        header.type === MessageType.AUDIO_MIC) {
-      const targetId = header.peerId;
-      const sender   = this.registry.getSender(targetId);
-      if (!sender) {
-        this.log.warn({ targetId, type: header.type }, 'target sender not found');
-        return;
-      }
-      sender.send(buildEnvelope(header.type, targetId, payload));
+    if (RECEIVER_TO_TARGETED_SENDER_TYPES.has(header.type)) {
+      this.forwardToTargetSender(header, payload);
       return;
     }
     if (RECEIVER_TO_SENDER_FILE_TYPES.has(header.type)) {
       // S57: require explicit PEER_ID for file transfers — no broadcast
-      const targetId = header.peerId;
-      if (!targetId) {
+      if (!header.peerId) {
         this.log.warn({ type: header.type }, 'file message without target PEER_ID — discarded');
         return;
       }
-      const sender = this.registry.getSender(targetId);
-      if (!sender) {
-        this.log.warn({ targetId, type: header.type }, 'target sender not found');
-        return;
-      }
-      sender.send(buildEnvelope(header.type, targetId, payload));
+      this.forwardToTargetSender(header, payload);
       return;
     }
     this.log.debug({ type: header.type }, 'unknown receiver message type — ignored');
+  }
+
+  private forwardToTargetSender(header: ParsedHeader, payload: Buffer): void {
+    const targetId = header.peerId;
+    const sender = this.registry.getSender(targetId);
+    if (!sender) {
+      this.log.warn({ targetId, type: header.type }, 'target sender not found');
+      return;
+    }
+    sender.send(buildEnvelope(header.type, targetId, payload));
   }
 }
