@@ -1,6 +1,7 @@
 import * as http from 'node:http';
 import type { Registry } from './registry.js';
 import type { Logger } from 'pino';
+import { startListeningOn } from './listen.js';
 
 // Issue #4: unauthenticated plain-HTTP health check on a separate port —
 // kept off the TLS listener so monitoring tools don't need a client cert/HMAC.
@@ -33,11 +34,5 @@ export function createHealthServer(registry: Registry, log: Logger): http.Server
 }
 
 export function startHealthListening(server: http.Server, port: number, log: Logger): Promise<void> {
-  return new Promise((resolve, reject) => {
-    server.once('error', reject);
-    server.listen(port, () => {
-      log.info({ port }, 'health endpoint listening');
-      resolve();
-    });
-  });
+  return startListeningOn(server, port, 'health endpoint listening', log);
 }

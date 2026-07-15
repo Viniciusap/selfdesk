@@ -2,6 +2,7 @@ import * as tls from 'node:tls';
 import type { Logger } from 'pino';
 import type { BrokerConfig } from './config.js';
 import { Connection } from './connection.js';
+import { startListeningOn } from './listen.js';
 import { Router } from './router.js';
 
 const FAIL_LIMIT   = 5;
@@ -138,11 +139,5 @@ export function startListening(
   port: number,
   log: Logger,
 ): Promise<void> {
-  return new Promise((resolve, reject) => {
-    server.once('error', reject);
-    server.listen(port, () => {
-      log.info({ port }, 'broker escutando');
-      resolve();
-    });
-  });
+  return startListeningOn(server, port, 'broker escutando', log);
 }

@@ -1,6 +1,7 @@
 import * as http from 'node:http';
 import type { Registry } from './registry.js';
 import type { Logger } from 'pino';
+import { startListeningOn } from './listen.js';
 
 // Issue #19: Prometheus-compatible /metrics endpoint. Plain HTTP, unauthenticated,
 // same pattern as the health endpoint (#4) — standard Prometheus scrape convention.
@@ -60,11 +61,5 @@ export function createMetricsServer(registry: Registry, metrics: MetricsCollecto
 }
 
 export function startMetricsListening(server: http.Server, port: number, log: Logger): Promise<void> {
-  return new Promise((resolve, reject) => {
-    server.once('error', reject);
-    server.listen(port, () => {
-      log.info({ port }, 'metrics endpoint listening');
-      resolve();
-    });
-  });
+  return startListeningOn(server, port, 'metrics endpoint listening', log);
 }

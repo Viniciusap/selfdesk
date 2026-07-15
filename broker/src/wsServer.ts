@@ -6,6 +6,7 @@ import type { IncomingMessage, ServerResponse } from 'node:http';
 import type { Logger } from 'pino';
 import type { BrokerConfig } from './config.js';
 import { Connection } from './connection.js';
+import { startListeningOn } from './listen.js';
 import { WsFramedSocket } from './wsSocket.js';
 import { Router } from './router.js';
 import { attachConnectionHandlers, isIpBlocked, RateLimiters } from './server.js';
@@ -93,11 +94,5 @@ export function createWsServer(
 }
 
 export function startWsListening(server: https.Server, port: number, log: Logger): Promise<void> {
-  return new Promise((resolve, reject) => {
-    server.once('error', reject);
-    server.listen(port, () => {
-      log.info({ port }, 'web viewer (WSS) listening');
-      resolve();
-    });
-  });
+  return startListeningOn(server, port, 'web viewer (WSS) listening', log);
 }
