@@ -1,4 +1,5 @@
 import { EventEmitter } from 'node:events';
+import * as crypto from 'node:crypto';
 import {
   HANDSHAKE_TIMEOUT_MS,
   HEADER_SIZE,
@@ -84,7 +85,10 @@ export class Connection extends EventEmitter {
     this.secret         = secret;
     this.allowedSenders = allowedSenders;
     this.log            = log;
-    this.id             = `conn-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+    // crypto.randomUUID() over Math.random(): not because this ID is security-sensitive
+    // (it's log-correlation only, never sent over the wire or used for auth) but because
+    // it dodges the Sonar S2245 hotspot outright instead of needing a dismissal comment.
+    this.id             = `conn-${Date.now()}-${crypto.randomUUID().slice(0, 8)}`;
 
     socket.on('data',  (chunk: Buffer) => this.onData(chunk));
     socket.on('end',   () => this.close());

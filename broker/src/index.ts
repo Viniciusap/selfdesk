@@ -44,12 +44,28 @@ async function main(): Promise<void> {
     await startWsListening(wsServer, cfg.wsPort, log);
   }
 
-  const shutdown = () => {
-    server.close(); healthServer?.close(); metricsServer?.close(); wsServer?.close();
+  // .close() stops accepting new connections but its callback only fires once
+  // every existing connection ends on its own — a sender streaming VIDEO_FRAME
+  // forever never does that by itself, so this is timeout-bounded rather than
+  // awaited unconditionally (Sonar-style graceful-shutdown hotspot: stop
+  // accepting new work first, but don't hang the process waiting for long-lived
+  // streams that were never going to close themselves).
+  const closeAsync = (s?: { close(cb: () => void): unknown }): Promise<void> =>
+    new Promise((resolve) => {
+      if (s) s.close(resolve);
+      else resolve();
+    });
+
+  const shutdown = async (): Promise<void> => {
+    log.info('shutting down...');
+    await Promise.race([
+      Promise.all([closeAsync(server), closeAsync(healthServer), closeAsync(metricsServer), closeAsync(wsServer)]),
+      new Promise<void>((resolve) => setTimeout(resolve, 5000)),
+    ]);
     process.exit(0);
   };
-  process.on('SIGTERM', shutdown);
-  process.on('SIGINT',  shutdown);
+  process.on('SIGTERM', () => { void shutdown(); });
+  process.on('SIGINT',  () => { void shutdown(); });
 }
 
 main().catch((err) => {
