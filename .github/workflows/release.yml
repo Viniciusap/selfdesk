@@ -42,10 +42,17 @@ jobs:
           push: true
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
-  # ── Broker: Linux tarball + Windows zip ──────────────────────────────────────
+  # ── Broker: Linux tarball (x64 + arm64, issue #7) + Windows zip ─────────────
   broker:
-    name: Broker (Linux tarball + Windows zip)
-    runs-on: ubuntu-latest
+    name: Broker (Linux tarball ${{ matrix.arch }})
+    strategy:
+      matrix:
+        include:
+          - arch: x64
+            runner: ubuntu-latest
+          - arch: arm64
+            runner: ubuntu-24.04-arm
+    runs-on: ${{ matrix.runner }}
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
 
@@ -67,31 +74,41 @@ jobs:
         run: npm prune --omit=dev
         working-directory: broker
 
-      - name: Package broker (Linux tar.gz + Windows zip)
+      - name: Package broker Linux tarball
         run: |
           mkdir -p staging/selfdesk-broker/scripts
 
           cp -r broker/dist broker/node_modules broker/package.json staging/selfdesk-broker/
           cp broker/.env.example staging/selfdesk-broker/
 
-          # Linux: .sh scripts
           cp scripts/bootstrap.sh staging/selfdesk-broker/scripts/
           cp scripts/install.sh   staging/selfdesk-broker/scripts/
           chmod +x staging/selfdesk-broker/scripts/*.sh
-          tar -czf selfdesk-broker-linux-x64.tar.gz -C staging selfdesk-broker
+          tar -czf selfdesk-broker-linux-${{ matrix.arch }}.tar.gz -C staging selfdesk-broker
 
-          # Windows: .ps1 scripts (same JS content, different scripts)
-          cp scripts/bootstrap.ps1    staging/selfdesk-broker/scripts/
-          cp scripts/install.ps1      staging/selfdesk-broker/scripts/
-          cp scripts/install-broker.ps1 staging/selfdesk-broker/scripts/
-          cd staging && zip -r ../selfdesk-broker-win-x64.zip selfdesk-broker
+      # Windows zip has no ARM64/x64 distinction of its own (broker has no native
+      # deps — see broker/package-lock.json, nothing but the macOS-only optional
+      # fsevents has an install script) — only build it once, on the x64 leg.
+      - name: Package broker Windows zip
+        if: matrix.arch == 'x64'
+        run: |
+          mkdir -p staging-win/selfdesk-broker/scripts
+
+          cp -r broker/dist broker/node_modules broker/package.json staging-win/selfdesk-broker/
+          cp broker/.env.example staging-win/selfdesk-broker/
+
+          cp scripts/bootstrap.ps1    staging-win/selfdesk-broker/scripts/
+          cp scripts/install.ps1      staging-win/selfdesk-broker/scripts/
+          cp scripts/install-broker.ps1 staging-win/selfdesk-broker/scripts/
+          cd staging-win && zip -r ../selfdesk-broker-win-x64.zip selfdesk-broker
 
       - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
-          name: broker-tarball
+          name: broker-tarball-${{ matrix.arch }}
           path: |
-            selfdesk-broker-linux-x64.tar.gz
+            selfdesk-broker-linux-${{ matrix.arch }}.tar.gz
             selfdesk-broker-win-x64.zip
+          if-no-files-found: ignore
 
   # ── Sender + Viewer: Windows zips ────────────────────────────────────────────
   windows:
@@ -206,7 +223,11 @@ jobs:
     steps:
       - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
         with:
-          name: broker-tarball
+          name: broker-tarball-x64
+
+      - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          name: broker-tarball-arm64
 
       - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
         with:
@@ -214,7 +235,7 @@ jobs:
 
       - name: Generate SHA256SUMS
         run: |
-          sha256sum selfdesk-broker-linux-x64.tar.gz selfdesk-broker-win-x64.zip \
+          sha256sum selfdesk-broker-linux-x64.tar.gz selfdesk-broker-linux-arm64.tar.gz selfdesk-broker-win-x64.zip \
                     selfdesk-sender-win-x64.zip selfdesk-viewer-win-x64.zip > SHA256SUMS
           cat SHA256SUMS
 
@@ -225,6 +246,7 @@ jobs:
           files: |
             SHA256SUMS
             selfdesk-broker-linux-x64.tar.gz
+            selfdesk-broker-linux-arm64.tar.gz
             selfdesk-broker-win-x64.zip
             selfdesk-sender-win-x64.zip
             selfdesk-viewer-win-x64.zip

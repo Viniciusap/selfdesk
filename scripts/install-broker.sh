@@ -41,7 +41,24 @@ case "$(uname -s 2>/dev/null)" in
 
         REPO_OWNER="Viniciusap"
         REPO_NAME="selfdesk"
-        ASSET_NAME="selfdesk-broker-linux-x64.tar.gz"
+
+        # Issue #7: detect architecture and pick the matching asset (x64 or arm64,
+        # e.g. Raspberry Pi). Both tarballs have identical contents today — the
+        # broker has no native dependencies — but publishing per-arch keeps the
+        # door open if that ever changes, and this is what the arch check is for.
+        case "$(uname -m)" in
+            x86_64|amd64)
+                ARCH="x64"
+                ;;
+            aarch64|arm64)
+                ARCH="arm64"
+                ;;
+            *)
+                echo "ERROR: unsupported architecture '$(uname -m)'. Only x64 and arm64 are published." >&2
+                exit 1
+                ;;
+        esac
+        ASSET_NAME="selfdesk-broker-linux-$ARCH.tar.gz"
         INSTALL_DIR="${INSTALL_DIR:-$HOME/selfdesk}"
         DOWNLOAD_URL="https://github.com/$REPO_OWNER/$REPO_NAME/releases/latest/download/$ASSET_NAME"
 
