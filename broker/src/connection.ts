@@ -4,6 +4,7 @@ import {
   HANDSHAKE_TIMEOUT_MS,
   HEADER_SIZE,
   MAX_FRAME_BYTES,
+  PEER_ID_SIZE,
   PING_INTERVAL_MS,
   PONG_TIMEOUT_MS,
   MessageType,
@@ -176,9 +177,11 @@ export class Connection extends EventEmitter {
           return;
         }
 
-        // S6: protocol constraint — agentId must fit in 16-byte PEER_ID field
-        if (typeof hello.agentId === 'string' && hello.agentId.length > 16) {
-          this.rejectAuth('agentId exceeds 16 characters');
+        // S6: protocol constraint — agentId must fit in 16-byte PEER_ID field.
+        // Checked by UTF-8 byte length, not JS string char count — a multi-byte
+        // agentId could exceed PEER_ID_SIZE bytes while passing a char-count check.
+        if (typeof hello.agentId === 'string' && Buffer.byteLength(hello.agentId, 'utf8') > PEER_ID_SIZE) {
+          this.rejectAuth('agentId exceeds 16 bytes');
           return;
         }
 

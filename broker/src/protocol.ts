@@ -68,7 +68,9 @@ export function buildEnvelope(type: number, peerId: string, payload: Buffer): Bu
   header[1] = type;
 
   const peerIdBuf = Buffer.alloc(PEER_ID_SIZE, 0);
-  const peerIdBytes = Buffer.from(peerId.slice(0, PEER_ID_SIZE), 'utf8');
+  // Truncate by UTF-8 byte length, not JS string char count — .slice() on a
+  // multi-byte peerId could produce more than PEER_ID_SIZE bytes once encoded.
+  const peerIdBytes = Buffer.from(peerId, 'utf8').subarray(0, PEER_ID_SIZE);
   peerIdBytes.copy(peerIdBuf);
   peerIdBuf.copy(header, PEER_ID_OFFSET);
 
