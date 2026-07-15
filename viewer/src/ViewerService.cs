@@ -423,7 +423,7 @@ public sealed class ViewerService : BackgroundService
         var height   = BinaryPrimitives.ReadUInt16BigEndian(span[CursorShapeOffsets.Height..]);
         var bgra     = span[CursorShapeOffsets.Data..].ToArray();
 
-        if (bgra.Length < width * height * 4) return;
+        if (bgra.Length < (long)width * height * 4) return;
 
         _ = Application.Current?.Dispatcher.InvokeAsync(() =>
         {

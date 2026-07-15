@@ -11,7 +11,7 @@ internal static class CursorShapeFactory
 {
     public static System.Windows.Input.Cursor? Create(byte[] bgra, int width, int height, int hotspotX, int hotspotY)
     {
-        if (width <= 0 || height <= 0 || bgra.Length < width * height * 4) return null;
+        if (width <= 0 || height <= 0 || bgra.Length < (long)width * height * 4) return null;
 
         var bmi = new BITMAPINFO
         {
