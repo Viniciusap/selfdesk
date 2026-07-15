@@ -1,4 +1,5 @@
 import { loadConfig, loadTlsMaterial } from './config.js';
+import { warnIfExpiringSoon } from './certExpiry.js';
 import { createHealthServer, startHealthListening } from './health.js';
 import { createLogger } from './logger.js';
 import { Registry } from './registry.js';
@@ -12,6 +13,7 @@ async function main(): Promise<void> {
   log.info('SelfDesk Broker iniciando...');
 
   const tls      = loadTlsMaterial(cfg);
+  warnIfExpiringSoon(tls.cert, log);
   const registry = new Registry(log);
   const router   = new Router(registry, log);
   const server   = createServer(cfg, tls, router, log);

@@ -148,7 +148,7 @@ public partial class MainWindow : Window
             ContentGrid.ColumnDefinitions[0].Width = new GridLength(0);
             ContentGrid.ColumnDefinitions[1].Width = new GridLength(0);
             RootGrid.RowDefinitions[0].Height = new GridLength(0);
-            RootGrid.RowDefinitions[2].Height = new GridLength(0);
+            RootGrid.RowDefinitions[3].Height = new GridLength(0);
             _isFullscreen = true;
         }
         else
@@ -159,7 +159,7 @@ public partial class MainWindow : Window
             ContentGrid.ColumnDefinitions[0].Width = new GridLength(200);
             ContentGrid.ColumnDefinitions[1].Width = GridLength.Auto;
             RootGrid.RowDefinitions[0].Height = new GridLength(32);
-            RootGrid.RowDefinitions[2].Height = new GridLength(24);
+            RootGrid.RowDefinitions[3].Height = new GridLength(24);
             _isFullscreen = false;
         }
     }

@@ -22,6 +22,11 @@ public sealed partial class MainWindowViewModel : ObservableObject
     [ObservableProperty] private string           _transferStatus   = string.Empty;
     [ObservableProperty] private bool             _isMuted          = false;
     [ObservableProperty] private bool             _isRelativeMouse  = false;
+    [ObservableProperty] private string            _certWarning      = string.Empty;
+
+    partial void OnCertWarningChanged(string value) => OnPropertyChanged(nameof(HasCertWarning));
+
+    public bool HasCertWarning => !string.IsNullOrEmpty(CertWarning);
 
     partial void OnIsMutedChanged(bool value) => _audioPlayer.IsMuted = value;
 
