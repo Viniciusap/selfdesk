@@ -1,0 +1,20 @@
+{
+  "name": "SelfDesk",
+  // NOTE: sender and viewer target net10.0-windows (WPF + Win32 P/Invoke) and
+  // cannot build in this Linux container. Only broker (Node.js/TypeScript) and
+  // shared/dotnet (SelfDesk.Protocol, cross-platform) build and test here.
+  "image": "mcr.microsoft.com/devcontainers/dotnet:10.0",
+  "features": {
+    "ghcr.io/devcontainers/features/node:1": { "version": "lts" }
+  },
+  "postCreateCommand": "cd broker && npm ci",
+  "customizations": {
+    "vscode": {
+      "extensions": [
+        "ms-dotnettools.csharp",
+        "dbaeumer.vscode-eslint",
+        "esbenp.prettier-vscode"
+      ]
+    }
+  }
+}
