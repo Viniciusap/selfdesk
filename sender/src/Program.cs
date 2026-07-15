@@ -51,6 +51,8 @@ builder.Services.Configure<SenderConfig>(cfg =>
     cfg.Capturer = GetEnv("CAPTURER", "gdi");
     cfg.AudioEnabled = bool.TryParse(GetEnv("AUDIO_ENABLED", "true"), out var audioEnabled) ? audioEnabled : true;
     cfg.MicEnabled = bool.TryParse(GetEnv("MIC_ENABLED", "false"), out var micEnabled) && micEnabled;
+    cfg.BenchmarkEnabled = bool.TryParse(GetEnv("BENCHMARK", "false"), out var benchmarkEnabled) && benchmarkEnabled;
+    cfg.BenchmarkLogPath = GetEnv("BENCHMARK_LOG_PATH", "benchmark-sender.csv");
 });
 
 builder.Services.AddSingleton<IScreenCapturer>(sp =>
@@ -79,6 +81,11 @@ builder.Services.AddSingleton<IFrameEncoder>(sp =>
     };
 });
 builder.Services.AddSingleton<IInputInjector, Win32InputInjector>();
+builder.Services.AddSingleton(sp =>
+{
+    var cfg = sp.GetRequiredService<IOptions<SenderConfig>>().Value;
+    return new SelfDesk.Sender.Diagnostics.BenchmarkLog(cfg.BenchmarkEnabled, cfg.BenchmarkLogPath);
+});
 builder.Services.AddHostedService<SenderService>();
 
 // Suporte a Windows Service (Fase 5): dotnet publish + sc.exe create

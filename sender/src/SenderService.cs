@@ -6,6 +6,7 @@ using Microsoft.Extensions.Options;
 using SelfDesk.Sender.Audio;
 using SelfDesk.Sender.Capture;
 using SelfDesk.Sender.Clipboard;
+using SelfDesk.Sender.Diagnostics;
 using SelfDesk.Sender.Encode;
 using SelfDesk.Sender.FileTransfer;
 using SelfDesk.Sender.Inject;
@@ -20,6 +21,7 @@ public sealed class SenderService : BackgroundService
     private readonly IScreenCapturer _capturer;
     private readonly IFrameEncoder   _encoder;
     private readonly IInputInjector  _injector;
+    private readonly BenchmarkLog    _benchmarkLog;
     private readonly ILogger<SenderService> _log;
 
     public SenderService(
@@ -27,13 +29,15 @@ public sealed class SenderService : BackgroundService
         IScreenCapturer capturer,
         IFrameEncoder encoder,
         IInputInjector injector,
+        BenchmarkLog benchmarkLog,
         ILogger<SenderService> log)
     {
-        _cfg      = cfg.Value;
-        _capturer = capturer;
-        _encoder  = encoder;
-        _injector = injector;
-        _log      = log;
+        _cfg          = cfg.Value;
+        _capturer     = capturer;
+        _encoder      = encoder;
+        _injector     = injector;
+        _benchmarkLog = benchmarkLog;
+        _log          = log;
     }
 
     protected override async Task ExecuteAsync(CancellationToken ct)
@@ -206,9 +210,15 @@ public sealed class SenderService : BackgroundService
                 var started = DateTime.UtcNow;
                 try
                 {
-                    var frame   = _capturer.CaptureFrame();
-                    var encoded = _encoder.Encode(frame);
+                    var frame        = _capturer.CaptureFrame();
+                    var capturedAt   = DateTime.UtcNow;
+                    var encoded      = _encoder.Encode(frame);
+                    var encodedAt    = DateTime.UtcNow;
                     if (encoded.Data.Length == 0) continue;
+                    _benchmarkLog.WriteFrame(
+                        frame.TimestampMs,
+                        (capturedAt - started).TotalMilliseconds,
+                        (encodedAt - capturedAt).TotalMilliseconds);
                     await channel.Writer.WriteAsync(encoded, sCt);
                 }
                 catch (OperationCanceledException) { break; }

@@ -13,4 +13,6 @@ public sealed class SenderConfig
     public string Capturer     { get; set; } = "gdi";
     public bool   AudioEnabled { get; set; } = true;
     public bool   MicEnabled   { get; set; } = false; // issue #21: opt-in, off by default
+    public bool   BenchmarkEnabled { get; set; } = false; // issue #24: opt-in, off by default
+    public string BenchmarkLogPath { get; set; } = "benchmark-sender.csv";
 }

@@ -241,6 +241,25 @@ Bootstrap generates the `.env` files for you — you rarely need to edit them by
 | `ENCODER` | | ✓ | | `jpeg` \| `qsv` \| `nvenc` |
 | `TARGET_FPS` | | ✓ | | Capture FPS (default: `30`) |
 | `JPEG_QUALITY` | | ✓ | | JPEG quality 1–100 (default: `75`) |
+| `BENCHMARK` | | ✓ | ✓ | Opt-in per-frame latency CSV (default: `false`) — see [Benchmarking](#benchmarking) |
+| `BENCHMARK_LOG_PATH` | | ✓ | ✓ | CSV output path (default: `benchmark-sender.csv` / `benchmark-viewer.csv`) |
+
+---
+
+## Benchmarking
+
+Set `BENCHMARK=true` in both `sender/.env` and `viewer/.env` to write a per-frame
+latency CSV on each side (capture/encode on the sender, wire/decode/total on the
+viewer), correlated by the `VIDEO_FRAME` `TIMESTAMP` field. After a run, join and
+summarize with:
+
+```bash
+node scripts/benchmark.js sender/benchmark-sender.csv viewer/benchmark-viewer.csv
+```
+
+Prints p50/p95/p99 per stage (capture, encode, wire, decode, total). Off by
+default — writing a CSV row per frame is unnecessary overhead outside of
+tuning/regression work.
 
 ---
 

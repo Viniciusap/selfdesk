@@ -5,6 +5,7 @@ using System.Diagnostics;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
 using SelfDesk.Viewer.Audio;
 using SelfDesk.Viewer.Decode;
 using SelfDesk.Viewer.ViewModels;
@@ -73,6 +74,8 @@ public partial class App : Application
                     cfg.BrokerHost = GetEnv("BROKER_HOST", "localhost");
                     cfg.BrokerPort = int.TryParse(GetEnv("BROKER_PORT", "7000"), out var p) ? p : 7000;
                     cfg.TlsCaPath = GetEnv("TLS_CA_PATH", string.Empty);
+                    cfg.BenchmarkEnabled = bool.TryParse(GetEnv("BENCHMARK", "false"), out var benchmarkEnabled) && benchmarkEnabled;
+                    cfg.BenchmarkLogPath = GetEnv("BENCHMARK_LOG_PATH", "benchmark-viewer.csv");
                 });
                 var encoderEnv = GetEnv("ENCODER", "jpeg").ToLowerInvariant();
                 if (encoderEnv is "qsv" or "nvenc")
@@ -80,6 +83,11 @@ public partial class App : Application
                 else
                     services.AddSingleton<IFrameDecoder, JpegFrameDecoder>();
                 services.AddSingleton<IAudioPlayer, WasapiAudioPlayer>();
+                services.AddSingleton(sp =>
+                {
+                    var c = sp.GetRequiredService<IOptions<ViewerConfig>>().Value;
+                    return new SelfDesk.Viewer.Diagnostics.BenchmarkLog(c.BenchmarkEnabled, c.BenchmarkLogPath);
+                });
                 services.AddSingleton<MainWindowViewModel>();
                 services.AddSingleton<MainWindow>();
                 services.AddHostedService<ViewerService>();

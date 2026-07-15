@@ -11,6 +11,7 @@ using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using SelfDesk.Viewer.Audio;
 using SelfDesk.Viewer.Decode;
+using SelfDesk.Viewer.Diagnostics;
 using SelfDesk.Viewer.Network;
 using ViewerWire = SelfDesk.Viewer.Protocol.WireProtocol;
 using SelfDesk.Viewer.ViewModels;
@@ -26,6 +27,7 @@ public sealed class ViewerService : BackgroundService
     private readonly ILogger<ViewerService>  _log;
     private readonly IFrameDecoder           _decoder;
     private readonly IAudioPlayer            _audioPlayer;
+    private readonly BenchmarkLog            _benchmarkLog;
     private          IOpusDecoder?            _audioDecoder;
     private const int MaxClipboardBytes = 4 * 1024 * 1024; // 4 MB — bumped for images (issue #8)
     private volatile string                   _lastClipboard = string.Empty;
@@ -88,14 +90,16 @@ public sealed class ViewerService : BackgroundService
         MainWindow window,
         IFrameDecoder decoder,
         IAudioPlayer audioPlayer,
+        BenchmarkLog benchmarkLog,
         ILogger<ViewerService> log)
     {
-        _cfg         = cfg.Value;
-        _vm          = vm;
-        _window      = window;
-        _decoder     = decoder;
-        _audioPlayer = audioPlayer;
-        _log         = log;
+        _cfg          = cfg.Value;
+        _vm           = vm;
+        _window       = window;
+        _decoder      = decoder;
+        _audioPlayer  = audioPlayer;
+        _benchmarkLog = benchmarkLog;
+        _log          = log;
     }
 
     protected override async Task ExecuteAsync(CancellationToken ct)
@@ -489,9 +493,11 @@ public sealed class ViewerService : BackgroundService
             return;
         }
 
+        var decodeStart = DateTime.UtcNow;
         DecodedFrame decoded;
         try { decoded = _decoder.Decode(data, width, height, ts); }
         catch (Exception ex) { _log.LogWarning(ex, "Failed to decode frame"); return; }
+        var decodeMs = (DateTime.UtcNow - decodeStart).TotalMilliseconds;
 
         _ = Application.Current?.Dispatcher.InvokeAsync(() =>
         {
@@ -539,6 +545,8 @@ public sealed class ViewerService : BackgroundService
                 decoded.Bgra, decoded.Width * 4, 0);
             _vm.VideoFrame.AddDirtyRect(new Int32Rect(0, 0, decoded.Width, decoded.Height));
             _vm.VideoFrame.Unlock();
+
+            _benchmarkLog.WriteFrame(ts, rtt, decodeMs, DateTimeOffset.UtcNow.ToUnixTimeMilliseconds() - ts);
         });
     }
 }
