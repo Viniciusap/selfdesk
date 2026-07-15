@@ -36,19 +36,23 @@ public sealed partial class MainWindowViewModel : ObservableObject
 
     public ObservableCollection<SenderViewModel> Senders { get; } = [];
 
-    public string StatusBarText =>
-        (TransferProgress >= 0
-            ? TransferStatus
-            : SelectedSender is null
-                ? "Waiting for connection..."
-                : !string.IsNullOrEmpty(SelectedSender.CodecMismatch)
-                    ? $"{SelectedSender.AgentId} · ⚠ {SelectedSender.CodecMismatch}"
-                    : $"{SelectedSender.AgentId} · {SelectedSender.ResolutionDisplay}" +
-                      $" · {SelectedSender.Codec}" +
-                      (SelectedSender.LastRttMs >= 0 ? $" · RTT {SelectedSender.LastRttMs}ms" : string.Empty))
-        + (string.IsNullOrEmpty(UpdateAvailable)
+    public string StatusBarText => BuildBaseStatusText() + BuildUpdateSuffix();
+
+    private string BuildBaseStatusText()
+    {
+        if (TransferProgress >= 0) return TransferStatus;
+        if (SelectedSender is null) return "Waiting for connection...";
+        if (!string.IsNullOrEmpty(SelectedSender.CodecMismatch))
+            return $"{SelectedSender.AgentId} · ⚠ {SelectedSender.CodecMismatch}";
+
+        var rtt = SelectedSender.LastRttMs >= 0 ? $" · RTT {SelectedSender.LastRttMs}ms" : string.Empty;
+        return $"{SelectedSender.AgentId} · {SelectedSender.ResolutionDisplay} · {SelectedSender.Codec}{rtt}";
+    }
+
+    private string BuildUpdateSuffix() =>
+        string.IsNullOrEmpty(UpdateAvailable)
             ? string.Empty
-            : $" · Update available: {UpdateAvailable} (run install-viewer.ps1 to update)");
+            : $" · Update available: {UpdateAvailable} (run install-viewer.ps1 to update)";
 
     partial void OnSelectedSenderChanged(SenderViewModel? value) =>
         OnPropertyChanged(nameof(StatusBarText));

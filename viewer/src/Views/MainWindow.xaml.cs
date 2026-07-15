@@ -97,33 +97,27 @@ public partial class MainWindow : Window
         }
     }
 
+    private static byte MapMouseButton(MouseButton button) => button switch
+    {
+        MouseButton.Left   => InputEventKind.BtnLeft,
+        MouseButton.Right  => InputEventKind.BtnRight,
+        MouseButton.Middle => InputEventKind.BtnMiddle,
+        _                  => InputEventKind.BtnLeft,
+    };
+
     private void OnVideoMouseDown(object sender, MouseButtonEventArgs e)
     {
         if (_vm.SelectedSender is null) return;
-        var btn = e.ChangedButton switch
-        {
-            MouseButton.Left   => InputEventKind.BtnLeft,
-            MouseButton.Right  => InputEventKind.BtnRight,
-            MouseButton.Middle => InputEventKind.BtnMiddle,
-            _                  => InputEventKind.BtnLeft,
-        };
         var (x, y) = NormalizePosition(e.GetPosition(VideoImage));
-        Send(ViewerWire.BuildMouseButton(_vm.SelectedSender.AgentId, btn, InputEventKind.StateDown, x, y));
+        Send(ViewerWire.BuildMouseButton(_vm.SelectedSender.AgentId, MapMouseButton(e.ChangedButton), InputEventKind.StateDown, x, y));
         Focus();
     }
 
     private void OnVideoMouseUp(object sender, MouseButtonEventArgs e)
     {
         if (_vm.SelectedSender is null) return;
-        var btn = e.ChangedButton switch
-        {
-            MouseButton.Left   => InputEventKind.BtnLeft,
-            MouseButton.Right  => InputEventKind.BtnRight,
-            MouseButton.Middle => InputEventKind.BtnMiddle,
-            _                  => InputEventKind.BtnLeft,
-        };
         var (x, y) = NormalizePosition(e.GetPosition(VideoImage));
-        Send(ViewerWire.BuildMouseButton(_vm.SelectedSender.AgentId, btn, InputEventKind.StateUp, x, y));
+        Send(ViewerWire.BuildMouseButton(_vm.SelectedSender.AgentId, MapMouseButton(e.ChangedButton), InputEventKind.StateUp, x, y));
     }
 
     private void OnVideoMouseWheel(object sender, MouseWheelEventArgs e)
@@ -197,12 +191,23 @@ public partial class MainWindow : Window
         e.Handled = true;
     }
 
+    // Named so GetModBit and ModifierVKs below can't drift out of sync — both
+    // used to hardcode this same list of hex literals independently.
+    private const ushort VkLShift   = 0xA0;
+    private const ushort VkRShift   = 0xA1;
+    private const ushort VkLControl = 0xA2;
+    private const ushort VkRControl = 0xA3;
+    private const ushort VkLMenu    = 0xA4; // Alt
+    private const ushort VkRMenu    = 0xA5;
+    private const ushort VkLWin     = 0x5B;
+    private const ushort VkRWin     = 0x5C;
+
     private static byte GetModBit(ushort vk) => vk switch
     {
-        0xA0 or 0xA1 => InputEventKind.ModShift,
-        0xA2 or 0xA3 => InputEventKind.ModCtrl,
-        0xA4 or 0xA5 => InputEventKind.ModAlt,
-        0x5B or 0x5C => InputEventKind.ModWin,
+        VkLShift or VkRShift     => InputEventKind.ModShift,
+        VkLControl or VkRControl => InputEventKind.ModCtrl,
+        VkLMenu or VkRMenu       => InputEventKind.ModAlt,
+        VkLWin or VkRWin         => InputEventKind.ModWin,
         _ => 0,
     };
 
@@ -237,7 +242,8 @@ public partial class MainWindow : Window
         }
     }
 
-    private static readonly ushort[] ModifierVKs = [0xA0,0xA1,0xA2,0xA3,0xA4,0xA5,0x5B,0x5C];
+    private static readonly ushort[] ModifierVKs =
+        [VkLShift, VkRShift, VkLControl, VkRControl, VkLMenu, VkRMenu, VkLWin, VkRWin];
 
     private void OnWindowDeactivated(object? sender, EventArgs e)
     {

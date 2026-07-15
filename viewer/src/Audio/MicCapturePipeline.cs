@@ -83,7 +83,7 @@ public static class MicCapturePipeline
                         Buffer.BlockCopy(readBuf, 0, pcm, 0, FrameBytes);
                         len = encoder.Encode(pcm.AsSpan(), FrameSamples, opusBuf.AsSpan(), opusBuf.Length);
                     }
-                    catch { continue; }
+                    catch (Exception ex) { log.LogWarning(ex, "Opus encode failed — dropping this mic frame"); continue; }
 
                     if (len <= 0) continue;
 

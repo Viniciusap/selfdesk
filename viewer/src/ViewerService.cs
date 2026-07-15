@@ -171,7 +171,7 @@ public sealed class ViewerService : BackgroundService
                     Application.Current?.Dispatcher.InvokeAsync(() =>
                     {
                         try { System.Windows.Clipboard.SetText(text); }
-                        catch { }
+                        catch (Exception ex) { _log.LogWarning(ex, "Failed to set local clipboard text"); }
                     });
                 }
                 else if (kind == ClipboardKind.Image)
@@ -187,7 +187,7 @@ public sealed class ViewerService : BackgroundService
                                 ms, BitmapCreateOptions.PreservePixelFormat, BitmapCacheOption.OnLoad);
                             System.Windows.Clipboard.SetImage(decoder.Frames[0]);
                         }
-                        catch { }
+                        catch (Exception ex) { _log.LogWarning(ex, "Failed to set local clipboard image"); }
                     });
                 }
                 return;
@@ -285,7 +285,12 @@ public sealed class ViewerService : BackgroundService
                             }
                         }
                     }
-                    catch { text = null; imageBytes = null; }
+                    catch (Exception ex)
+                    {
+                        _log.LogWarning(ex, "Failed to read local clipboard");
+                        text = null;
+                        imageBytes = null;
+                    }
                 });
 
                 var targetId = _vm.SelectedSender?.AgentId;

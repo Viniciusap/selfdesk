@@ -101,12 +101,8 @@ public sealed class BrokerConnection : IAsyncDisposable
             await SendRawAsync(WireProtocol.BuildPing(DateTimeOffset.UtcNow.ToUnixTimeMilliseconds()), ct);
     }
 
-    public async Task SendAsync(byte[] message, CancellationToken ct)
-    {
-        await _writeLock.WaitAsync(ct);
-        try { await _ssl!.WriteAsync(message, ct); }
-        finally { _writeLock.Release(); }
-    }
+    public Task SendAsync(byte[] message, CancellationToken ct) =>
+        SendRawAsync(message, ct);
 
     private async Task<(byte type, string peerId, uint length)> ReadHeaderAsync(CancellationToken ct)
     {
