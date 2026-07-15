@@ -27,8 +27,9 @@ public sealed class ViewerService : BackgroundService
     private readonly IFrameDecoder           _decoder;
     private readonly IAudioPlayer            _audioPlayer;
     private          IOpusDecoder?            _audioDecoder;
-    private const int MaxClipboardBytes = 1 * 1024 * 1024; // 1 MB
+    private const int MaxClipboardBytes = 4 * 1024 * 1024; // 4 MB — bumped for images (issue #8)
     private volatile string                   _lastClipboard = string.Empty;
+    private byte[]?                           _lastClipboardImage;
     private Network.BrokerConnection?         _lastConn;
     private CancellationToken                 _lastCt;
 
@@ -73,6 +74,12 @@ public sealed class ViewerService : BackgroundService
             state.LastChangeUtc = now;
             _ = conn.SendAsync(ViewerWire.BuildQualityHint(senderId, NormalQuality, NormalFps), ct);
         }
+    }
+
+    private static bool ClipboardImagesEqual(byte[]? a, byte[]? b)
+    {
+        if (a is null || b is null) return a == b;
+        return a.AsSpan().SequenceEqual(b);
     }
 
     public ViewerService(
@@ -148,14 +155,37 @@ public sealed class ViewerService : BackgroundService
         {
             if (type == MessageType.Clipboard)
             {
-                var text = Encoding.UTF8.GetString(payload.Span);
-                if (text == _lastClipboard) return;
-                _lastClipboard = text;
-                Application.Current?.Dispatcher.InvokeAsync(() =>
+                if (payload.Length == 0) return;
+                var kind = payload.Span[0];
+                var data = payload[1..];
+
+                if (kind == ClipboardKind.Text)
                 {
-                    try { System.Windows.Clipboard.SetText(text); }
-                    catch { }
-                });
+                    var text = Encoding.UTF8.GetString(data.Span);
+                    if (text == _lastClipboard) return;
+                    _lastClipboard = text;
+                    Application.Current?.Dispatcher.InvokeAsync(() =>
+                    {
+                        try { System.Windows.Clipboard.SetText(text); }
+                        catch { }
+                    });
+                }
+                else if (kind == ClipboardKind.Image)
+                {
+                    var imageBytes = data.ToArray();
+                    _lastClipboardImage = imageBytes;
+                    Application.Current?.Dispatcher.InvokeAsync(() =>
+                    {
+                        try
+                        {
+                            using var ms = new MemoryStream(imageBytes);
+                            var decoder = new PngBitmapDecoder(
+                                ms, BitmapCreateOptions.PreservePixelFormat, BitmapCacheOption.OnLoad);
+                            System.Windows.Clipboard.SetImage(decoder.Frames[0]);
+                        }
+                        catch { }
+                    });
+                }
                 return;
             }
             if (type == MessageType.SenderUp)
@@ -227,21 +257,51 @@ public sealed class ViewerService : BackgroundService
             while (await timer.WaitForNextTickAsync(ct))
             {
                 string? text = null;
+                byte[]? imageBytes = null;
                 Application.Current?.Dispatcher.Invoke(() =>
                 {
-                    try { text = System.Windows.Clipboard.ContainsText()
-                        ? System.Windows.Clipboard.GetText() : null; }
-                    catch { text = null; }
+                    try
+                    {
+                        if (System.Windows.Clipboard.ContainsText())
+                        {
+                            text = System.Windows.Clipboard.GetText();
+                        }
+                        else if (System.Windows.Clipboard.ContainsImage())
+                        {
+                            var bitmapSource = System.Windows.Clipboard.GetImage();
+                            if (bitmapSource is not null)
+                            {
+                                var encoder = new PngBitmapEncoder();
+                                encoder.Frames.Add(BitmapFrame.Create(bitmapSource));
+                                using var ms = new MemoryStream();
+                                encoder.Save(ms);
+                                imageBytes = ms.ToArray();
+                            }
+                        }
+                    }
+                    catch { text = null; imageBytes = null; }
                 });
-                if (text is null || text == _lastClipboard) continue;
-                _lastClipboard = text;
+
                 var targetId = _vm.SelectedSender?.AgentId;
                 if (string.IsNullOrEmpty(targetId)) continue;
-                var clipBytes = Encoding.UTF8.GetBytes(text);
-                if (clipBytes.Length > MaxClipboardBytes) continue;
-                var msg = WireProtocol.BuildClipboard(clipBytes, targetId);
-                try { await conn.SendAsync(msg, ct); }
-                catch { break; }
+
+                if (text is not null && text != _lastClipboard)
+                {
+                    _lastClipboard = text;
+                    var clipBytes = Encoding.UTF8.GetBytes(text);
+                    if (clipBytes.Length > MaxClipboardBytes) continue;
+                    var msg = WireProtocol.BuildClipboardText(text, targetId);
+                    try { await conn.SendAsync(msg, ct); }
+                    catch { break; }
+                }
+                else if (imageBytes is not null && !ClipboardImagesEqual(imageBytes, _lastClipboardImage))
+                {
+                    _lastClipboardImage = imageBytes;
+                    if (imageBytes.Length > MaxClipboardBytes) continue;
+                    var msg = WireProtocol.BuildClipboardImage(imageBytes, targetId);
+                    try { await conn.SendAsync(msg, ct); }
+                    catch { break; }
+                }
             }
         }, ct);
 

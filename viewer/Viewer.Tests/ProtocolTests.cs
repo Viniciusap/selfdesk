@@ -79,6 +79,25 @@ public class WireProtocolTests
     }
 
     [Fact]
+    public void BuildClipboardText_HasTextKindAndUtf8Payload()
+    {
+        var msg     = WireProtocol.BuildClipboardText("hello", "laptop-01");
+        var payload = msg.AsSpan(ProtocolSizes.HeaderSize);
+        Assert.Equal(ClipboardKind.Text, payload[0]);
+        Assert.Equal("hello", Encoding.UTF8.GetString(payload[1..]));
+    }
+
+    [Fact]
+    public void BuildClipboardImage_HasImageKindAndRawBytes()
+    {
+        byte[] png = [0x89, 0x50, 0x4E, 0x47]; // PNG magic bytes (fake, just for framing test)
+        var msg     = WireProtocol.BuildClipboardImage(png, "laptop-01");
+        var payload = msg.AsSpan(ProtocolSizes.HeaderSize);
+        Assert.Equal(ClipboardKind.Image, payload[0]);
+        Assert.True(payload[1..].SequenceEqual(png));
+    }
+
+    [Fact]
     public void BuildQualityHint_Layout()
     {
         var msg     = ViewerWire.BuildQualityHint("laptop-01", 40, 15);

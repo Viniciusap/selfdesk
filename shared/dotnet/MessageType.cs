@@ -71,6 +71,12 @@ public static class QualityHintOffsets
     public const int Fps     = 1; // uint8 1B, 1-60
 }
 
+public static class ClipboardKind
+{
+    public const byte Text  = 0x01;
+    public const byte Image = 0x02; // PNG bytes
+}
+
 public static class AudioFrameOffsets
 {
     public const int Timestamp    = 0;   // int64 8B
