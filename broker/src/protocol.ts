@@ -50,6 +50,13 @@ export interface ParsedHeader {
   length: number;
 }
 
+// Issue #25: parseHeader's callers (connection.ts's drainFrames) already only
+// invoke it once HEADER_SIZE bytes are buffered, but the bounds check here
+// makes that a documented, tested contract instead of an incidental one —
+// calling parseHeader directly with a short buffer throws this instead of an
+// uncontrolled RangeError out of Buffer.readUInt32BE.
+export class ProtocolParseError extends Error {}
+
 export function decodePeerId(buf: Buffer, offset = PEER_ID_OFFSET): string {
   const slice = buf.subarray(offset, offset + PEER_ID_SIZE);
   const nullIdx = slice.indexOf(0);
@@ -57,6 +64,9 @@ export function decodePeerId(buf: Buffer, offset = PEER_ID_OFFSET): string {
 }
 
 export function parseHeader(buf: Buffer): ParsedHeader {
+  if (buf.length < HEADER_SIZE) {
+    throw new ProtocolParseError(`header buffer too short: ${buf.length} < ${HEADER_SIZE}`);
+  }
   return {
     version: buf[0],
     type:    buf[1],
