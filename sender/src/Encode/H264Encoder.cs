@@ -21,7 +21,7 @@ public sealed unsafe class H264Encoder : IFrameEncoder
     private long _pts;
     private bool _initialized;
     private int _forceKeyframe; // 0/1; Interlocked.Exchange for atomic read-and-clear
-    private long _currentBitrate = 4_000_000;
+    private long _currentBitrate = 8_000_000;
     private long _pendingBitrate;
 
     // AVERROR(EAGAIN) = -11; AVERROR_EOF = -541478725

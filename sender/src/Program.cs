@@ -19,12 +19,6 @@ SetProcessDpiAwarenessContext(-4); // DPI_AWARENESS_CONTEXT_PER_MONITOR_AWARE_V2
 var _envFile = Path.Combine(AppContext.BaseDirectory, ".env");
 if (File.Exists(_envFile)) DotNetEnv.Env.Load(_envFile);
 
-// S25: fail fast if SHARED_SECRET is missing or too short
-var _startupSecret = Environment.GetEnvironmentVariable("SHARED_SECRET");
-if (string.IsNullOrEmpty(_startupSecret) || _startupSecret.Length < 32)
-    throw new InvalidOperationException(
-        "SHARED_SECRET missing or too short (minimum 32 chars). Run bootstrap.ps1 -Role sender.");
-
 // Support: print version and exit early when requested (avoid building the host)
 if (args is { Length: > 0 } && (Array.IndexOf(args, "--version") >= 0 || Array.IndexOf(args, "-v") >= 0))
 {
@@ -35,6 +29,12 @@ if (args is { Length: > 0 } && (Array.IndexOf(args, "--version") >= 0 || Array.I
     Console.WriteLine($"SelfDesk Sender v{version}");
     return;
 }
+
+// S25: fail fast if SHARED_SECRET is missing or too short
+var _startupSecret = Environment.GetEnvironmentVariable("SHARED_SECRET");
+if (string.IsNullOrEmpty(_startupSecret) || _startupSecret.Length < 32)
+    throw new InvalidOperationException(
+        "SHARED_SECRET missing or too short (minimum 32 chars). Run bootstrap.ps1 -Role sender.");
 
 var builder = Host.CreateApplicationBuilder(args);
 
