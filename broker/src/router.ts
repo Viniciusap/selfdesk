@@ -6,6 +6,7 @@ import {
 } from './protocol.js';
 import type { Registry } from './registry.js';
 import type { Connection } from './connection.js';
+import type { MetricsCollector } from './metrics.js';
 import type { Logger } from 'pino';
 
 // M7: shared by both routing directions — kept as one list so the two Sets below can't drift apart
@@ -30,10 +31,12 @@ const RECEIVER_TO_SENDER_FILE_TYPES = new Set<number>(CLIPBOARD_FILE_TYPES);
 export class Router {
   private readonly registry: Registry;
   private readonly log: Logger;
+  private readonly metrics?: MetricsCollector;
 
-  constructor(registry: Registry, log: Logger) {
+  constructor(registry: Registry, log: Logger, metrics?: MetricsCollector) {
     this.registry = registry;
     this.log      = log;
+    this.metrics  = metrics;
   }
 
   onSenderAuthenticated(agentId: string, conn: Connection): void {
@@ -77,6 +80,7 @@ export class Router {
     if (header.type === MessageType.VIDEO_FRAME || header.type === MessageType.AUDIO_FRAME) {
       // S58: drop frame under backpressure to prevent broker OOM
       if (receiver.writableLength > 32 * 1024 * 1024) return;
+      this.metrics?.recordRoutedFrame(payload.length);
       receiver.send(buildEnvelope(header.type, agentId, payload));
       return;
     }

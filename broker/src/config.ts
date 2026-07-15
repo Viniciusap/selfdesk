@@ -13,6 +13,7 @@ export interface BrokerConfig {
   logFile?:      string;
   logMaxSize:    string;
   logMaxFiles:   number;
+  metricsPort?:  number;
 }
 
 export function loadConfig(envFile?: string): BrokerConfig {
@@ -73,12 +74,21 @@ export function loadConfig(envFile?: string): BrokerConfig {
     : undefined;
   const logMaxFiles = parseInt(process.env.LOG_MAX_FILES ?? '5', 10);
 
+  let metricsPort: number | undefined;
+  if (process.env.METRICS_PORT) {
+    metricsPort = parseInt(process.env.METRICS_PORT, 10);
+    if (isNaN(metricsPort) || metricsPort < 1 || metricsPort > 65535) {
+      throw new Error(`Invalid METRICS_PORT: ${process.env.METRICS_PORT}`);
+    }
+  }
+
   return {
     listenPort:     port,
     sharedSecret:  secret,
     allowedSenders: new Set(senders),
     tlsCertPath:   resolvedCert,
     tlsKeyPath:    resolvedKey,
+    metricsPort,
     logLevel:      process.env.LOG_LEVEL ?? 'info',
     healthPort,
     logFile,

@@ -2,6 +2,7 @@ import { loadConfig, loadTlsMaterial } from './config.js';
 import { warnIfExpiringSoon } from './certExpiry.js';
 import { createHealthServer, startHealthListening } from './health.js';
 import { createLogger } from './logger.js';
+import { MetricsCollector, createMetricsServer, startMetricsListening } from './metrics.js';
 import { Registry } from './registry.js';
 import { Router } from './router.js';
 import { createServer, startListening } from './server.js';
@@ -15,7 +16,8 @@ async function main(): Promise<void> {
   const tls      = loadTlsMaterial(cfg);
   warnIfExpiringSoon(tls.cert, log);
   const registry = new Registry(log);
-  const router   = new Router(registry, log);
+  const metrics  = new MetricsCollector();
+  const router   = new Router(registry, log, metrics);
   const server   = createServer(cfg, tls, router, log);
 
   await startListening(server, cfg.listenPort, log);
@@ -26,8 +28,14 @@ async function main(): Promise<void> {
     await startHealthListening(healthServer, cfg.healthPort, log);
   }
 
-  process.on('SIGTERM', () => { server.close(); healthServer?.close(); process.exit(0); });
-  process.on('SIGINT',  () => { server.close(); healthServer?.close(); process.exit(0); });
+  let metricsServer: ReturnType<typeof createMetricsServer> | undefined;
+  if (cfg.metricsPort) {
+    metricsServer = createMetricsServer(registry, metrics, log);
+    await startMetricsListening(metricsServer, cfg.metricsPort, log);
+  }
+
+  process.on('SIGTERM', () => { server.close(); healthServer?.close(); metricsServer?.close(); process.exit(0); });
+  process.on('SIGINT',  () => { server.close(); healthServer?.close(); metricsServer?.close(); process.exit(0); });
 }
 
 main().catch((err) => {
