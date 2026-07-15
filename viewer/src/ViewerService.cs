@@ -331,9 +331,35 @@ public sealed class ViewerService : BackgroundService
 
         if (codec != VideoFrameOffsets.CodecJpeg && codec != VideoFrameOffsets.CodecH264) return;
 
+        if (codec != _decoder.SupportedCodec)
+        {
+            var codecName = codec == VideoFrameOffsets.CodecH264 ? "H264" : "JPEG";
+            var wiredName = _decoder.SupportedCodec == VideoFrameOffsets.CodecH264 ? "H264" : "JPEG";
+            _log.LogError(
+                "Codec mismatch: sender {SenderId} sends {SenderCodec} but viewer is wired for {ViewerCodec} (check ENCODER in sender/.env vs viewer/.env)",
+                senderId, codecName, wiredName);
+            _ = Application.Current?.Dispatcher.InvokeAsync(() =>
+            {
+                var sender = _vm.Senders.FirstOrDefault(s => s.AgentId == senderId);
+                if (sender is not null)
+                {
+                    sender.CodecMismatch = $"codec mismatch: sender={codecName} viewer={wiredName}";
+                    _vm.NotifyStatusBarChanged();
+                }
+            });
+            return;
+        }
+
         DecodedFrame decoded;
         try { decoded = _decoder.Decode(data, width, height, ts); }
         catch (Exception ex) { _log.LogWarning(ex, "Failed to decode frame"); return; }
+
+        _ = Application.Current?.Dispatcher.InvokeAsync(() =>
+        {
+            var sender = _vm.Senders.FirstOrDefault(s => s.AgentId == senderId);
+            if (sender is not null && sender.CodecMismatch.Length > 0)
+                sender.CodecMismatch = string.Empty;
+        });
 
         var rtt = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds() - ts;
 

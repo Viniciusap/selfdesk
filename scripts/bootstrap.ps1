@@ -184,7 +184,8 @@ LOG_LEVEL=info
             if ($c -notin @('y','Y')) { Write-Host 'Aborted.'; exit 1 }
         }
         $targetFps   = Prompt-Value -Question 'Target FPS' -Default '30'
-        $encoder     = Prompt-Value -Question 'Encoder (jpeg|qsv|nvenc)' -Default 'jpeg'
+        $capturer    = Prompt-Value -Question 'Capturer (gdi|dxgi)' -Default 'gdi'
+        $encoder     = Prompt-Value -Question 'Encoder (jpeg|qsv|nvenc) — must match the viewer''s ENCODER' -Default 'jpeg'
         $jpegQuality = Prompt-Value -Question 'JPEG quality (1-100)' -Default '75'
 
         if (-not $Prebuilt) {
@@ -200,6 +201,7 @@ BROKER_HOST=$brokerHost
 BROKER_PORT=$brokerPort
 TLS_CA_PATH=$caPath
 TARGET_FPS=$targetFps
+CAPTURER=$capturer
 ENCODER=$encoder
 JPEG_QUALITY=$jpegQuality
 "@ | Set-Content -Path $out -Encoding UTF8

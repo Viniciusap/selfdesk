@@ -1,10 +1,13 @@
 using System.IO;
 using SkiaSharp;
+using SelfDesk.Protocol;
 
 namespace SelfDesk.Viewer.Decode;
 
 public sealed class JpegFrameDecoder : IFrameDecoder
 {
+    public byte SupportedCodec => VideoFrameOffsets.CodecJpeg;
+
     public DecodedFrame Decode(ReadOnlySpan<byte> data, int width, int height, long timestampMs)
     {
         using var bitmap = SKBitmap.Decode(data);

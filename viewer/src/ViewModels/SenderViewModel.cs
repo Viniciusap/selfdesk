@@ -11,6 +11,7 @@ public sealed partial class SenderViewModel : ObservableObject
     [ObservableProperty] private int              _frameWidth;
     [ObservableProperty] private int              _frameHeight;
     [ObservableProperty] private string           _codec = string.Empty;
+    [ObservableProperty] private string           _codecMismatch = string.Empty;
     [ObservableProperty] private string           _macAddress = string.Empty;
     [ObservableProperty] private string           _senderVersion = string.Empty;
     [ObservableProperty] private MonitorViewModel? _selectedMonitor;

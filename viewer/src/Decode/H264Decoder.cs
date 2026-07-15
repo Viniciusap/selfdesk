@@ -20,6 +20,8 @@ public sealed unsafe class H264Decoder : IFrameDecoder, IDisposable
     private const int AvErrorEof    = unchecked((int)0xDFB9B0BB);
     private const int InputPadding  = 64;
 
+    public byte SupportedCodec => VideoFrameOffsets.CodecH264;
+
     public H264Decoder()
     {
         ffmpeg.RootPath = AppContext.BaseDirectory;

@@ -32,9 +32,11 @@ public sealed partial class MainWindowViewModel : ObservableObject
             ? TransferStatus
             : SelectedSender is null
                 ? "Waiting for connection..."
-                : $"{SelectedSender.AgentId} · {SelectedSender.ResolutionDisplay}" +
-                  $" · {SelectedSender.Codec}" +
-                  (SelectedSender.LastRttMs >= 0 ? $" · RTT {SelectedSender.LastRttMs}ms" : string.Empty);
+                : !string.IsNullOrEmpty(SelectedSender.CodecMismatch)
+                    ? $"{SelectedSender.AgentId} · ⚠ {SelectedSender.CodecMismatch}"
+                    : $"{SelectedSender.AgentId} · {SelectedSender.ResolutionDisplay}" +
+                      $" · {SelectedSender.Codec}" +
+                      (SelectedSender.LastRttMs >= 0 ? $" · RTT {SelectedSender.LastRttMs}ms" : string.Empty);
 
     partial void OnSelectedSenderChanged(SenderViewModel? value) =>
         OnPropertyChanged(nameof(StatusBarText));

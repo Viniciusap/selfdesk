@@ -8,5 +8,6 @@ public readonly record struct DecodedFrame(
 
 public interface IFrameDecoder
 {
+    byte SupportedCodec { get; }
     DecodedFrame Decode(ReadOnlySpan<byte> data, int width, int height, long timestampMs);
 }
