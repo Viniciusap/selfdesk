@@ -59,12 +59,20 @@ Write-OK "Published to $PublishDir"
 if (-not $SkipFFmpeg) {
     $marker = Join-Path $PublishDir 'avcodec-61.dll'
     if (-not (Test-Path $marker)) {
-        Write-Step 'Downloading FFmpeg 7.1 DLLs (BtbN)...'
-        $zipUrl = 'https://github.com/BtbN/FFmpeg-Builds/releases/download/latest/ffmpeg-n7.1-latest-win64-gpl-shared-7.1.zip'
+        Write-Step 'Downloading FFmpeg 7.1 DLLs (BtbN, pinned release)...'
+        # S50: pinned to a specific BtbN release (not 'latest') with SHA256 verification
+        $zipUrl       = 'https://github.com/BtbN/FFmpeg-Builds/releases/download/autobuild-2026-06-07-13-55/ffmpeg-n7.1.4-9-gc06af95f12-win64-gpl-shared-7.1.zip'
+        $expectedHash = '822d8abeabd79e0352c862345d10ddadb3e23c90cc874d42d1e131592b582c0e'
         $tmpZip = Join-Path $env:TEMP 'ffmpeg-shared.zip'
         $tmpDir = Join-Path $env:TEMP 'ffmpeg-shared'
 
         Invoke-WebRequest -Uri $zipUrl -OutFile $tmpZip -UseBasicParsing
+        $actualHash = (Get-FileHash $tmpZip -Algorithm SHA256).Hash.ToLower()
+        if ($actualHash -ne $expectedHash) {
+            Remove-Item $tmpZip -ErrorAction SilentlyContinue
+            throw "FFmpeg SHA256 mismatch. Expected: $expectedHash, Got: $actualHash"
+        }
+        Write-OK "SHA256 verified: $actualHash"
         if (Test-Path $tmpDir) { Remove-Item $tmpDir -Recurse -Force }
         Expand-Archive -Path $tmpZip -DestinationPath $tmpDir
 

@@ -76,12 +76,20 @@ function Install-FFmpeg {
         return
     }
 
-    $zipUrl = 'https://github.com/BtbN/FFmpeg-Builds/releases/download/latest/ffmpeg-n7.1-latest-win64-gpl-shared-7.1.zip'
+    # S50: pinned to a specific BtbN release (not 'latest') with SHA256 verification
+    $zipUrl       = 'https://github.com/BtbN/FFmpeg-Builds/releases/download/autobuild-2026-06-07-13-55/ffmpeg-n7.1.4-9-gc06af95f12-win64-gpl-shared-7.1.zip'
+    $expectedHash = '822d8abeabd79e0352c862345d10ddadb3e23c90cc874d42d1e131592b582c0e'
     $tmpZip = Join-Path $env:TEMP 'ffmpeg-shared.zip'
     $tmpDir = Join-Path $env:TEMP 'ffmpeg-shared'
 
-    Write-Host '  Downloading FFmpeg 7.1 shared (BtbN)...'
+    Write-Host '  Downloading FFmpeg 7.1 shared (BtbN, pinned release)...'
     Invoke-WebRequest -Uri $zipUrl -OutFile $tmpZip -UseBasicParsing
+    $actualHash = (Get-FileHash $tmpZip -Algorithm SHA256).Hash.ToLower()
+    if ($actualHash -ne $expectedHash) {
+        Remove-Item $tmpZip -ErrorAction SilentlyContinue
+        throw "FFmpeg SHA256 mismatch. Expected: $expectedHash, Got: $actualHash"
+    }
+    Write-Host "  SHA256 verified: $actualHash"
 
     Write-Host '  Extracting...'
     if (Test-Path $tmpDir) { Remove-Item $tmpDir -Recurse -Force }
