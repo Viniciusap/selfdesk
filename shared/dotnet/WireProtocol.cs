@@ -64,6 +64,18 @@ public static class WireProtocol
     public static byte[] BuildBye() =>
         BuildEnvelope(MessageType.Bye, string.Empty, ReadOnlySpan<byte>.Empty);
 
-    public static byte[] BuildClipboard(ReadOnlySpan<byte> utf8Text, string peerId) =>
-        BuildEnvelope(MessageType.Clipboard, peerId, utf8Text);
+    // Issue #8: CLIPBOARD payload is now kind-prefixed (1 byte) instead of raw UTF-8 text.
+    public static byte[] BuildClipboard(byte kind, ReadOnlySpan<byte> data, string peerId)
+    {
+        var payload = new byte[1 + data.Length];
+        payload[0] = kind;
+        data.CopyTo(payload.AsSpan(1));
+        return BuildEnvelope(MessageType.Clipboard, peerId, payload);
+    }
+
+    public static byte[] BuildClipboardText(string text, string peerId) =>
+        BuildClipboard(ClipboardKind.Text, Encoding.UTF8.GetBytes(text), peerId);
+
+    public static byte[] BuildClipboardImage(ReadOnlySpan<byte> pngBytes, string peerId) =>
+        BuildClipboard(ClipboardKind.Image, pngBytes, peerId);
 }
