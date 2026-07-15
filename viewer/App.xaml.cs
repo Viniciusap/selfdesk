@@ -96,8 +96,26 @@ public partial class App : Application
         var caPath = GetEnv("TLS_CA_PATH", string.Empty);
         vm.CertWarning = SelfDesk.Viewer.Settings.CertExpiryChecker.CheckCaExpiry(caPath) ?? string.Empty;
 
+        CheckForUpdateInBackground(vm);
+
         await _host.StartAsync();
         window.Show();
+    }
+
+    private static void CheckForUpdateInBackground(MainWindowViewModel vm)
+    {
+        var asm = Assembly.GetEntryAssembly();
+        var currentVersion = asm != null
+            ? FileVersionInfo.GetVersionInfo(asm.Location).ProductVersion ?? asm.GetName().Version?.ToString()
+            : null;
+        if (string.IsNullOrEmpty(currentVersion)) return;
+
+        _ = Task.Run(async () =>
+        {
+            var latestTag = await SelfDesk.Viewer.Settings.UpdateChecker.CheckForUpdateAsync(currentVersion);
+            if (latestTag is null) return;
+            Current?.Dispatcher.Invoke(() => vm.UpdateAvailable = latestTag);
+        });
     }
 
     private static void ApplyWindowSettings(Window window)

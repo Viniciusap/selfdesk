@@ -25,8 +25,10 @@ public sealed partial class MainWindowViewModel : ObservableObject
     [ObservableProperty] private bool             _isMicMuted       = true;
     [ObservableProperty] private bool             _isRelativeMouse  = false;
     [ObservableProperty] private string            _certWarning      = string.Empty;
+    [ObservableProperty] private string             _updateAvailable  = string.Empty;
 
     partial void OnCertWarningChanged(string value) => OnPropertyChanged(nameof(HasCertWarning));
+    partial void OnUpdateAvailableChanged(string value) => OnPropertyChanged(nameof(StatusBarText));
 
     public bool HasCertWarning => !string.IsNullOrEmpty(CertWarning);
 
@@ -35,7 +37,7 @@ public sealed partial class MainWindowViewModel : ObservableObject
     public ObservableCollection<SenderViewModel> Senders { get; } = [];
 
     public string StatusBarText =>
-        TransferProgress >= 0
+        (TransferProgress >= 0
             ? TransferStatus
             : SelectedSender is null
                 ? "Waiting for connection..."
@@ -43,7 +45,10 @@ public sealed partial class MainWindowViewModel : ObservableObject
                     ? $"{SelectedSender.AgentId} · ⚠ {SelectedSender.CodecMismatch}"
                     : $"{SelectedSender.AgentId} · {SelectedSender.ResolutionDisplay}" +
                       $" · {SelectedSender.Codec}" +
-                      (SelectedSender.LastRttMs >= 0 ? $" · RTT {SelectedSender.LastRttMs}ms" : string.Empty);
+                      (SelectedSender.LastRttMs >= 0 ? $" · RTT {SelectedSender.LastRttMs}ms" : string.Empty))
+        + (string.IsNullOrEmpty(UpdateAvailable)
+            ? string.Empty
+            : $" · Update available: {UpdateAvailable} (run install-viewer.ps1 to update)");
 
     partial void OnSelectedSenderChanged(SenderViewModel? value) =>
         OnPropertyChanged(nameof(StatusBarText));
