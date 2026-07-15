@@ -1,0 +1,26 @@
+# Issue #6: broker Docker deployment. Run `scripts/bootstrap.sh broker` (or
+# bootstrap.ps1 -Role broker) once first to generate certs/ and broker/.env —
+# this compose file does not generate secrets, only runs the already-configured broker.
+#
+# Usage:
+#   docker compose up -d
+#
+# NOTE on the certs mount: broker/.env's TLS_CERT_PATH/TLS_KEY_PATH default to
+# ../certs/... (relative to broker/.env, i.e. one level up — see broker/.env.example).
+# Since broker/.env is mounted at /app/.env in the container, "one level up" is the
+# container's filesystem root, so certs/ is mounted at /certs here, not /app/certs.
+services:
+  broker:
+    build:
+      context: ./broker
+      dockerfile: Dockerfile
+    image: ghcr.io/viniciusap/selfdesk-broker:latest
+    restart: unless-stopped
+    ports:
+      - "7000:7000"
+      # Uncomment if HEALTH_PORT / METRICS_PORT are set in broker/.env:
+      # - "7001:7001"
+      # - "9090:9090"
+    volumes:
+      - ./certs:/certs:ro
+      - ./broker/.env:/app/.env:ro
