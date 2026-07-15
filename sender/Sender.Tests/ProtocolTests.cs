@@ -152,6 +152,15 @@ public class FakeEncoderTests
         Assert.Equal(320, encoded.Width);
         Assert.Equal(240, encoded.Height);
     }
+
+    [Fact]
+    public void FakeFrameEncoder_TracksLastQualityHint()
+    {
+        var encoder = new Encode.FakeFrameEncoder();
+        Assert.Null(encoder.LastQuality);
+        encoder.UpdateQuality(42);
+        Assert.Equal(42, encoder.LastQuality);
+    }
 }
 
 public class JpegEncoderTests
@@ -180,6 +189,36 @@ public class JpegEncoderTests
         var lo  = new Encode.JpegFrameEncoder(10).Encode(frame);
         var hi  = new Encode.JpegFrameEncoder(95).Encode(frame);
         Assert.True(hi.Data.Length > lo.Data.Length, "Q95 deve ser maior que Q10");
+    }
+
+    [Fact]
+    public void UpdateQuality_AppliesToSubsequentEncodes()
+    {
+        var bgra = new byte[64 * 64 * 4];
+        new Random(42).NextBytes(bgra);
+        var frame = new Capture.CapturedFrame(64, 64, bgra, 0L);
+
+        var encoder = new Encode.JpegFrameEncoder(95);
+        var before  = encoder.Encode(frame);
+
+        encoder.UpdateQuality(10);
+        var after = encoder.Encode(frame);
+
+        Assert.True(before.Data.Length > after.Data.Length, "quality drop should shrink output");
+    }
+
+    [Fact]
+    public void UpdateQuality_ClampsToValidRange()
+    {
+        var bgra = new byte[64 * 64 * 4];
+        var frame = new Capture.CapturedFrame(64, 64, bgra, 0L);
+        var encoder = new Encode.JpegFrameEncoder(75);
+
+        encoder.UpdateQuality(500);
+        Assert.NotEmpty(encoder.Encode(frame).Data); // must not throw with out-of-range input
+
+        encoder.UpdateQuality(-10);
+        Assert.NotEmpty(encoder.Encode(frame).Data);
     }
 }
 

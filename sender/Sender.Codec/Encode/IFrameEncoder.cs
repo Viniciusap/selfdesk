@@ -15,4 +15,8 @@ public interface IFrameEncoder : IDisposable
     EncodedFrame Encode(CapturedFrame frame);
     void RequestKeyframe();
     void UpdateBitrate(long bitsPerSecond);
+
+    // Issue #14: adaptive JPEG quality hint (1-100). No-op for H264 encoders,
+    // which use UpdateBitrate instead.
+    void UpdateQuality(int quality);
 }

@@ -29,6 +29,51 @@ public sealed class ViewerService : BackgroundService
     private          IOpusDecoder?            _audioDecoder;
     private const int MaxClipboardBytes = 1 * 1024 * 1024; // 1 MB
     private volatile string                   _lastClipboard = string.Empty;
+    private Network.BrokerConnection?         _lastConn;
+    private CancellationToken                 _lastCt;
+
+    // Issue #14: adaptive JPEG quality — degrade above DegradeAboveMs RTT, restore
+    // below RestoreBelowMs, with a cooldown so a noisy RTT doesn't flap the hint.
+    private const int DegradeAboveMs = 80;
+    private const int RestoreBelowMs = 40;
+    private const byte DegradedQuality = 40;
+    private const byte DegradedFps     = 15;
+    private const byte NormalQuality   = 85;
+    private const byte NormalFps       = 30;
+    private static readonly TimeSpan HintCooldown = TimeSpan.FromSeconds(3);
+
+    private sealed class AdaptiveQualityState
+    {
+        public bool Degraded;
+        public DateTime LastChangeUtc = DateTime.MinValue;
+    }
+
+    private readonly Dictionary<string, AdaptiveQualityState> _adaptiveState = new();
+
+    private void MaybeSendQualityHint(string senderId, long rttMs, Network.BrokerConnection conn, CancellationToken ct)
+    {
+        if (!_adaptiveState.TryGetValue(senderId, out var state))
+        {
+            state = new AdaptiveQualityState();
+            _adaptiveState[senderId] = state;
+        }
+
+        var now = DateTime.UtcNow;
+        if (now - state.LastChangeUtc < HintCooldown) return;
+
+        if (!state.Degraded && rttMs > DegradeAboveMs)
+        {
+            state.Degraded     = true;
+            state.LastChangeUtc = now;
+            _ = conn.SendAsync(ViewerWire.BuildQualityHint(senderId, DegradedQuality, DegradedFps), ct);
+        }
+        else if (state.Degraded && rttMs < RestoreBelowMs)
+        {
+            state.Degraded     = false;
+            state.LastChangeUtc = now;
+            _ = conn.SendAsync(ViewerWire.BuildQualityHint(senderId, NormalQuality, NormalFps), ct);
+        }
+    }
 
     public ViewerService(
         IOptions<ViewerConfig> cfg,
@@ -76,6 +121,8 @@ public sealed class ViewerService : BackgroundService
     private async Task RunSessionAsync(CancellationToken ct)
     {
         await using var conn = new BrokerConnection(_cfg, _log);
+        _lastConn = conn;
+        _lastCt   = ct;
 
         void WireMonitorCallback(SenderViewModel vm)
         {
@@ -286,6 +333,7 @@ public sealed class ViewerService : BackgroundService
                     if (!doc.RootElement.TryGetProperty("agentId", out var agentEl)) break;
                     var id = agentEl.GetString() ?? peerId;
                     Application.Current?.Dispatcher.Invoke(() => _vm.RemoveSender(id));
+                    _adaptiveState.Remove(id);
                 }
                 catch (Exception ex) { _log.LogWarning(ex, "Malformed SENDER_DOWN payload"); }
                 break;
@@ -362,6 +410,11 @@ public sealed class ViewerService : BackgroundService
         });
 
         var rtt = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds() - ts;
+
+        // Issue #14: H264 has its own bitrate control (UpdateBitrate); adaptive
+        // quality hints only make sense for JPEG mode.
+        if (codec == VideoFrameOffsets.CodecJpeg && _lastConn is not null)
+            MaybeSendQualityHint(senderId, rtt, _lastConn, _lastCt);
 
         // BUG3: InvokeAsync decouples the receive loop from the UI thread — no stutter waiting for blit
         _ = Application.Current?.Dispatcher.InvokeAsync(() =>

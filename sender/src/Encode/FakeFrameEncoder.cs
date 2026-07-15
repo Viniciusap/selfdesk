@@ -5,6 +5,8 @@ namespace SelfDesk.Sender.Encode;
 
 public sealed class FakeFrameEncoder : IFrameEncoder
 {
+    public int? LastQuality { get; private set; }
+
     public EncodedFrame Encode(CapturedFrame frame) =>
         new(
             Data:        [0xFF, 0xD8, 0xFF, 0xD9],
@@ -16,6 +18,7 @@ public sealed class FakeFrameEncoder : IFrameEncoder
 
     public void RequestKeyframe() { }
     public void UpdateBitrate(long bitsPerSecond) { }
+    public void UpdateQuality(int quality) => LastQuality = quality;
 
     public void Dispose() { }
 }
