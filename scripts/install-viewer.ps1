@@ -15,11 +15,33 @@
 
 .PARAMETER InstallDir
     Viewer installation directory. Default: C:\tools\selfdesk-viewer
+
+.PARAMETER Autostart
+    Register the viewer to launch automatically when the current user logs into
+    Windows (HKCU Run key — no admin rights or service required).
+
+.PARAMETER RemoveAutostart
+    Undo -Autostart: remove the HKCU Run key entry. Does not uninstall the viewer.
 #>
 
 param(
-    [string]$InstallDir = 'C:\tools\selfdesk-viewer'
+    [string]$InstallDir = 'C:\tools\selfdesk-viewer',
+    [switch]$Autostart,
+    [switch]$RemoveAutostart
 )
+
+$AutostartRunKey  = 'HKCU:\Software\Microsoft\Windows\CurrentVersion\Run'
+$AutostartValName = 'SelfDesk.Viewer'
+
+if ($RemoveAutostart) {
+    if (Get-ItemProperty -Path $AutostartRunKey -Name $AutostartValName -ErrorAction SilentlyContinue) {
+        Remove-ItemProperty -Path $AutostartRunKey -Name $AutostartValName
+        Write-Host "Removed autostart entry '$AutostartValName' from $AutostartRunKey."
+    } else {
+        Write-Host "No autostart entry found for '$AutostartValName' — nothing to remove."
+    }
+    exit 0
+}
 
 Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
@@ -197,6 +219,14 @@ Write-Host "   Directory         : $InstallDir"
 Write-Host ''
 
 $viewerExe = Join-Path $InstallDir 'SelfDesk.Viewer.exe'
+
+if ($Autostart) {
+    Set-ItemProperty -Path $AutostartRunKey -Name $AutostartValName -Value "`"$viewerExe`""
+    Write-OK "Registered '$AutostartValName' to launch at login (HKCU, no admin required)."
+    Write-Host "   Remove with: .\install-viewer.ps1 -RemoveAutostart"
+    Write-Host ''
+}
+
 if (Test-Path $viewerExe) {
     if (Test-Path $envPath) {
         Write-Host 'Launching SelfDesk Viewer...'
