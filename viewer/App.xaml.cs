@@ -89,8 +89,43 @@ public partial class App : Application
         // Create the window BEFORE starting the host so ViewerService
         // receives the already-created instance via DI (no race condition).
         var window = _host.Services.GetRequiredService<MainWindow>();
+        ApplyWindowSettings(window);
+        window.Closing += (_, _) => SaveWindowSettings(window);
         await _host.StartAsync();
         window.Show();
+    }
+
+    private static void ApplyWindowSettings(Window window)
+    {
+        var saved = SelfDesk.Viewer.Settings.WindowSettingsService.Load();
+        if (saved is null) return;
+
+        if (saved.Maximized)
+        {
+            window.WindowState = WindowState.Maximized;
+            return;
+        }
+
+        if (saved.Width > 0 && saved.Height > 0 &&
+            SelfDesk.Viewer.Settings.WindowSettingsService.IsOnScreen(saved.Left, saved.Top, saved.Width, saved.Height))
+        {
+            window.Left   = saved.Left;
+            window.Top    = saved.Top;
+            window.Width  = saved.Width;
+            window.Height = saved.Height;
+        }
+        // Off-screen or invalid — fall back to the XAML defaults (WindowStartupLocation not set, so
+        // WPF centers/places it normally).
+    }
+
+    private static void SaveWindowSettings(Window window)
+    {
+        var maximized = window.WindowState == WindowState.Maximized;
+        // RestoreBounds holds the pre-maximize size/position even while maximized —
+        // save that instead of the maximized bounds so un-maximizing later is sane.
+        var bounds = maximized ? window.RestoreBounds : new Rect(window.Left, window.Top, window.Width, window.Height);
+        SelfDesk.Viewer.Settings.WindowSettingsService.Save(new SelfDesk.Viewer.Settings.WindowSettings(
+            bounds.Left, bounds.Top, bounds.Width, bounds.Height, maximized));
     }
 
     protected override async void OnExit(ExitEventArgs e)
