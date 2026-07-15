@@ -45,11 +45,15 @@ export function loadConfig(envFile?: string): BrokerConfig {
   const resolvedCert = path.resolve(envDir, certPath);
   const resolvedKey  = path.resolve(envDir, keyPath);
 
-  // M6: resolved paths must stay within envDir — reject '../..' escapes via TLS_CERT_PATH/TLS_KEY_PATH
-  const envDirWithSep = envDir.endsWith(path.sep) ? envDir : envDir + path.sep;
+  // M6: resolved paths must stay within the repo root (envDir's parent) — reject deep
+  // '../../..' escapes via TLS_CERT_PATH/TLS_KEY_PATH while still allowing the standard
+  // '../certs/...' convention used by every .env.example in this repo (certs/ is a
+  // sibling directory of broker/, one level up from envDir, not inside it).
+  const allowedRoot = path.resolve(envDir, '..');
+  const allowedRootWithSep = allowedRoot.endsWith(path.sep) ? allowedRoot : allowedRoot + path.sep;
   for (const [label, p] of [['TLS_CERT_PATH', resolvedCert], ['TLS_KEY_PATH', resolvedKey]] as const) {
-    if (!p.startsWith(envDirWithSep)) {
-      throw new Error(`${label} '${p}' resolves outside the .env directory (${envDir})`);
+    if (!p.startsWith(allowedRootWithSep)) {
+      throw new Error(`${label} '${p}' resolves outside the allowed directory (${allowedRoot})`);
     }
   }
 
