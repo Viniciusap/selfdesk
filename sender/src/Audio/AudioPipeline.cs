@@ -1,4 +1,5 @@
 using System.Threading.Channels;
+using Concentus;
 using Concentus.Enums;
 using Concentus.Structs;
 using Microsoft.Extensions.Logging;
@@ -48,7 +49,7 @@ internal static class AudioPipeline
                 sp = new WdlResamplingSampleProvider(sp, SampleRate);
             IWaveProvider pcm16 = new SampleToWaveProvider16(sp);
 
-            var encoder  = new OpusEncoder(SampleRate, Channels, OpusApplication.OPUS_APPLICATION_AUDIO);
+            var encoder  = OpusCodecFactory.CreateEncoder(SampleRate, Channels, OpusApplication.OPUS_APPLICATION_AUDIO);
             encoder.Bitrate = 64_000;
             var opusBuf  = new byte[4000];
             var readBuf  = new byte[FrameBytes];

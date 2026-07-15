@@ -1,4 +1,5 @@
 using System.Threading.Channels;
+using Concentus;
 using Concentus.Enums;
 using Concentus.Structs;
 using Microsoft.Extensions.Logging;
@@ -57,7 +58,7 @@ public static class MicCapturePipeline
                 sp = new WdlResamplingSampleProvider(sp, SampleRate);
             IWaveProvider pcm16 = new SampleToWaveProvider16(sp);
 
-            var encoder = new OpusEncoder(SampleRate, Channels, OpusApplication.OPUS_APPLICATION_VOIP);
+            var encoder = OpusCodecFactory.CreateEncoder(SampleRate, Channels, OpusApplication.OPUS_APPLICATION_VOIP);
             encoder.Bitrate = 32_000; // voice — lower than the system-audio path's 64kbps
             var opusBuf = new byte[4000];
             var readBuf = new byte[FrameBytes];
