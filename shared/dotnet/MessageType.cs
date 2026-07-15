@@ -80,6 +80,7 @@ public static class InputEventKind
     public const byte MouseWheel   = 0x03;
     public const byte MouseMoveRel = 0x04;
     public const byte Key          = 0x10;
+    public const byte SendSas      = 0x20; // Ctrl+Alt+Del (issue #13) — no payload
 
     public const byte StateUp   = 0;
     public const byte StateDown = 1;

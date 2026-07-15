@@ -1,5 +1,6 @@
 using System.Buffers.Binary;
 using System.Runtime.InteropServices;
+using Microsoft.Extensions.Logging;
 using SelfDesk.Sender.Capture;
 using SelfDesk.Sender.Protocol;
 
@@ -10,6 +11,7 @@ public sealed class Win32InputInjector : IInputInjector, IDisposable
     private readonly object _syncRoot = new();
     private readonly Dictionary<ushort, DateTime> _keysDown = new();
     private readonly System.Threading.Timer _stuckKeyTimer;
+    private readonly ILogger<Win32InputInjector> _log;
     private byte _trackedMods;
     private int _monitorIndex;
     private MonitorInfo? _monitor;
@@ -25,8 +27,9 @@ public sealed class Win32InputInjector : IInputInjector, IDisposable
         }
     }
 
-    public Win32InputInjector()
+    public Win32InputInjector(ILogger<Win32InputInjector> log)
     {
+        _log = log;
         MonitorIndex = 0; // initializes _monitor with the primary monitor
         _stuckKeyTimer = new System.Threading.Timer(
             ReleaseStuckKeys, null,
@@ -79,8 +82,34 @@ public sealed class Win32InputInjector : IInputInjector, IDisposable
                         rest[3]);
                 }
                 break;
+
+            case InputEventKind.SendSas:
+                InjectSendSas();
+                break;
         }
     }
+
+    // Issue #13: Ctrl+Alt+Del is intercepted by Windows before any app sees it —
+    // SendSAS is the only way to trigger the secure attention sequence programmatically.
+    // Requires SasWindowStationAccess, which only interactive Session-0 services get by
+    // default (see scripts/install-service.ps1); running as a Task Scheduler task in the
+    // user's own session does NOT have this access and SendSAS will silently no-op.
+    private void InjectSendSas()
+    {
+        try
+        {
+            SendSAS(false);
+        }
+        catch (Exception ex)
+        {
+            _log.LogWarning(ex,
+                "SendSAS failed — the sender process needs SasWindowStationAccess " +
+                "(only granted when running as a Windows service, see scripts/install-service.ps1)");
+        }
+    }
+
+    [DllImport("sas.dll", SetLastError = true)]
+    private static extern void SendSAS([MarshalAs(UnmanagedType.Bool)] bool asUser);
 
     public void ReleaseAllModifiers()
     {

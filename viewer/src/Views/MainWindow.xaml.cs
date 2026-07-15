@@ -203,6 +203,12 @@ public partial class MainWindow : Window
         _ => 0,
     };
 
+    private void OnSendSasClick(object sender, RoutedEventArgs e)
+    {
+        if (_vm.SelectedSender is null) return;
+        InputSend?.Invoke(ViewerWire.BuildSendSas(_vm.SelectedSender.AgentId));
+    }
+
     private void OnRebootClick(object sender, RoutedEventArgs e)
     {
         if (sender is not Button btn || btn.Tag is not SenderViewModel vm) return;

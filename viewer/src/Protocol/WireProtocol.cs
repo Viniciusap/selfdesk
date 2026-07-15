@@ -57,6 +57,9 @@ public static class WireProtocol
         return BuildInputEvent(InputEventKind.Key, targetPeerId, data);
     }
 
+    public static byte[] BuildSendSas(string targetPeerId) =>
+        BuildInputEvent(InputEventKind.SendSas, targetPeerId, ReadOnlySpan<byte>.Empty);
+
     public static byte[] BuildRequestIdr(string targetPeerId) =>
         SelfDesk.Protocol.WireProtocol.BuildEnvelope(MessageType.RequestIdr, targetPeerId, ReadOnlySpan<byte>.Empty);
 
