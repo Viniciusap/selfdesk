@@ -92,7 +92,8 @@ export class Router {
     if (header.type === MessageType.INPUT_EVENT    ||
         header.type === MessageType.REQUEST_IDR    ||
         header.type === MessageType.SELECT_MONITOR ||
-        header.type === MessageType.REMOTE_REBOOT) {
+        header.type === MessageType.REMOTE_REBOOT  ||
+        header.type === MessageType.QUALITY_HINT) {
       const targetId = header.peerId;
       const sender   = this.registry.getSender(targetId);
       if (!sender) {

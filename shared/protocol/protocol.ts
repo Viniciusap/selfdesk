@@ -14,6 +14,7 @@ export const MessageType = {
   CHALLENGE:   0x05,
   VIDEO_FRAME:     0x10,
   REQUEST_IDR:     0x11,
+  QUALITY_HINT:    0x12,
   INPUT_EVENT:     0x20,
   SENDER_UP:   0x30,
   SENDER_DOWN: 0x31,

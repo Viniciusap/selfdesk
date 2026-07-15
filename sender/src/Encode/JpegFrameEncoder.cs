@@ -7,7 +7,7 @@ namespace SelfDesk.Sender.Encode;
 
 public sealed class JpegFrameEncoder : IFrameEncoder
 {
-    private readonly int _quality;
+    private volatile int _quality;
 
     public JpegFrameEncoder(int quality = 75)
     {
@@ -34,6 +34,9 @@ public sealed class JpegFrameEncoder : IFrameEncoder
 
     public void RequestKeyframe() { }
     public void UpdateBitrate(long bitsPerSecond) { }
+
+    // Issue #14: adaptive quality hint from the viewer (RTT-based).
+    public void UpdateQuality(int quality) => _quality = Math.Clamp(quality, 1, 100);
 
     public void Dispose() { }
 }

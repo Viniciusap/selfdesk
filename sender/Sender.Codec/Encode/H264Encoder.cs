@@ -160,6 +160,9 @@ public sealed unsafe class H264Encoder : IFrameEncoder
         Interlocked.Exchange(ref _pendingBitrate, bitsPerSecond);
     }
 
+    // Issue #14: no-op for H264 — bitrate is the equivalent runtime control here.
+    public void UpdateQuality(int quality) { }
+
     private void FreeContexts()
     {
         if (!_initialized) return;

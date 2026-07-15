@@ -60,6 +60,14 @@ public static class WireProtocol
     public static byte[] BuildSendSas(string targetPeerId) =>
         BuildInputEvent(InputEventKind.SendSas, targetPeerId, ReadOnlySpan<byte>.Empty);
 
+    public static byte[] BuildQualityHint(string targetPeerId, byte quality, byte fps)
+    {
+        var data = new byte[2];
+        data[QualityHintOffsets.Quality] = quality;
+        data[QualityHintOffsets.Fps]     = fps;
+        return SelfDesk.Protocol.WireProtocol.BuildEnvelope(MessageType.QualityHint, targetPeerId, data);
+    }
+
     public static byte[] BuildRequestIdr(string targetPeerId) =>
         SelfDesk.Protocol.WireProtocol.BuildEnvelope(MessageType.RequestIdr, targetPeerId, ReadOnlySpan<byte>.Empty);
 

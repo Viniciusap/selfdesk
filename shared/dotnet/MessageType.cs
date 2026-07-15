@@ -18,6 +18,7 @@ public static class MessageType
     public const byte Challenge     = 0x05;
     public const byte VideoFrame    = 0x10;
     public const byte RequestIdr    = 0x11;
+    public const byte QualityHint   = 0x12;
     public const byte InputEvent    = 0x20;
     public const byte SenderUp      = 0x30;
     public const byte SenderDown    = 0x31;
@@ -62,6 +63,12 @@ public static class VideoFrameOffsets
     public const byte CodecJpeg    = 0x01;
     public const byte CodecH264    = 0x02;
     public const byte FlagKeyframe = 0x01;
+}
+
+public static class QualityHintOffsets
+{
+    public const int Quality = 0; // uint8 1B, 1-100
+    public const int Fps     = 1; // uint8 1B, 1-60
 }
 
 public static class AudioFrameOffsets

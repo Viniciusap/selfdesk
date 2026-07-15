@@ -65,9 +65,13 @@ public sealed class SenderService : BackgroundService
         _log.LogInformation("SenderService stopping");
     }
 
+    // Issue #14: runtime-adjustable via QUALITY_HINT; reset to the configured
+    // default at the start of each session so a degraded value doesn't survive a reconnect.
+    private int _currentTargetFps;
+
     private async Task RunSessionAsync(CancellationToken ct)
     {
-        var interval = TimeSpan.FromSeconds(1.0 / _cfg.TargetFps);
+        _currentTargetFps = _cfg.TargetFps;
 
         _injector.ReleaseAllModifiers();
 
@@ -136,6 +140,13 @@ public sealed class SenderService : BackgroundService
                     }
                     catch (Exception ex) { _log.LogWarning(ex, "Failed to switch monitor"); }
                     break;
+                case MessageType.QualityHint when payload.Length >= 2:
+                    var quality = payload.Span[QualityHintOffsets.Quality];
+                    var fps     = payload.Span[QualityHintOffsets.Fps];
+                    _encoder.UpdateQuality(quality);
+                    Volatile.Write(ref _currentTargetFps, Math.Clamp((int)fps, 1, 60));
+                    _log.LogDebug("Applied QUALITY_HINT: quality={Quality} fps={Fps}", quality, fps);
+                    break;
             }
         };
 
@@ -179,8 +190,9 @@ public sealed class SenderService : BackgroundService
                 catch (OperationCanceledException) { break; }
                 catch (Exception ex) { _log.LogError(ex, "Error in capturer/encoder"); }
 
-                var elapsed = DateTime.UtcNow - started;
-                var delay   = interval - elapsed;
+                var interval = TimeSpan.FromSeconds(1.0 / Volatile.Read(ref _currentTargetFps));
+                var elapsed  = DateTime.UtcNow - started;
+                var delay    = interval - elapsed;
                 if (delay > TimeSpan.Zero) await Task.Delay(delay, sCt);
             }
             channel.Writer.Complete();

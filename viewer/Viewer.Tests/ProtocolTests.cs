@@ -79,6 +79,20 @@ public class WireProtocolTests
     }
 
     [Fact]
+    public void BuildQualityHint_Layout()
+    {
+        var msg     = ViewerWire.BuildQualityHint("laptop-01", 40, 15);
+        var payload = msg.AsSpan(ProtocolSizes.HeaderSize);
+        Assert.Equal(2, payload.Length);
+        Assert.Equal(40, payload[QualityHintOffsets.Quality]);
+        Assert.Equal(15, payload[QualityHintOffsets.Fps]);
+
+        var (type, peerId, _) = WireProtocol.ParseHeader(msg);
+        Assert.Equal(MessageType.QualityHint, type);
+        Assert.Equal("laptop-01", peerId);
+    }
+
+    [Fact]
     public void BuildSendSas_HasCorrectKindAndEmptyPayload()
     {
         var msg     = ViewerWire.BuildSendSas("laptop-01");
