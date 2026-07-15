@@ -78,7 +78,7 @@ jobs:
         run: |
           mkdir -p staging/selfdesk-broker/scripts
 
-          cp -r broker/dist broker/node_modules broker/package.json staging/selfdesk-broker/
+          cp -r broker/dist broker/node_modules broker/package.json broker/web staging/selfdesk-broker/
           cp broker/.env.example staging/selfdesk-broker/
 
           cp scripts/bootstrap.sh staging/selfdesk-broker/scripts/
@@ -94,7 +94,7 @@ jobs:
         run: |
           mkdir -p staging-win/selfdesk-broker/scripts
 
-          cp -r broker/dist broker/node_modules broker/package.json staging-win/selfdesk-broker/
+          cp -r broker/dist broker/node_modules broker/package.json broker/web staging-win/selfdesk-broker/
           cp broker/.env.example staging-win/selfdesk-broker/
 
           cp scripts/bootstrap.ps1    staging-win/selfdesk-broker/scripts/

@@ -1,5 +1,4 @@
 import { EventEmitter } from 'node:events';
-import * as tls from 'node:tls';
 import {
   HANDSHAKE_TIMEOUT_MS,
   HEADER_SIZE,
@@ -40,6 +39,20 @@ export interface ConnectionEvents {
   error:       [err: Error];
 }
 
+// Issue #12: the wire protocol (framing, handshake, routing) is transport-agnostic —
+// Connection only needs these five members, satisfied by both tls.TLSSocket (the
+// native TCP path, structurally) and WsFramedSocket (see wsSocket.ts, the browser
+// WebSocket path). Neither this file nor router.ts/registry.ts know or care which
+// transport a given Connection rides on.
+export interface FramedSocket {
+  readonly writableLength: number;
+  write(buf: Buffer): void;
+  destroy(): void;
+  on(event: 'data', cb: (chunk: Buffer) => void): void;
+  on(event: 'end', cb: () => void): void;
+  on(event: 'error', cb: (err: Error) => void): void;
+}
+
 export class Connection extends EventEmitter {
   readonly id: string;
   state: ConnState = 'CONNECTING';
@@ -48,7 +61,7 @@ export class Connection extends EventEmitter {
   mac?: string;
   senderVersion?: string;
 
-  private readonly socket: tls.TLSSocket;
+  private readonly socket: FramedSocket;
   private readonly secret: string;
   private readonly allowedSenders: Set<string>;
   private readonly log: Logger;
@@ -61,7 +74,7 @@ export class Connection extends EventEmitter {
   private handshakeTimer?: NodeJS.Timeout;
 
   constructor(
-    socket: tls.TLSSocket,
+    socket: FramedSocket,
     secret: string,
     allowedSenders: Set<string>,
     log: Logger,

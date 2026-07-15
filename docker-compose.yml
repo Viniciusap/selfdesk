@@ -18,9 +18,10 @@ services:
     restart: unless-stopped
     ports:
       - "7000:7000"
-      # Uncomment if HEALTH_PORT / METRICS_PORT are set in broker/.env:
+      # Uncomment if HEALTH_PORT / METRICS_PORT / WS_PORT are set in broker/.env:
       # - "7001:7001"
       # - "9090:9090"
+      # - "7443:7443"
     volumes:
       - ./certs:/certs:ro
       - ./broker/.env:/app/.env:ro

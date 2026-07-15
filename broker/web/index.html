@@ -1,0 +1,119 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>SelfDesk Web Viewer</title>
+<style>
+  :root {
+    color-scheme: dark;
+    --bg: #1A1815;
+    --panel: #232019;
+    --border: #3a352c;
+    --text: #e8e3d8;
+    --text-dim: #a89f8c;
+    --accent: #D4884A;
+    --ok: #4E9E6A;
+    --err: #C0504A;
+    --video-bg: #0F0E0D;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    font-family: -apple-system, Segoe UI, Roboto, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    display: flex;
+    height: 100vh;
+    overflow: hidden;
+  }
+  #sidebar {
+    width: 260px;
+    flex-shrink: 0;
+    background: var(--panel);
+    border-right: 1px solid var(--border);
+    padding: 16px;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    overflow-y: auto;
+  }
+  h1 { font-size: 15px; margin: 0 0 4px; color: var(--accent); }
+  .hint { font-size: 11px; color: var(--text-dim); margin: 0 0 8px; line-height: 1.4; }
+  label { font-size: 12px; color: var(--text-dim); display: block; margin-top: 8px; }
+  input {
+    width: 100%;
+    background: var(--bg);
+    border: 1px solid var(--border);
+    color: var(--text);
+    padding: 6px 8px;
+    border-radius: 4px;
+    font-size: 13px;
+    margin-top: 2px;
+  }
+  button {
+    margin-top: 12px;
+    background: var(--accent);
+    color: #1A1815;
+    border: none;
+    padding: 8px;
+    border-radius: 4px;
+    font-weight: 600;
+    cursor: pointer;
+    font-size: 13px;
+  }
+  button:disabled { opacity: 0.5; cursor: default; }
+  #status { font-size: 12px; margin-top: 8px; }
+  #status.ok  { color: var(--ok); }
+  #status.err { color: var(--err); }
+  #senders { list-style: none; margin: 8px 0 0; padding: 0; flex: 1; overflow-y: auto; }
+  #senders li {
+    padding: 8px;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 13px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+  #senders li:hover { background: var(--border); }
+  #senders li.selected { background: var(--accent); color: #1A1815; }
+  #senders li .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--ok); flex-shrink: 0; }
+  #main {
+    flex: 1;
+    background: var(--video-bg);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    position: relative;
+  }
+  canvas { max-width: 100%; max-height: 100%; display: none; }
+  #placeholder { color: var(--text-dim); font-size: 13px; text-align: center; }
+</style>
+</head>
+<body>
+  <div id="sidebar">
+    <h1>SelfDesk Web Viewer</h1>
+    <p class="hint">Read-only milestone: video only, JPEG codec only. No mouse/keyboard control yet — use the native viewer for that.</p>
+
+    <label>Broker host</label>
+    <input id="host" placeholder="192.168.1.10">
+
+    <label>WSS port</label>
+    <input id="wsPort" placeholder="7443">
+
+    <label>Shared secret</label>
+    <input id="secret" type="password" placeholder="SHARED_SECRET">
+
+    <button id="connectBtn">Connect</button>
+    <div id="status"></div>
+
+    <ul id="senders"></ul>
+  </div>
+  <div id="main">
+    <div id="placeholder">Not connected</div>
+    <canvas id="video"></canvas>
+  </div>
+  <script src="app.js"></script>
+</body>
+</html>

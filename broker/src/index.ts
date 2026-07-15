@@ -5,7 +5,8 @@ import { createLogger } from './logger.js';
 import { MetricsCollector, createMetricsServer, startMetricsListening } from './metrics.js';
 import { Registry } from './registry.js';
 import { Router } from './router.js';
-import { createServer, startListening } from './server.js';
+import { createRateLimiters, createServer, startListening } from './server.js';
+import { createWsServer, startWsListening } from './wsServer.js';
 
 async function main(): Promise<void> {
   const cfg = loadConfig();
@@ -18,7 +19,10 @@ async function main(): Promise<void> {
   const registry = new Registry(log);
   const metrics  = new MetricsCollector();
   const router   = new Router(registry, log, metrics);
-  const server   = createServer(cfg, tls, router, log);
+  // Shared between the TCP and WSS listeners so a client can't dodge the IP/agentId
+  // rate limits by switching transport (see server.ts's RateLimiters doc comment).
+  const limiters = createRateLimiters();
+  const server   = createServer(cfg, tls, router, log, limiters);
 
   await startListening(server, cfg.listenPort, log);
 
@@ -34,8 +38,18 @@ async function main(): Promise<void> {
     await startMetricsListening(metricsServer, cfg.metricsPort, log);
   }
 
-  process.on('SIGTERM', () => { server.close(); healthServer?.close(); metricsServer?.close(); process.exit(0); });
-  process.on('SIGINT',  () => { server.close(); healthServer?.close(); metricsServer?.close(); process.exit(0); });
+  let wsServer: ReturnType<typeof createWsServer> | undefined;
+  if (cfg.wsPort) {
+    wsServer = createWsServer(cfg, tls, router, log, limiters);
+    await startWsListening(wsServer, cfg.wsPort, log);
+  }
+
+  const shutdown = () => {
+    server.close(); healthServer?.close(); metricsServer?.close(); wsServer?.close();
+    process.exit(0);
+  };
+  process.on('SIGTERM', shutdown);
+  process.on('SIGINT',  shutdown);
 }
 
 main().catch((err) => {

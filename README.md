@@ -78,6 +78,7 @@ You run a small **broker** on any Linux box (a Raspberry Pi handles it fine — 
 - **Hardware H.264** — Quick Sync (Intel) or NVENC (NVIDIA) via FFmpeg, selectable by `.env`
 - **Multiple senders** — control several machines from one viewer, switch with a click
 - **Automatic reconnect** — exponential backoff on broker restart or network hiccup
+- **Web viewer** *(read-only milestone)* — watch a sender's screen from any browser over WSS, no install required
 
 ---
 
@@ -263,6 +264,9 @@ Bootstrap generates the `.env` files for you — you rarely need to edit them by
 | `JPEG_QUALITY` | | ✓ | | JPEG quality 1–100 (default: `75`) |
 | `BENCHMARK` | | ✓ | ✓ | Opt-in per-frame latency CSV (default: `false`) — see [Benchmarking](#benchmarking) |
 | `BENCHMARK_LOG_PATH` | | ✓ | ✓ | CSV output path (default: `benchmark-sender.csv` / `benchmark-viewer.csv`) |
+| `WS_PORT` | ✓ | | | Opt-in WSS + web viewer (unset = disabled) — see [Web viewer](#web-viewer) |
+| `HEALTH_PORT` | ✓ | | | Opt-in plain-HTTP health check (unset = disabled) |
+| `METRICS_PORT` | ✓ | | | Opt-in plain-HTTP Prometheus `/metrics` (unset = disabled) |
 
 ---
 
@@ -280,6 +284,26 @@ node scripts/benchmark.js sender/benchmark-sender.csv viewer/benchmark-viewer.cs
 Prints p50/p95/p99 per stage (capture, encode, wire, decode, total). Off by
 default — writing a CSV row per frame is unnecessary overhead outside of
 tuning/regression work.
+
+---
+
+## Web viewer
+
+A browser-based receiver — watch a sender's screen from any device with no
+install, over the same TLS-authenticated protocol as the native viewer. Set
+`WS_PORT` in `broker/.env` (see [Configuration reference](#configuration-reference)),
+restart the broker, then open `https://<broker-host>:<WS_PORT>/` in a browser.
+Enter the broker host, the WSS port, and the `SHARED_SECRET` to connect.
+
+**Milestone 1 (current): read-only.** Video display only, JPEG codec only —
+no mouse/keyboard input yet, and H264 senders show a "use the native viewer"
+message instead of a picture. The web viewer authenticates with the exact
+same HELLO/CHALLENGE/AUTH handshake as the WPF viewer and is routed through
+the same broker code path (`broker/src/connection.ts`'s `FramedSocket`
+interface is transport-agnostic between the TCP and WebSocket listeners), so
+a sender doesn't know or care which kind of viewer is watching it.
+
+Source: `broker/web/` (vanilla JS, no build step, no dependencies).
 
 ---
 

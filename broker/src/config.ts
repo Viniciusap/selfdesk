@@ -14,6 +14,7 @@ export interface BrokerConfig {
   logMaxSize:    string;
   logMaxFiles:   number;
   metricsPort?:  number;
+  wsPort?:       number;
 }
 
 export function loadConfig(envFile?: string): BrokerConfig {
@@ -86,6 +87,17 @@ export function loadConfig(envFile?: string): BrokerConfig {
     }
   }
 
+  // Issue #12: optional WSS listener + static web viewer, off by default —
+  // it's an extra TLS-terminated listener with its own attack surface, so it
+  // stays opt-in same as HEALTH_PORT/METRICS_PORT.
+  let wsPort: number | undefined;
+  if (process.env.WS_PORT) {
+    wsPort = parseInt(process.env.WS_PORT, 10);
+    if (isNaN(wsPort) || wsPort < 1 || wsPort > 65535) {
+      throw new Error(`Invalid WS_PORT: ${process.env.WS_PORT}`);
+    }
+  }
+
   return {
     listenPort:     port,
     sharedSecret:  secret,
@@ -93,6 +105,7 @@ export function loadConfig(envFile?: string): BrokerConfig {
     tlsCertPath:   resolvedCert,
     tlsKeyPath:    resolvedKey,
     metricsPort,
+    wsPort,
     logLevel:      process.env.LOG_LEVEL ?? 'info',
     healthPort,
     logFile,

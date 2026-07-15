@@ -14,12 +14,15 @@ ENV NODE_ENV=production
 COPY package.json package-lock.json ./
 RUN npm ci --omit=dev && npm cache clean --force
 COPY --from=build /app/dist ./dist
+COPY web ./web
 
 # Non-root — the broker never needs elevated privileges.
 RUN addgroup -S selfdesk && adduser -S selfdesk -G selfdesk
 USER selfdesk
 
 EXPOSE 7000
+# WS_PORT is opt-in (see .env.example, issue #12) — only relevant if set.
+EXPOSE 7443
 
 # HEALTH_PORT is opt-in (see .env.example, issue #4). If unset, this reports healthy
 # (nothing to check); if set, it must respond 200 on GET /health.
