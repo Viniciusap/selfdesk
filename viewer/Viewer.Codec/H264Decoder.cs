@@ -119,7 +119,7 @@ public sealed unsafe class H264Decoder : IFrameDecoder, IDisposable
             _swsCtx = ffmpeg.sws_getContext(
                 actualW, actualH, (AVPixelFormat)decodeFrame->format,
                 actualW, actualH, AVPixelFormat.AV_PIX_FMT_BGRA,
-                ffmpeg.SWS_BILINEAR, null, null, null);
+                (int)SwsFlags.SWS_BILINEAR, null, null, null);
 
             if (_swsCtx == null)
                 throw new InvalidOperationException("Falha ao criar SwsContext.");

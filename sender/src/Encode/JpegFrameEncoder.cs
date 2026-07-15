@@ -1,3 +1,4 @@
+using System.Runtime.InteropServices;
 using SkiaSharp;
 using SelfDesk.Sender.Capture;
 using SelfDesk.Sender.Protocol;
@@ -17,14 +18,7 @@ public sealed class JpegFrameEncoder : IFrameEncoder
     {
         using var bitmap = new SKBitmap(frame.Width, frame.Height, SKColorType.Bgra8888, SKAlphaType.Premul);
 
-        unsafe
-        {
-            fixed (byte* src = frame.Bgra)
-            {
-                var dst = bitmap.GetPixels();
-                Buffer.MemoryCopy(src, (void*)dst, frame.Bgra.LongLength, frame.Bgra.LongLength);
-            }
-        }
+        Marshal.Copy(frame.Bgra, 0, bitmap.GetPixels(), frame.Bgra.Length);
 
         using var img  = SKImage.FromBitmap(bitmap);
         using var data = img.Encode(SKEncodedImageFormat.Jpeg, _quality);

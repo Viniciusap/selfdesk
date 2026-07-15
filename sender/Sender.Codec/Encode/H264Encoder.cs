@@ -2,7 +2,6 @@ using System.Runtime.InteropServices;
 using FFmpeg.AutoGen;
 using Microsoft.Extensions.Logging;
 using SelfDesk.Sender.Capture;
-using SelfDesk.Sender.Protocol;
 
 namespace SelfDesk.Sender.Encode;
 
@@ -77,7 +76,7 @@ public sealed unsafe class H264Encoder : IFrameEncoder
         _swsCtx = ffmpeg.sws_getContext(
             width, height, AVPixelFormat.AV_PIX_FMT_BGRA,
             width, height, AVPixelFormat.AV_PIX_FMT_NV12,
-            ffmpeg.SWS_BILINEAR, null, null, null);
+            (int)SwsFlags.SWS_BILINEAR, null, null, null);
 
         if (_swsCtx == null)
             throw new InvalidOperationException("Failed to create SwsContext (BGRA→NV12).");

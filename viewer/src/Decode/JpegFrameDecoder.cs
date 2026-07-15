@@ -1,4 +1,5 @@
 using System.IO;
+using System.Runtime.InteropServices;
 using SkiaSharp;
 using SelfDesk.Protocol;
 
@@ -25,12 +26,7 @@ public sealed class JpegFrameDecoder : IFrameDecoder
         var bgra = new byte[(int)bgraSize];
 
         using var converted = bitmap.Copy(SKColorType.Bgra8888);
-        unsafe
-        {
-            var src = (byte*)converted.GetPixels();
-            fixed (byte* dst = bgra)
-                Buffer.MemoryCopy(src, dst, bgra.LongLength, bgra.LongLength);
-        }
+        Marshal.Copy(converted.GetPixels(), bgra, 0, bgra.Length);
 
         return new DecodedFrame(bitmap.Width, bitmap.Height, bgra, timestampMs);
     }

@@ -1,3 +1,4 @@
+using System.Runtime.InteropServices;
 using Vortice.Direct3D;
 using Vortice.Direct3D11;
 using Vortice.DXGI;
@@ -115,12 +116,10 @@ public sealed class DxgiScreenCapturer : IScreenCapturer
         _context.Map(_staging!, 0u, MapMode.Read, Vortice.Direct3D11.MapFlags.None, out var mapped);
         try
         {
-            unsafe
+            for (int row = 0; row < _height; row++)
             {
-                var src = (byte*)mapped.DataPointer;
-                for (int row = 0; row < _height; row++)
-                    new ReadOnlySpan<byte>(src + (long)row * mapped.RowPitch, _width * 4)
-                        .CopyTo(_bgra.AsSpan(row * _width * 4, _width * 4));
+                var rowPtr = IntPtr.Add(mapped.DataPointer, row * (int)mapped.RowPitch);
+                Marshal.Copy(rowPtr, _bgra, row * _width * 4, _width * 4);
             }
         }
         finally

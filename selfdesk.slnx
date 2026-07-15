@@ -4,10 +4,12 @@
   </Folder>
   <Folder Name="/sender/">
     <Project Path="sender/Sender.csproj" />
+    <Project Path="sender/Sender.Codec/Sender.Codec.csproj" />
     <Project Path="sender/Sender.Tests/Sender.Tests.csproj" />
   </Folder>
   <Folder Name="/viewer/">
     <Project Path="viewer/Viewer.csproj" />
+    <Project Path="viewer/Viewer.Codec/Viewer.Codec.csproj" />
     <Project Path="viewer/Viewer.Tests/Viewer.Tests.csproj" />
   </Folder>
 </Solution>

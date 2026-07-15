@@ -1,0 +1,26 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net10.0-windows</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <!-- S38: AllowUnsafeBlocks isolated to this project — only the FFmpeg-backed
+         H264 codec needs raw pointer access; the rest of the viewer does not. -->
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+    <RootNamespace>SelfDesk.Viewer</RootNamespace>
+    <AssemblyName>SelfDesk.Viewer.Codec</AssemblyName>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\shared\dotnet\SelfDesk.Protocol.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Using Include="SelfDesk.Protocol" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="FFmpeg.AutoGen" Version="8.1.0" />
+  </ItemGroup>
+
+</Project>
