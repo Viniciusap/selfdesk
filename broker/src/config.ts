@@ -9,6 +9,7 @@ export interface BrokerConfig {
   tlsCertPath:   string;
   tlsKeyPath:    string;
   logLevel:      string;
+  healthPort?:   number;
 }
 
 export function loadConfig(envFile?: string): BrokerConfig {
@@ -55,6 +56,14 @@ export function loadConfig(envFile?: string): BrokerConfig {
     }
   }
 
+  let healthPort: number | undefined;
+  if (process.env.HEALTH_PORT) {
+    healthPort = parseInt(process.env.HEALTH_PORT, 10);
+    if (isNaN(healthPort) || healthPort < 1 || healthPort > 65535) {
+      throw new Error(`Invalid HEALTH_PORT: ${process.env.HEALTH_PORT}`);
+    }
+  }
+
   return {
     listenPort:     port,
     sharedSecret:  secret,
@@ -62,6 +71,7 @@ export function loadConfig(envFile?: string): BrokerConfig {
     tlsCertPath:   resolvedCert,
     tlsKeyPath:    resolvedKey,
     logLevel:      process.env.LOG_LEVEL ?? 'info',
+    healthPort,
   };
 }
 

@@ -1,4 +1,5 @@
 import { loadConfig, loadTlsMaterial } from './config.js';
+import { createHealthServer, startHealthListening } from './health.js';
 import { createLogger } from './logger.js';
 import { Registry } from './registry.js';
 import { Router } from './router.js';
@@ -17,8 +18,14 @@ async function main(): Promise<void> {
 
   await startListening(server, cfg.listenPort, log);
 
-  process.on('SIGTERM', () => { server.close(); process.exit(0); });
-  process.on('SIGINT',  () => { server.close(); process.exit(0); });
+  let healthServer: ReturnType<typeof createHealthServer> | undefined;
+  if (cfg.healthPort) {
+    healthServer = createHealthServer(registry, log);
+    await startHealthListening(healthServer, cfg.healthPort, log);
+  }
+
+  process.on('SIGTERM', () => { server.close(); healthServer?.close(); process.exit(0); });
+  process.on('SIGINT',  () => { server.close(); healthServer?.close(); process.exit(0); });
 }
 
 main().catch((err) => {
