@@ -59,10 +59,20 @@
                 </Grid.ColumnDefinitions>
 
                 <StackPanel Grid.Column="0" Orientation="Horizontal" Margin="12,0,0,0" VerticalAlignment="Center">
-                    <Ellipse x:Name="StatusIndicator" Width="8" Height="8" Margin="0,0,6,0"
-                             Fill="{StaticResource BrushTextMuted}"/>
-                    <TextBlock Text="SelfDesk" FontSize="13" FontWeight="SemiBold"
-                               Foreground="{StaticResource BrushTextPrimary}" VerticalAlignment="Center"/>
+                    <!-- Window title is shown by the native chrome (WindowStyle=SingleBorderWindow);
+                         this bar is a toolbar, not a second titlebar — only the connection light lives here. -->
+                    <Ellipse x:Name="StatusIndicator" Width="8" Height="8" VerticalAlignment="Center">
+                        <Ellipse.Style>
+                            <Style TargetType="Ellipse">
+                                <Setter Property="Fill" Value="{StaticResource BrushError}"/>
+                                <Style.Triggers>
+                                    <DataTrigger Binding="{Binding IsConnected}" Value="True">
+                                        <Setter Property="Fill" Value="{StaticResource BrushSuccess}"/>
+                                    </DataTrigger>
+                                </Style.Triggers>
+                            </Style>
+                        </Ellipse.Style>
+                    </Ellipse>
                 </StackPanel>
 
                 <TextBlock Grid.Column="1" x:Name="StatusText"
@@ -81,20 +91,42 @@
                               Foreground="{StaticResource BrushTextSecondary}"
                               ToolTip="Toggle relative mouse mode (for games)"/>
                 <ToggleButton IsChecked="{Binding IsMuted, Mode=TwoWay}"
-                              FontSize="13"
-                              Padding="8,0"
+                              Padding="6,4"
                               Margin="0,0,8,0"
                               VerticalAlignment="Center"
                               Background="Transparent"
                               BorderThickness="0"
-                              Foreground="{StaticResource BrushTextSecondary}"
                               ToolTip="Mute / Unmute audio">
                     <ToggleButton.Style>
                         <Style TargetType="ToggleButton">
-                            <Setter Property="Content" Value="🔊"/>
+                            <Setter Property="Content">
+                                <Setter.Value>
+                                    <Viewbox Width="15" Height="15">
+                                        <Canvas Width="16" Height="16">
+                                            <Path Data="M1,6 L4,6 L8,2 L8,14 L4,10 L1,10 Z"
+                                                  Fill="{StaticResource BrushTextSecondary}"/>
+                                            <Path Data="M10,5 C11.5,6.5 11.5,9.5 10,11"
+                                                  Stroke="{StaticResource BrushTextSecondary}" StrokeThickness="1.3"/>
+                                            <Path Data="M12,3 C14.5,5.5 14.5,10.5 12,13"
+                                                  Stroke="{StaticResource BrushTextSecondary}" StrokeThickness="1.3"/>
+                                        </Canvas>
+                                    </Viewbox>
+                                </Setter.Value>
+                            </Setter>
                             <Style.Triggers>
                                 <Trigger Property="IsChecked" Value="True">
-                                    <Setter Property="Content" Value="🔇"/>
+                                    <Setter Property="Content">
+                                        <Setter.Value>
+                                            <Viewbox Width="15" Height="15">
+                                                <Canvas Width="16" Height="16">
+                                                    <Path Data="M1,6 L4,6 L8,2 L8,14 L4,10 L1,10 Z"
+                                                          Fill="{StaticResource BrushTextMuted}"/>
+                                                    <Path Data="M10,4 L15,11 M15,4 L10,11"
+                                                          Stroke="{StaticResource BrushError}" StrokeThickness="1.6"/>
+                                                </Canvas>
+                                            </Viewbox>
+                                        </Setter.Value>
+                                    </Setter>
                                 </Trigger>
                             </Style.Triggers>
                         </Style>
