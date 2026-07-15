@@ -76,6 +76,21 @@ public static class WireProtocol
         return SelfDesk.Protocol.WireProtocol.BuildEnvelope(MessageType.AudioFrame, agentId, payload);
     }
 
+    public static byte[] BuildCursorShape(SelfDesk.Sender.Capture.CursorShape shape, string agentId)
+    {
+        var header = new byte[CursorShapeOffsets.Data];
+        BinaryPrimitives.WriteUInt16BigEndian(header.AsSpan(CursorShapeOffsets.HotspotX), shape.HotspotX);
+        BinaryPrimitives.WriteUInt16BigEndian(header.AsSpan(CursorShapeOffsets.HotspotY), shape.HotspotY);
+        BinaryPrimitives.WriteUInt16BigEndian(header.AsSpan(CursorShapeOffsets.Width), shape.Width);
+        BinaryPrimitives.WriteUInt16BigEndian(header.AsSpan(CursorShapeOffsets.Height), shape.Height);
+
+        var payload = new byte[header.Length + shape.Bgra.Length];
+        header.CopyTo(payload, 0);
+        shape.Bgra.CopyTo(payload.AsSpan(header.Length));
+
+        return SelfDesk.Protocol.WireProtocol.BuildEnvelope(MessageType.CursorShape, agentId, payload);
+    }
+
     public static byte[] BuildMonitorList(
         IReadOnlyList<SelfDesk.Sender.Capture.MonitorInfo> monitors, string agentId)
     {

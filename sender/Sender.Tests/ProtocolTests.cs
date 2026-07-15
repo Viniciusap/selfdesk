@@ -125,6 +125,23 @@ public class WireProtocolTests
         var echo = BinaryPrimitives.ReadInt64BigEndian(msg.AsSpan(ProtocolSizes.HeaderSize));
         Assert.Equal(ts, echo);
     }
+
+    [Fact]
+    public void BuildCursorShape_Layout_BigEndian()
+    {
+        var bgra  = new byte[4 * 3 * 4]; // 4x3 BGRA
+        new Random(1).NextBytes(bgra);
+        var shape = new Capture.CursorShape(1, 2, 4, 3, bgra);
+
+        var msg     = SenderWire.BuildCursorShape(shape, "laptop-01");
+        var payload = msg.AsSpan(ProtocolSizes.HeaderSize);
+
+        Assert.Equal(1, BinaryPrimitives.ReadUInt16BigEndian(payload[CursorShapeOffsets.HotspotX..]));
+        Assert.Equal(2, BinaryPrimitives.ReadUInt16BigEndian(payload[CursorShapeOffsets.HotspotY..]));
+        Assert.Equal(4, BinaryPrimitives.ReadUInt16BigEndian(payload[CursorShapeOffsets.Width..]));
+        Assert.Equal(3, BinaryPrimitives.ReadUInt16BigEndian(payload[CursorShapeOffsets.Height..]));
+        Assert.True(payload[CursorShapeOffsets.Data..].SequenceEqual(bgra));
+    }
 }
 
 public class FakeInjectorTests

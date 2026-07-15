@@ -404,7 +404,36 @@ public sealed class ViewerService : BackgroundService
             case MessageType.AudioFrame:
                 ProcessAudioFrame(payload);
                 break;
+            case MessageType.CursorShape:
+                ProcessCursorShape(peerId, payload);
+                break;
         }
+    }
+
+    private void ProcessCursorShape(string senderId, ReadOnlyMemory<byte> payload)
+    {
+        var span = payload.Span;
+        if (span.Length < CursorShapeOffsets.Data) return;
+
+        var hotspotX = BinaryPrimitives.ReadUInt16BigEndian(span[CursorShapeOffsets.HotspotX..]);
+        var hotspotY = BinaryPrimitives.ReadUInt16BigEndian(span[CursorShapeOffsets.HotspotY..]);
+        var width    = BinaryPrimitives.ReadUInt16BigEndian(span[CursorShapeOffsets.Width..]);
+        var height   = BinaryPrimitives.ReadUInt16BigEndian(span[CursorShapeOffsets.Height..]);
+        var bgra     = span[CursorShapeOffsets.Data..].ToArray();
+
+        if (bgra.Length < width * height * 4) return;
+
+        _ = Application.Current?.Dispatcher.InvokeAsync(() =>
+        {
+            // Only the currently focused sender's cursor should replace the local one.
+            if (_vm.SelectedSender?.AgentId != senderId) return;
+            try
+            {
+                var cursor = SelfDesk.Viewer.Cursor.CursorShapeFactory.Create(bgra, width, height, hotspotX, hotspotY);
+                if (cursor is not null) _window.SetVideoCursor(cursor);
+            }
+            catch (Exception ex) { _log.LogWarning(ex, "Failed to build remote cursor"); }
+        });
     }
 
     private void ProcessAudioFrame(ReadOnlyMemory<byte> payload)

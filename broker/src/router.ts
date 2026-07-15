@@ -21,6 +21,7 @@ const CLIPBOARD_FILE_TYPES = [
 const SENDER_TO_RECEIVER_TYPES = new Set<number>([
   ...CLIPBOARD_FILE_TYPES,
   MessageType.MONITOR_LIST,
+  MessageType.CURSOR_SHAPE,
 ]);
 
 // Types routed from receiver to a specific target sender (or broadcast)

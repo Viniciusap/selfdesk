@@ -44,6 +44,9 @@ public partial class MainWindow : Window
     public event Action<byte[]>? InputSend;
     public event Action<string[]>? FileDropped;
 
+    // Issue #22: swap the static crosshair for the remote machine's actual cursor shape.
+    public void SetVideoCursor(System.Windows.Input.Cursor cursor) => VideoImage.Cursor = cursor;
+
     private (ushort x, ushort y) NormalizePosition(System.Windows.Point p)
     {
         var controlW = VideoImage.ActualWidth;
