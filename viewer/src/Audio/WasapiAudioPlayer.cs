@@ -9,13 +9,14 @@ public sealed class WasapiAudioPlayer : IAudioPlayer
     private const int Channels   = 2;
 
     private readonly BufferedWaveProvider _buffer;
-    private readonly WasapiOut?           _output;
+    private          WasapiOut?           _output;
     private readonly ILogger              _log;
     private          bool                 _muted;
 
     public WasapiAudioPlayer(ILogger<WasapiAudioPlayer> log)
     {
         _log = log;
+        WasapiOut? output = null;
         try
         {
             var fmt = new WaveFormat(SampleRate, 16, Channels);
@@ -24,14 +25,17 @@ public sealed class WasapiAudioPlayer : IAudioPlayer
                 BufferDuration          = TimeSpan.FromMilliseconds(400),
                 DiscardOnBufferOverflow = true,
             };
-            _output = new WasapiOut(NAudio.CoreAudioApi.AudioClientShareMode.Shared, 100);
-            _output.Init(_buffer);
-            _output.Play();
+            output = new WasapiOut(NAudio.CoreAudioApi.AudioClientShareMode.Shared, 100);
+            output.Init(_buffer);
+            output.Play();
+            _output = output;
             _log.LogInformation("Audio playback started (WASAPI, 48kHz stereo)");
         }
         catch (Exception ex)
         {
             _log.LogWarning(ex, "WASAPI playback unavailable — audio disabled");
+            output?.Dispose();
+            _output = null;
             _buffer ??= new BufferedWaveProvider(new WaveFormat(SampleRate, 16, Channels));
         }
     }
