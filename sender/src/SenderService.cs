@@ -175,6 +175,26 @@ public sealed class SenderService : BackgroundService
             }
         }, sCt);
 
+        // Issue #22: only re-capture/send when the cursor handle actually changes —
+        // GetCursorInfo alone is cheap; Icon.ToBitmap (inside Capture) is not.
+        var cursorLoop = Task.Run(async () =>
+        {
+            var lastHandle = IntPtr.Zero;
+            using var timer = new PeriodicTimer(TimeSpan.FromMilliseconds(100));
+            while (await timer.WaitForNextTickAsync(sCt))
+            {
+                var handle = CursorShapeProvider.GetCurrentCursorHandle();
+                if (handle == lastHandle) continue;
+                lastHandle = handle;
+
+                var shape = CursorShapeProvider.Capture(handle);
+                if (shape is null) continue;
+
+                try { await conn.SendAsync(SenderWire.BuildCursorShape(shape.Value, _cfg.SenderId), sCt); }
+                catch (Exception ex) { _log.LogWarning(ex, "Failed to send cursor shape"); }
+            }
+        }, sCt);
+
         var producer = Task.Run(async () =>
         {
             while (!sCt.IsCancellationRequested)
@@ -220,7 +240,7 @@ public sealed class SenderService : BackgroundService
 
         try
         {
-            var done = await Task.WhenAny(producer, consumer, heartbeat, recvLoop, clipboardLoop, rttMonitor);
+            var done = await Task.WhenAny(producer, consumer, heartbeat, recvLoop, clipboardLoop, rttMonitor, cursorLoop);
             await done;
         }
         finally

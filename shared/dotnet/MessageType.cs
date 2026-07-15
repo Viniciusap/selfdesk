@@ -19,6 +19,7 @@ public static class MessageType
     public const byte VideoFrame    = 0x10;
     public const byte RequestIdr    = 0x11;
     public const byte QualityHint   = 0x12;
+    public const byte CursorShape   = 0x13;
     public const byte InputEvent    = 0x20;
     public const byte SenderUp      = 0x30;
     public const byte SenderDown    = 0x31;
@@ -75,6 +76,15 @@ public static class ClipboardKind
 {
     public const byte Text  = 0x01;
     public const byte Image = 0x02; // PNG bytes
+}
+
+public static class CursorShapeOffsets
+{
+    public const int HotspotX = 0; // uint16 2B
+    public const int HotspotY = 2; // uint16 2B
+    public const int Width    = 4; // uint16 2B
+    public const int Height   = 6; // uint16 2B
+    public const int Data     = 8; // BGRA bytes, width*height*4
 }
 
 public static class AudioFrameOffsets
