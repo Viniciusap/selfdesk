@@ -158,12 +158,21 @@ public sealed unsafe class H264Decoder : IFrameDecoder, IDisposable
 
     private static bool ContainsIdr(ReadOnlySpan<byte> data)
     {
-        for (int i = 0; i < data.Length - 4; i++)
+        for (int i = 0; i < data.Length - 3; i++)
         {
-            if (data[i] == 0 && data[i + 1] == 0 && data[i + 2] == 0 && data[i + 3] == 1)
+            if (data[i] != 0 || data[i + 1] != 0) continue;
+
+            // 4-byte start code: 00 00 00 01
+            if (data[i + 2] == 0 && i + 3 < data.Length && data[i + 3] == 1)
             {
                 if (i + 4 < data.Length && (data[i + 4] & 0x1F) == 5) return true;
                 i += 3;
+            }
+            // 3-byte start code: 00 00 01
+            else if (data[i + 2] == 1)
+            {
+                if (i + 3 < data.Length && (data[i + 3] & 0x1F) == 5) return true;
+                i += 2;
             }
         }
         return false;

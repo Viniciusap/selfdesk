@@ -1,6 +1,4 @@
 using System.Runtime.InteropServices;
-using Vortice.Direct3D;
-using Vortice.Direct3D11;
 using Vortice.DXGI;
 
 namespace SelfDesk.Sender.Capture;
@@ -18,22 +16,32 @@ public static class MonitorEnumerator
 
     private static IReadOnlyList<MonitorInfo> EnumerateViaDxgi()
     {
-        using var device  = D3D11.D3D11CreateDevice(DriverType.Hardware, DeviceCreationFlags.None);
-        using var dxgiDev = device.QueryInterface<IDXGIDevice>();
-        using var adapter = dxgiDev.GetAdapter();
+        // Enumerate outputs across ALL adapters, not just the one bound to a single D3D11 device —
+        // a multi-GPU machine (e.g. Intel iGPU + NVIDIA dGPU) can have monitors attached to either.
+        using var factory = DXGI.CreateDXGIFactory1<IDXGIFactory1>();
 
         var entries = new List<(int left, int top, int right, int bottom, string name, uint idx)>();
-        uint i = 0;
-        while (adapter.EnumOutputs(i, out IDXGIOutput output).Success)
+        uint outputIdx = 0;
+        uint adapterI  = 0;
+        while (factory.EnumAdapters1(adapterI, out IDXGIAdapter1 adapter).Success)
         {
-            using (output)
+            using (adapter)
             {
-                var d = output.Description;
-                entries.Add((d.DesktopCoordinates.Left, d.DesktopCoordinates.Top,
-                             d.DesktopCoordinates.Right, d.DesktopCoordinates.Bottom,
-                             d.DeviceName, i));
+                uint j = 0;
+                while (adapter.EnumOutputs(j, out IDXGIOutput output).Success)
+                {
+                    using (output)
+                    {
+                        var d = output.Description;
+                        entries.Add((d.DesktopCoordinates.Left, d.DesktopCoordinates.Top,
+                                     d.DesktopCoordinates.Right, d.DesktopCoordinates.Bottom,
+                                     d.DeviceName, outputIdx));
+                    }
+                    j++;
+                    outputIdx++;
+                }
             }
-            i++;
+            adapterI++;
         }
 
         if (entries.Count == 0) throw new InvalidOperationException("Nenhum output DXGI");
