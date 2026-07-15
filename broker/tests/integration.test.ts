@@ -38,7 +38,7 @@ beforeAll(async () => {
   serverKey  = Buffer.from(pems.private);
 
   const log      = pino({ level: 'silent' });
-  const cfg      = { listenPort: 0, sharedSecret: SECRET, allowedSenders: ALLOWED, tlsCertPath: '', tlsKeyPath: '', logLevel: 'silent' };
+  const cfg      = { listenPort: 0, sharedSecret: SECRET, allowedSenders: ALLOWED, tlsCertPath: '', tlsKeyPath: '', logLevel: 'silent', logMaxSize: '10m', logMaxFiles: 5 };
   const registry = new Registry(log);
   const router   = new Router(registry, log);
   server = createServer(cfg, { cert: serverCert, key: serverKey }, router, log);

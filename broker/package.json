@@ -13,7 +13,8 @@
   },
   "dependencies": {
     "dotenv": "^16.4.5",
-    "pino": "^9.4.0"
+    "pino": "^9.4.0",
+    "pino-roll": "^4.0.0"
   },
   "devDependencies": {
     "@types/jest": "^29.5.12",

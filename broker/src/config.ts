@@ -10,6 +10,9 @@ export interface BrokerConfig {
   tlsKeyPath:    string;
   logLevel:      string;
   healthPort?:   number;
+  logFile?:      string;
+  logMaxSize:    string;
+  logMaxFiles:   number;
 }
 
 export function loadConfig(envFile?: string): BrokerConfig {
@@ -64,6 +67,12 @@ export function loadConfig(envFile?: string): BrokerConfig {
     }
   }
 
+  // Issue #18: optional rotating file log (in addition to stdout), cross-platform via pino-roll.
+  const logFile = process.env.LOG_FILE
+    ? path.resolve(envDir, process.env.LOG_FILE)
+    : undefined;
+  const logMaxFiles = parseInt(process.env.LOG_MAX_FILES ?? '5', 10);
+
   return {
     listenPort:     port,
     sharedSecret:  secret,
@@ -72,6 +81,9 @@ export function loadConfig(envFile?: string): BrokerConfig {
     tlsKeyPath:    resolvedKey,
     logLevel:      process.env.LOG_LEVEL ?? 'info',
     healthPort,
+    logFile,
+    logMaxSize:    process.env.LOG_MAX_SIZE ?? '10m',
+    logMaxFiles:   isNaN(logMaxFiles) ? 5 : logMaxFiles,
   };
 }
 

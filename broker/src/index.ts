@@ -8,7 +8,7 @@ import { createServer, startListening } from './server.js';
 
 async function main(): Promise<void> {
   const cfg = loadConfig();
-  const log = createLogger(cfg.logLevel);
+  const log = createLogger(cfg.logLevel, cfg.logFile, cfg.logMaxSize, cfg.logMaxFiles);
 
   log.info('SelfDesk Broker iniciando...');
 
