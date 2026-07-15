@@ -12,7 +12,7 @@ import pino from 'pino';
 import selfsigned from 'selfsigned';
 import { Registry } from '../src/registry';
 import { Router } from '../src/router';
-import { createServer } from '../src/server';
+import { RateLimiters, createRateLimiters, createServer } from '../src/server';
 import { HEADER_SIZE, MessageType, buildEnvelope, parseHeader } from '../src/protocol';
 
 const SECRET = 'fuzz-test-secret-32-characters!!';
@@ -22,6 +22,7 @@ let serverCert: Buffer;
 let serverKey: Buffer;
 let port: number;
 let server: tls.Server;
+let limiters: RateLimiters;
 
 beforeAll(async () => {
   const attrs = [{ name: 'commonName', value: 'selfdesk-fuzz' }];
@@ -38,7 +39,8 @@ beforeAll(async () => {
   const cfg = { listenPort: 0, sharedSecret: SECRET, allowedSenders: ALLOWED, tlsCertPath: '', tlsKeyPath: '', logLevel: 'silent', logMaxSize: '10m', logMaxFiles: 5 };
   const registry = new Registry(log);
   const router = new Router(registry, log);
-  server = createServer(cfg, { cert: serverCert, key: serverKey }, router, log);
+  limiters = createRateLimiters();
+  server = createServer(cfg, { cert: serverCert, key: serverKey }, router, log, limiters);
 
   await new Promise<void>((resolve, reject) => {
     server.once('error', reject);
@@ -93,6 +95,13 @@ function readFrame(sock: tls.TLSSocket, timeoutMs = 500): Promise<{ type: number
 async function assertServerStillHealthy(): Promise<void> {
   // A clean handshake must still succeed — proves the server process (and this
   // listener) survived whatever garbage the previous connection(s) threw at it.
+  // Reset the shared IP rate limiter first: this file's whole point is throwing
+  // enough garbage from 127.0.0.1 to legitimately trip the real S4/S32 IP block
+  // (now that server.ts's G5 fix makes it actually accumulate correctly) — that's
+  // the rate limiter doing its job, not a sign the server crashed, so it
+  // shouldn't fail the "did the process survive" assertion this function makes.
+  limiters.rateMap.clear();
+  limiters.agentRateMap.clear();
   const sock = await tlsConnect();
   sock.write(buildEnvelope(MessageType.HELLO, 'laptop-01', Buffer.from(JSON.stringify({ version: 1, role: 'sender', agentId: 'laptop-01' }))));
   const challenge = await readFrame(sock);

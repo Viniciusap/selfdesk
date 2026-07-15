@@ -10,7 +10,7 @@ import pino from 'pino';
 import selfsigned from 'selfsigned';
 import { Registry } from '../src/registry';
 import { Router } from '../src/router';
-import { createServer } from '../src/server';
+import { RateLimiters, createRateLimiters, createServer } from '../src/server';
 import {
   HEADER_SIZE,
   MessageType,
@@ -25,6 +25,7 @@ let serverCert: Buffer;
 let serverKey:  Buffer;
 let port:       number;
 let server:     tls.Server;
+let limiters:   RateLimiters;
 
 beforeAll(async () => {
   const attrs = [{ name: 'commonName', value: 'selfdesk-test' }];
@@ -41,7 +42,8 @@ beforeAll(async () => {
   const cfg      = { listenPort: 0, sharedSecret: SECRET, allowedSenders: ALLOWED, tlsCertPath: '', tlsKeyPath: '', logLevel: 'silent', logMaxSize: '10m', logMaxFiles: 5 };
   const registry = new Registry(log);
   const router   = new Router(registry, log);
-  server = createServer(cfg, { cert: serverCert, key: serverKey }, router, log);
+  limiters       = createRateLimiters();
+  server = createServer(cfg, { cert: serverCert, key: serverKey }, router, log, limiters);
 
   await new Promise<void>((resolve, reject) => {
     server.once('error', reject);
@@ -50,6 +52,15 @@ beforeAll(async () => {
       resolve();
     });
   });
+});
+
+// This file's tests share one server/one source IP (127.0.0.1) across many
+// intentional-auth-failure cases — reset the shared IP rate limiter between
+// tests so one test's failed-auth attempts don't trip the real S4/S32 IP
+// block and starve a later, unrelated test's handshake.
+beforeEach(() => {
+  limiters.rateMap.clear();
+  limiters.agentRateMap.clear();
 });
 
 afterAll(() => {

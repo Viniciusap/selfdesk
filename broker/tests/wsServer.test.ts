@@ -176,4 +176,36 @@ describe('static file server', () => {
     const res = await get('/does-not-exist.txt');
     expect(res.status).toBe(404);
   });
+
+  it('429s once the IP is blocked (shared rate limiter, not just the WS path)', async () => {
+    // Isolated server + limiters so tripping the block here doesn't affect the
+    // other tests in this file, which all share the same 127.0.0.1 source IP.
+    const log = pino({ level: 'silent' });
+    const cfg = { listenPort: 0, sharedSecret: SECRET, allowedSenders: ALLOWED, tlsCertPath: '', tlsKeyPath: '', logLevel: 'silent', logMaxSize: '10m', logMaxFiles: 5 };
+    const registry = new Registry(log);
+    const router = new Router(registry, log);
+    const isolatedServer = createWsServer(cfg, { cert: serverCert, key: serverKey }, router, log, createRateLimiters());
+    const isolatedPort = await new Promise<number>((resolve, reject) => {
+      isolatedServer.once('error', reject);
+      isolatedServer.listen(0, '127.0.0.1', () => resolve((isolatedServer.address() as net.AddressInfo).port));
+    });
+
+    // Trip FAIL_LIMIT (5) by failing AUTH from a fresh connection each time.
+    for (let i = 0; i < 5; i++) {
+      const ws = new WebSocket(`wss://127.0.0.1:${isolatedPort}/ws`, { rejectUnauthorized: false });
+      await doHandshake(ws, 'receiver', `flood-${i}`, 'wrong-secret');
+      ws.close();
+    }
+    await new Promise((resolve) => setTimeout(resolve, 100)); // let 'closed' handlers run
+
+    const res = await new Promise<{ status: number }>((resolve, reject) => {
+      https.get({ host: '127.0.0.1', port: isolatedPort, path: '/', rejectUnauthorized: false }, (r) => {
+        r.resume();
+        resolve({ status: r.statusCode ?? 0 });
+      }).on('error', reject);
+    });
+    expect(res.status).toBe(429);
+
+    isolatedServer.close();
+  }, 15_000);
 });

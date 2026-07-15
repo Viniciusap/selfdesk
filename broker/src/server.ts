@@ -14,30 +14,53 @@ const BLOCK_PERIOD = 5 * 60_000; // 5 min
 const AGENT_AUTH_LIMIT  = 10;
 const AGENT_AUTH_WINDOW = 60_000; // 1 min
 
-interface RateEntry { count: number; windowStart: number; blockedUntil: number }
+// IP entries track a block expiry (S32's blockedUntil); agentId entries don't —
+// a sender that exceeds AGENT_AUTH_LIMIT is dropped immediately (see
+// attachConnectionHandlers below), there's no timed block state to carry.
+interface IpRateEntry { count: number; windowStart: number; blockedUntil: number }
+interface AgentRateEntry { count: number; windowStart: number }
 
 // Issue #12: shared between the TLS TCP listener (server.ts) and the WSS listener
 // (wsServer.ts) so a client can't dodge rate limiting by switching transport —
 // both funnel into the same Connection/Router pipeline and the same rate maps.
 export interface RateLimiters {
-  rateMap: Map<string, RateEntry>;
-  agentRateMap: Map<string, RateEntry>;
+  rateMap: Map<string, IpRateEntry>;
+  agentRateMap: Map<string, AgentRateEntry>;
 }
 
 export function createRateLimiters(): RateLimiters {
   return { rateMap: new Map(), agentRateMap: new Map() };
 }
 
-// True if this IP is currently blocked from a prior burst of failed auths.
-// Purges expired entries opportunistically to keep the maps from growing unbounded.
-export function isIpBlocked(limiters: RateLimiters, ip: string): boolean {
+// Opportunistic GC for both maps — called on every isIpBlocked() check rather
+// than on a timer, so it only runs when there's already connection activity.
+//
+// FOUND WHILE ADDING A TEST FOR G5 (this loop's own regression coverage caught
+// it): the old condition here was `now > v.blockedUntil + FAIL_WINDOW`, which
+// for any not-yet-blocked entry (blockedUntil stays 0 until FAIL_LIMIT is hit)
+// reduces to `now > FAIL_WINDOW` — true for any real epoch timestamp. Since
+// isIpBlocked() runs on every new connection attempt (before the failing
+// connection's own 'closed' handler even fires), this deleted a failing IP's
+// tracking entry on the very next connection attempt, every time — the S4/S32
+// IP-block-after-5-failures feature has never actually accumulated past 1
+// failure since the commit that introduced it. Fixed: only purge an entry once
+// it's neither currently blocked nor still within its failure-tracking window.
+function purgeExpiredRateEntries(limiters: RateLimiters): void {
   const now = Date.now();
   for (const [k, v] of limiters.rateMap) {
-    if (now > v.blockedUntil + FAIL_WINDOW) limiters.rateMap.delete(k);
+    const stillBlocked = now < v.blockedUntil;
+    const stillTrackingWindow = now - v.windowStart <= FAIL_WINDOW;
+    if (!stillBlocked && !stillTrackingWindow) limiters.rateMap.delete(k);
   }
   for (const [k, v] of limiters.agentRateMap) {
     if (now - v.windowStart > AGENT_AUTH_WINDOW) limiters.agentRateMap.delete(k);
   }
+}
+
+// True if this IP is currently blocked from a prior burst of failed auths.
+export function isIpBlocked(limiters: RateLimiters, ip: string): boolean {
+  purgeExpiredRateEntries(limiters);
+  const now = Date.now();
   const entry = limiters.rateMap.get(ip);
   return entry !== undefined && now < entry.blockedUntil;
 }
@@ -74,7 +97,7 @@ export function attachConnectionHandlers(
   conn.on('authenticated', (role, agentId) => {
     if (role === 'sender') {
       const t   = Date.now();
-      const rec = limiters.agentRateMap.get(agentId) ?? { count: 0, windowStart: t, blockedUntil: 0 };
+      const rec = limiters.agentRateMap.get(agentId) ?? { count: 0, windowStart: t };
       if (t - rec.windowStart > AGENT_AUTH_WINDOW) {
         rec.count = 1;
         rec.windowStart = t;

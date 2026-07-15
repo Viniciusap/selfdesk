@@ -61,6 +61,15 @@ export function createWsServer(
         res.end('method not allowed');
         return;
       }
+      // Same IP block the WS upgrade path uses (issue #12 static file server had
+      // no rate limiting of its own — an IP already blocked for repeated auth
+      // failures shouldn't get a free pass to hammer the file server instead).
+      const ip = req.socket.remoteAddress ?? 'unknown';
+      if (isIpBlocked(limiters, ip)) {
+        res.writeHead(429, { 'Content-Type': 'text/plain' });
+        res.end('too many requests');
+        return;
+      }
       serveStatic(req, res);
     },
   );
