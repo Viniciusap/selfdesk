@@ -92,11 +92,21 @@ public sealed class SenderService : BackgroundService
             Environment.GetFolderPath(Environment.SpecialFolder.System), "shutdown.exe");
         var rebootScheduled = false;
 
+        // S23: throttle input injection to a 5ms minimum interval — a flooding or
+        // malfunctioning viewer should not be able to hammer SendInput unbounded.
+        const long minInjectIntervalMs = 5;
+        var lastInjectMs = 0L;
+
         conn.MessageReceived += (type, payload) =>
         {
             switch (type)
             {
-                case MessageType.InputEvent:  _injector.Inject(payload.Span); break;
+                case MessageType.InputEvent:
+                    var nowMs = Environment.TickCount64;
+                    if (nowMs - lastInjectMs < minInjectIntervalMs) break;
+                    lastInjectMs = nowMs;
+                    _injector.Inject(payload.Span);
+                    break;
                 case MessageType.RemoteReboot:
                     if (!rebootScheduled)
                     {
@@ -193,7 +203,8 @@ public sealed class SenderService : BackgroundService
         }, sCt);
 
         // fire-and-forget: audio failure must not terminate the video session
-        _ = AudioPipeline.Start(conn, _cfg.SenderId, _log, sCt);
+        if (_cfg.AudioEnabled)
+            _ = AudioPipeline.Start(conn, _cfg.SenderId, _log, sCt);
 
         try
         {

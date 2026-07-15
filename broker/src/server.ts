@@ -8,6 +8,11 @@ const FAIL_LIMIT   = 5;
 const FAIL_WINDOW  = 60_000;   // 1 min
 const BLOCK_PERIOD = 5 * 60_000; // 5 min
 
+// S4: rate limit successful (re)authentications by agentId, not just failures by IP.
+// A leaked or misbehaving sender credential can hop IPs (NAT, DHCP) but not agentId.
+const AGENT_AUTH_LIMIT  = 10;
+const AGENT_AUTH_WINDOW = 60_000; // 1 min
+
 interface RateEntry { count: number; windowStart: number; blockedUntil: number }
 
 export function createServer(
@@ -16,7 +21,8 @@ export function createServer(
   router: Router,
   log: Logger,
 ): tls.Server {
-  const rateMap = new Map<string, RateEntry>();
+  const rateMap      = new Map<string, RateEntry>();
+  const agentRateMap = new Map<string, RateEntry>();
 
   const server = tls.createServer(
     {
@@ -33,6 +39,9 @@ export function createServer(
       // Purge expired entries to prevent unbounded growth
       for (const [k, v] of rateMap) {
         if (now > v.blockedUntil + FAIL_WINDOW) rateMap.delete(k);
+      }
+      for (const [k, v] of agentRateMap) {
+        if (now - v.windowStart > AGENT_AUTH_WINDOW) agentRateMap.delete(k);
       }
 
       const entry = rateMap.get(ip);
@@ -66,6 +75,21 @@ export function createServer(
 
       conn.on('authenticated', (role, agentId) => {
         if (role === 'sender') {
+          const t   = Date.now();
+          const rec = agentRateMap.get(agentId) ?? { count: 0, windowStart: t, blockedUntil: 0 };
+          if (t - rec.windowStart > AGENT_AUTH_WINDOW) {
+            rec.count = 1;
+            rec.windowStart = t;
+          } else {
+            rec.count++;
+          }
+          agentRateMap.set(agentId, rec);
+
+          if (rec.count > AGENT_AUTH_LIMIT) {
+            log.warn({ agentId, count: rec.count }, 'agentId exceeded post-auth rate limit — dropping connection');
+            conn.close();
+            return;
+          }
           router.onSenderAuthenticated(agentId, conn);
         } else {
           router.onReceiverAuthenticated(conn);

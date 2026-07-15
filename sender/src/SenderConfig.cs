@@ -11,4 +11,5 @@ public sealed class SenderConfig
     public string Encoder      { get; set; } = "jpeg";
     public int    JpegQuality  { get; set; } = 75;
     public string Capturer     { get; set; } = "gdi";
+    public bool   AudioEnabled { get; set; } = true;
 }

@@ -76,13 +76,100 @@ if (Get-Service -Name $ServiceName -ErrorAction SilentlyContinue) {
     exit 1
 }
 
-New-Service -Name $ServiceName `
-            -BinaryPathName $ExePath `
-            -DisplayName 'SelfDesk Sender' `
-            -Description 'Captures the screen and injects input for remote access via SelfDesk.' `
-            -StartupType Automatic
+# S54: run as a dedicated least-privilege local account instead of LocalSystem.
+# LocalSystem has full control of the machine; this service only needs to read
+# its own install directory and call SendInput/BitBlt, which any account can do.
+$SvcAccount = "$env:COMPUTERNAME\SelfDeskSvc"
+$SvcUser    = 'SelfDeskSvc'
 
-Write-Host "Service '$ServiceName' installed."
+Add-Type -Name LsaUtil -Namespace SelfDesk -MemberDefinition @'
+[DllImport("advapi32.dll", CharSet = CharSet.Unicode, SetLastError = true)]
+public static extern uint LsaOpenPolicy(ref LSA_UNICODE_STRING SystemName, ref LSA_OBJECT_ATTRIBUTES ObjectAttributes, int AccessMask, out IntPtr PolicyHandle);
+[DllImport("advapi32.dll", CharSet = CharSet.Unicode, SetLastError = true)]
+public static extern uint LsaAddAccountRights(IntPtr PolicyHandle, byte[] AccountSid, LSA_UNICODE_STRING[] UserRights, int CountOfRights);
+[DllImport("advapi32.dll")]
+public static extern int LsaClose(IntPtr ObjectHandle);
+[StructLayout(LayoutKind.Sequential)]
+public struct LSA_UNICODE_STRING { public ushort Length; public ushort MaximumLength; public IntPtr Buffer; }
+[StructLayout(LayoutKind.Sequential)]
+public struct LSA_OBJECT_ATTRIBUTES { public int Length; public IntPtr RootDirectory; public IntPtr ObjectName; public int Attributes; public IntPtr SecurityDescriptor; public IntPtr SecurityQualityOfService; }
+'@ -UsingNamespace System.Runtime.InteropServices
+
+function Grant-LogonAsServiceRight([System.Security.Principal.SecurityIdentifier]$Sid) {
+    $sidBytes = New-Object byte[] ($Sid.BinaryLength)
+    $Sid.GetBinaryForm($sidBytes, 0)
+
+    $objAttr = New-Object SelfDesk.LsaUtil+LSA_OBJECT_ATTRIBUTES
+    $sysName = New-Object SelfDesk.LsaUtil+LSA_UNICODE_STRING
+
+    [IntPtr]$policyHandle = [IntPtr]::Zero
+    $result = [SelfDesk.LsaUtil]::LsaOpenPolicy([ref]$sysName, [ref]$objAttr, 0x00000800, [ref]$policyHandle) # POLICY_CREATE_ACCOUNT | POLICY_LOOKUP_NAMES-ish (ALL_ACCESS below is simpler)
+    if ($result -ne 0) { throw "LsaOpenPolicy failed: $result" }
+
+    $rightStr = 'SeServiceLogonRight'
+    $rightBuf = [Runtime.InteropServices.Marshal]::StringToHGlobalUni($rightStr)
+    $right = New-Object SelfDesk.LsaUtil+LSA_UNICODE_STRING
+    $right.Buffer = $rightBuf
+    $right.Length = [uint16]($rightStr.Length * 2)
+    $right.MaximumLength = [uint16](($rightStr.Length + 1) * 2)
+
+    $rights = [SelfDesk.LsaUtil+LSA_UNICODE_STRING[]]@($right)
+    $addResult = [SelfDesk.LsaUtil]::LsaAddAccountRights($policyHandle, $sidBytes, $rights, 1)
+    [Runtime.InteropServices.Marshal]::FreeHGlobal($rightBuf)
+    [SelfDesk.LsaUtil]::LsaClose($policyHandle) | Out-Null
+    if ($addResult -ne 0) { throw "LsaAddAccountRights failed: $addResult" }
+}
+
+$existingUser = Get-LocalUser -Name $SvcUser -ErrorAction SilentlyContinue
+if (-not $existingUser) {
+    $bytes = New-Object byte[] 32
+    [Security.Cryptography.RandomNumberGenerator]::Fill($bytes)
+    $svcPassword = ConvertTo-SecureString -String ([Convert]::ToBase64String($bytes) + 'Aa1!') -AsPlainText -Force
+    New-LocalUser -Name $SvcUser -Password $svcPassword -PasswordNeverExpires -UserMayNotChangePassword `
+        -Description 'Least-privilege account for the SelfDesk Sender service (S54)' | Out-Null
+    Write-Host "Created local service account '$SvcUser'."
+} else {
+    $svcPassword = $null
+    Write-Warning "Local account '$SvcUser' already exists — reusing it. If you don't have its password, run with -Uninstall then re-run to regenerate it."
+}
+
+$svcSid = (Get-LocalUser -Name $SvcUser).SID
+Grant-LogonAsServiceRight -Sid $svcSid
+Write-Host "Granted 'Log on as a service' right to '$SvcAccount'."
+
+# Restrict the install directory to this account + Administrators/SYSTEM (for updates)
+$acl = Get-Acl $PublishDir
+$acl.SetAccessRuleProtection($true, $false)
+foreach ($sid in @('S-1-5-18', 'S-1-5-32-544', $svcSid.Value)) {  # SYSTEM, Administrators, service account
+    $rule = New-Object Security.AccessControl.FileSystemAccessRule(
+        $sid, 'ReadAndExecute', 'ContainerInherit,ObjectInherit', 'None', 'Allow')
+    $acl.AddAccessRule($rule)
+}
+foreach ($sid in @('S-1-5-18', 'S-1-5-32-544')) {  # SYSTEM, Administrators keep full control
+    $rule = New-Object Security.AccessControl.FileSystemAccessRule(
+        $sid, 'FullControl', 'ContainerInherit,ObjectInherit', 'None', 'Allow')
+    $acl.AddAccessRule($rule)
+}
+Set-Acl $PublishDir $acl
+
+if ($svcPassword) {
+    $cred = New-Object Management.Automation.PSCredential($SvcAccount, $svcPassword)
+    New-Service -Name $ServiceName `
+                -BinaryPathName $ExePath `
+                -DisplayName 'SelfDesk Sender' `
+                -Description 'Captures the screen and injects input for remote access via SelfDesk.' `
+                -StartupType Automatic `
+                -Credential $cred
+} else {
+    Write-Warning "No password available for existing account — configure the service LogonAs manually via services.msc, then Start-Service."
+    New-Service -Name $ServiceName `
+                -BinaryPathName $ExePath `
+                -DisplayName 'SelfDesk Sender' `
+                -Description 'Captures the screen and injects input for remote access via SelfDesk.' `
+                -StartupType Automatic
+}
+
+Write-Host "Service '$ServiceName' installed (account: $SvcAccount)."
 
 # S53: restrict service control to Administrators and SYSTEM only (prevent non-admin stop/start)
 & sc.exe sdset $ServiceName 'D:(A;;CCLCSWRPWPDTLOCRRC;;;SY)(A;;CCDCLCSWRPWPDTLOCRSDRCWDWO;;;BA)' | Out-Null
