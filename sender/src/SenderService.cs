@@ -17,6 +17,14 @@ namespace SelfDesk.Sender;
 
 public sealed class SenderService : BackgroundService
 {
+    // RTT->bitrate adaptation thresholds, matching the naming pattern used for
+    // the equivalent adaptive-quality thresholds in viewer/src/ViewerService.cs.
+    private const int  RttLowMs        = 50;
+    private const int  RttMediumMs     = 150;
+    private const long BitrateHighBps   = 8_000_000L;
+    private const long BitrateMediumBps = 4_000_000L;
+    private const long BitrateLowBps    = 1_500_000L;
+
     private readonly SenderConfig   _cfg;
     private readonly IScreenCapturer _capturer;
     private readonly IFrameEncoder   _encoder;
@@ -123,6 +131,10 @@ public sealed class SenderService : BackgroundService
                     {
                         rebootScheduled = true;
                         _log.LogWarning("Remote reboot requested — rebooting in 5 seconds");
+                        // Sonar flags any Process.Start as a hotspot needing manual review: safe here
+                        // because shutdownExe is a fixed path under System32 and the argument string is
+                        // a fixed literal — nothing from the (already-authenticated) network message
+                        // reaches the command line.
                         System.Diagnostics.Process.Start(shutdownExe, "/r /t 5 /c \"SelfDesk remote reboot\"");
                     }
                     break;
@@ -175,9 +187,9 @@ public sealed class SenderService : BackgroundService
                 if (rtt <= 0) continue;
                 var bps = rtt switch
                 {
-                    < 50  => 8_000_000L,
-                    < 150 => 4_000_000L,
-                    _     => 1_500_000L,
+                    < RttLowMs    => BitrateHighBps,
+                    < RttMediumMs => BitrateMediumBps,
+                    _             => BitrateLowBps,
                 };
                 _encoder.UpdateBitrate(bps);
             }

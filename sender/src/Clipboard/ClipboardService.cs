@@ -83,7 +83,7 @@ public sealed class ClipboardService
         return a.AsSpan().SequenceEqual(b);
     }
 
-    private static (string? text, byte[]? imageBytes) GetClipboardSta()
+    private (string? text, byte[]? imageBytes) GetClipboardSta()
     {
         string? text = null;
         byte[]? imageBytes = null;
@@ -106,18 +106,18 @@ public sealed class ClipboardService
                     }
                 }
             }
-            catch { }
+            catch (Exception ex) { _log.LogWarning(ex, "Failed to read local clipboard"); }
         });
         return (text, imageBytes);
     }
 
-    private static void SetClipboardText(string text)
+    private void SetClipboardText(string text)
     {
         try { System.Windows.Forms.Clipboard.SetText(text); }
-        catch { }
+        catch (Exception ex) { _log.LogWarning(ex, "Failed to set local clipboard text"); }
     }
 
-    private static void SetClipboardImage(byte[] pngBytes)
+    private void SetClipboardImage(byte[] pngBytes)
     {
         try
         {
@@ -125,7 +125,7 @@ public sealed class ClipboardService
             using var img = System.Drawing.Image.FromStream(ms);
             System.Windows.Forms.Clipboard.SetImage(img);
         }
-        catch { }
+        catch (Exception ex) { _log.LogWarning(ex, "Failed to set local clipboard image"); }
     }
 
     private static void RunOnSta(Action action)

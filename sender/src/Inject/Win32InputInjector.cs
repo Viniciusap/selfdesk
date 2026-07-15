@@ -120,7 +120,7 @@ public sealed class Win32InputInjector : IInputInjector, IDisposable
             foreach (var vk in mods)
             {
                 var input = MakeKey(vk, false);
-                SendInput(1, ref input, Marshal.SizeOf<INPUT>());
+                SendInputChecked(ref input);
             }
             _trackedMods = 0;
         }
@@ -161,7 +161,7 @@ public sealed class Win32InputInjector : IInputInjector, IDisposable
                 dwFlags = MOUSEEVENTF_MOVE | MOUSEEVENTF_ABSOLUTE | MOUSEEVENTF_VIRTUALDESK,
             },
         };
-        SendInput(1, ref input, Marshal.SizeOf<INPUT>());
+        SendInputChecked(ref input);
     }
 
     private void InjectMouseMoveRel(short dx, short dy)
@@ -171,7 +171,7 @@ public sealed class Win32InputInjector : IInputInjector, IDisposable
             type = INPUT_MOUSE,
             mi   = new MOUSEINPUT { dx = dx, dy = dy, dwFlags = MOUSEEVENTF_MOVE },
         };
-        SendInput(1, ref input, Marshal.SizeOf<INPUT>());
+        SendInputChecked(ref input);
     }
 
     private void InjectMouseButton(byte btn, byte state, ushort normX, ushort normY)
@@ -198,7 +198,7 @@ public sealed class Win32InputInjector : IInputInjector, IDisposable
             type = INPUT_MOUSE,
             mi   = new MOUSEINPUT { dx = ax, dy = ay, dwFlags = flags, mouseData = mouseData },
         };
-        SendInput(1, ref input, Marshal.SizeOf<INPUT>());
+        SendInputChecked(ref input);
     }
 
     private void InjectMouseWheel(short delta, ushort normX, ushort normY)
@@ -215,7 +215,7 @@ public sealed class Win32InputInjector : IInputInjector, IDisposable
                 dwFlags   = MOUSEEVENTF_WHEEL | MOUSEEVENTF_MOVE | MOUSEEVENTF_ABSOLUTE | MOUSEEVENTF_VIRTUALDESK,
             },
         };
-        SendInput(1, ref input, Marshal.SizeOf<INPUT>());
+        SendInputChecked(ref input);
     }
 
     private void InjectKey(ushort vk, byte state, byte mods)
@@ -225,7 +225,7 @@ public sealed class Win32InputInjector : IInputInjector, IDisposable
         FixModifiers(modBit, mods);
 
         var input = MakeKey(vk, state == InputEventKind.StateDown);
-        SendInput(1, ref input, Marshal.SizeOf<INPUT>());
+        SendInputChecked(ref input);
 
         if (modBit != 0)
         {
@@ -257,7 +257,7 @@ public sealed class Win32InputInjector : IInputInjector, IDisposable
         if (shouldBeDown == isDown) return;
 
         var input = MakeKey(modVk, shouldBeDown);
-        SendInput(1, ref input, Marshal.SizeOf<INPUT>());
+        SendInputChecked(ref input);
 
         if (shouldBeDown) _trackedMods |= modBit;
         else              _trackedMods &= (byte)~modBit;
@@ -283,7 +283,7 @@ public sealed class Win32InputInjector : IInputInjector, IDisposable
             {
                 _keysDown.Remove(vk);
                 var input = MakeKey(vk, false);
-                SendInput(1, ref input, Marshal.SizeOf<INPUT>());
+                SendInputChecked(ref input);
                 var mb = GetModBit(vk);
                 if (mb != 0) _trackedMods &= (byte)~mb;
             }
@@ -318,6 +318,17 @@ public sealed class Win32InputInjector : IInputInjector, IDisposable
             type = INPUT_KEYBOARD,
             ki   = new KEYBDINPUT { wVk = vk, wScan = wScan, dwFlags = flags },
         };
+    }
+
+    // SendInput returns 0 on failure (details via GetLastError) — every call site
+    // used to ignore that, so an injection failure was invisible. Debug-level only:
+    // this fires routinely for the odd dropped event under load, not worth warn-level.
+    private void SendInputChecked(ref INPUT input)
+    {
+        if (SendInput(1, ref input, Marshal.SizeOf<INPUT>()) == 0)
+        {
+            _log.LogDebug("SendInput failed (Win32 error {Error})", Marshal.GetLastWin32Error());
+        }
     }
 
     [DllImport("user32.dll", SetLastError = true)]

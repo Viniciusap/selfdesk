@@ -102,7 +102,15 @@ public sealed class FileTransferReceiver
 
     public void OnFileError(ReadOnlyMemory<byte> payload)
     {
-        _log.LogWarning("Transfer cancelled by the sender.");
+        if (payload.Length >= 4)
+        {
+            var id = BinaryPrimitives.ReadUInt32BigEndian(payload.Span);
+            _log.LogWarning("Transfer {Id} cancelled by the viewer.", id);
+        }
+        else
+        {
+            _log.LogWarning("Transfer cancelled by the viewer.");
+        }
         AbortCurrent();
     }
 

@@ -2,6 +2,7 @@ using System.Buffers.Binary;
 using System.Net.Security;
 using System.Net.Sockets;
 using System.Security.Cryptography.X509Certificates;
+using System.Threading;
 using Microsoft.Extensions.Logging;
 using SenderWire = SelfDesk.Sender.Protocol.WireProtocol;
 
@@ -17,7 +18,11 @@ public sealed class BrokerConnection : IAsyncDisposable
     private readonly SemaphoreSlim _writeLock = new(1, 1);
     private readonly byte[] _headerBuf = new byte[ProtocolSizes.HeaderSize];
 
-    public long LastRttMs { get; private set; }
+    // Written from the receive loop, read from SenderService's rttMonitor loop —
+    // different threads, same cross-thread-field pattern as SenderService's
+    // Volatile-guarded _currentTargetFps.
+    private long _lastRttMs;
+    public long LastRttMs => Volatile.Read(ref _lastRttMs);
 
     public event Action<byte, ReadOnlyMemory<byte>>? MessageReceived;
 
@@ -93,7 +98,7 @@ public sealed class BrokerConnection : IAsyncDisposable
                     if (payload.Length >= 8)
                     {
                         var sent = (long)BinaryPrimitives.ReadUInt64BigEndian(payload);
-                        LastRttMs = Math.Max(0, DateTimeOffset.UtcNow.ToUnixTimeMilliseconds() - sent);
+                        Volatile.Write(ref _lastRttMs, Math.Max(0, DateTimeOffset.UtcNow.ToUnixTimeMilliseconds() - sent));
                     }
                     break;
                 case MessageType.Bye:
@@ -150,7 +155,7 @@ public sealed class BrokerConnection : IAsyncDisposable
         finally { _writeLock.Release(); }
     }
 
-    private static bool IsSignedBy(X509Certificate2 cert, X509Certificate2 ca)
+    private bool IsSignedBy(X509Certificate2 cert, X509Certificate2 ca)
     {
         try
         {
@@ -160,7 +165,14 @@ public sealed class BrokerConnection : IAsyncDisposable
             chain.ChainPolicy.RevocationMode      = X509RevocationMode.NoCheck;
             return chain.Build(cert);
         }
-        catch { return false; }
+        catch (Exception ex)
+        {
+            // Fails closed (returns false — untrusted) either way; logged so a
+            // malformed/expired pinned CA or cert doesn't silently look like "just
+            // a normal TLS failure" with no clue why in the field.
+            _log.LogWarning(ex, "TLS chain build failed while checking CA pin");
+            return false;
+        }
     }
 
     public async ValueTask DisposeAsync()
