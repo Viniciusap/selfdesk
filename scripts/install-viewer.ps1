@@ -62,6 +62,26 @@ $tmpDir = Join-Path $env:TEMP 'selfdesk-viewer-install'
 Invoke-WebRequest -Uri $DownloadUrl -OutFile $tmpZip -UseBasicParsing
 Write-OK "Download complete: $tmpZip"
 
+# S48: verify SHA256 against published checksums (if available)
+$checksumUrl = $DownloadUrl -replace [regex]::Escape($AssetName), 'SHA256SUMS'
+try {
+    $checksumContent = Invoke-WebRequest -Uri $checksumUrl -UseBasicParsing -ErrorAction Stop
+    $expectedLine = ($checksumContent.Content -split "`n") | Where-Object { $_ -match [regex]::Escape($AssetName) }
+    if ($expectedLine) {
+        $expectedHash = ($expectedLine -split '\s+')[0].ToUpper()
+        $actualHash   = (Get-FileHash $tmpZip -Algorithm SHA256).Hash.ToUpper()
+        if ($actualHash -ne $expectedHash) {
+            Remove-Item $tmpZip -ErrorAction SilentlyContinue
+            throw "SHA256 mismatch for $AssetName. Expected: $expectedHash, Got: $actualHash. Aborting."
+        }
+        Write-OK "SHA256 verified: $actualHash"
+    } else {
+        Write-Warn "SHA256SUMS found but no entry for $AssetName — skipping verification."
+    }
+} catch [System.Net.WebException], [Microsoft.PowerShell.Commands.HttpResponseException] {
+    Write-Warn "SHA256SUMS not available at release — skipping hash verification."
+}
+
 # ── 2. Extract to temp directory ─────────────────────────────────────────────
 
 Write-Step 'Extracting...'
@@ -130,6 +150,16 @@ Write-Step "Copying to $InstallDir..."
 if (-not (Test-Path $InstallDir)) {
     New-Item -ItemType Directory -Path $InstallDir -Force | Out-Null
 }
+# S47: restrict directory to Administrators and SYSTEM only
+$acl = Get-Acl $InstallDir
+$acl.SetAccessRuleProtection($true, $false)
+foreach ($sid in @('S-1-5-18', 'S-1-5-32-544')) {  # SYSTEM, Administrators
+    $rule = New-Object Security.AccessControl.FileSystemAccessRule(
+        $sid, 'FullControl',
+        'ContainerInherit,ObjectInherit', 'None', 'Allow')
+    $acl.AddAccessRule($rule)
+}
+Set-Acl $InstallDir $acl
 
 Get-ChildItem -Path $srcDir -Exclude '.env', 'certs' |
     Copy-Item -Destination $InstallDir -Recurse -Force
