@@ -156,8 +156,8 @@ describe('Full handshake', () => {
   });
 });
 
-describe('SENDER_UP ao conectar', () => {
-  it('receiver recebe SENDER_UP quando sender conecta', async () => {
+describe('SENDER_UP on connect', () => {
+  it('receiver receives SENDER_UP when a sender connects', async () => {
     const rxSock = await tlsConnect();
     await doHandshake(rxSock, 'receiver', 'receiver', SECRET);
 
@@ -177,7 +177,7 @@ describe('SENDER_UP ao conectar', () => {
 });
 
 describe('PING/PONG', () => {
-  it('broker responde PONG para PING do sender', async () => {
+  it('broker replies PONG to a sender PING', async () => {
     const sock = await tlsConnect();
     await doHandshake(sock, 'sender', 'laptop-01', SECRET);
 
