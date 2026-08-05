@@ -146,3 +146,60 @@ describe('Router — SENDER_UP / SENDER_DOWN', () => {
     expect(upMsgs.length).toBe(2);
   });
 });
+
+describe('Router — message-type classification', () => {
+  function setup() {
+    const registry = new Registry(log);
+    const router   = new Router(registry, log);
+    const sender   = makeConn('laptop-01');
+    const receiver = makeReceiver();
+    router.onSenderAuthenticated('laptop-01', sender);
+    router.onReceiverAuthenticated(receiver);
+    return { router, sender, receiver };
+  }
+
+  it('forwards a sender→receiver control message (MONITOR_LIST) to the receiver', () => {
+    const { sender, receiver } = setup();
+    const before = receiver._sent.length;
+    const payload = Buffer.from([0x01]);
+    sender.emit('message',
+      { version: 1, type: MessageType.MONITOR_LIST, peerId: 'laptop-01', length: payload.length }, payload);
+    const last = receiver._sent[receiver._sent.length - 1];
+    expect(receiver._sent.length).toBe(before + 1);
+    expect(parseHeader(last).type).toBe(MessageType.MONITOR_LIST);
+  });
+
+  it('ignores a sender message whose type belongs to the receiver direction (INPUT_EVENT)', () => {
+    const { sender, receiver } = setup();
+    const before = receiver._sent.length;
+    sender.emit('message',
+      { version: 1, type: MessageType.INPUT_EVENT, peerId: 'laptop-01', length: 1 }, Buffer.from([0x01]));
+    expect(receiver._sent.length).toBe(before);
+  });
+
+  it('forwards a file message with an explicit PEER_ID to the target sender', () => {
+    const { sender, receiver } = setup();
+    const before = sender._sent.length;
+    const payload = Buffer.from([0xAB]);
+    receiver.emit('message',
+      { version: 1, type: MessageType.FILE_HEADER, peerId: 'laptop-01', length: payload.length }, payload);
+    expect(sender._sent.length).toBe(before + 1);
+    expect(parseHeader(sender._sent[sender._sent.length - 1]).type).toBe(MessageType.FILE_HEADER);
+  });
+
+  it('discards a file message that has no target PEER_ID', () => {
+    const { sender, receiver } = setup();
+    const before = sender._sent.length;
+    receiver.emit('message',
+      { version: 1, type: MessageType.FILE_HEADER, peerId: '', length: 1 }, Buffer.from([0x01]));
+    expect(sender._sent.length).toBe(before);
+  });
+
+  it('ignores a receiver message whose type belongs to the sender direction (VIDEO_FRAME)', () => {
+    const { sender, receiver } = setup();
+    const before = sender._sent.length;
+    receiver.emit('message',
+      { version: 1, type: MessageType.VIDEO_FRAME, peerId: 'laptop-01', length: 1 }, Buffer.from([0x01]));
+    expect(sender._sent.length).toBe(before);
+  });
+});
