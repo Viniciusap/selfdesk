@@ -373,7 +373,7 @@ public sealed class ViewerService : BackgroundService
                 }
 
                 await conn.SendAsync(ViewerWire.BuildFileDone(id, targetId), ct);
-                _log.LogInformation("Arquivo enviado: {Name}", fileName);
+                _log.LogInformation("File sent: {Name}", fileName);
             }
             catch (Exception ex)
             {

@@ -1,7 +1,7 @@
 /**
- * Protocolo de fio SelfDesk — constantes autoritativas (seção 5 do SPEC).
- * Todos os campos multibyte são big-endian.
- * Espelhar alterações em Protocol.cs.
+ * SelfDesk wire protocol — authoritative constants (SPEC section 5).
+ * All multi-byte fields are big-endian.
+ * Mirror changes in shared/dotnet/MessageType.cs.
  */
 
 export const PROTOCOL_VERSION = 0x01;
@@ -36,31 +36,31 @@ export const MessageType = {
 
 export type MessageTypeValue = (typeof MessageType)[keyof typeof MessageType];
 
-/** Tamanho fixo do envelope (cabeçalho) em bytes. */
+/** Fixed envelope (header) size in bytes. */
 export const HEADER_SIZE    = 22;
-/** Offset e tamanho do campo PEER_ID dentro do envelope. */
+/** Offset and size of the PEER_ID field within the envelope. */
 export const PEER_ID_OFFSET = 2;
 export const PEER_ID_SIZE   = 16;
 /** Offset do campo LENGTH (uint32 big-endian). */
 export const LENGTH_OFFSET  = 18;
 
-/** Tamanho do nonce de desafio em bytes. */
+/** Challenge nonce size in bytes. */
 export const NONCE_SIZE = 32;
 
-/** Intervalos de heartbeat em ms. */
+/** Heartbeat intervals in ms. */
 export const PING_INTERVAL_MS = 5_000;
 export const PONG_TIMEOUT_MS  = 15_000;
 
 export type Role = 'sender' | 'receiver';
 
-/** Payload de VIDEO_FRAME — offsets dentro do payload (não do envelope). */
+/** VIDEO_FRAME payload — offsets within the payload (not the envelope). */
 export const VideoFrame = {
   TIMESTAMP_OFFSET: 0,  // uint64 8B
   WIDTH_OFFSET:     8,  // uint16 2B
   HEIGHT_OFFSET:    10, // uint16 2B
   CODEC_OFFSET:     12, // uint8  1B
   FLAGS_OFFSET:     13, // uint8  1B
-  DATA_OFFSET:      14, // início dos dados codificados
+  DATA_OFFSET:      14, // start of encoded data
   CODEC_JPEG:       0x01,
   CODEC_H264:       0x02,
   FLAG_KEYFRAME:    0x01,

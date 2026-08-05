@@ -162,5 +162,5 @@ export function startListening(
   port: number,
   log: Logger,
 ): Promise<void> {
-  return startListeningOn(server, port, 'broker escutando', log);
+  return startListeningOn(server, port, 'broker listening', log);
 }

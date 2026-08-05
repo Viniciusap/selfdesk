@@ -12,7 +12,7 @@ async function main(): Promise<void> {
   const cfg = loadConfig();
   const log = createLogger(cfg.logLevel, cfg.logFile, cfg.logMaxSize, cfg.logMaxFiles);
 
-  log.info('SelfDesk Broker iniciando...');
+  log.info('SelfDesk Broker starting...');
 
   const tls      = loadTlsMaterial(cfg);
   warnIfExpiringSoon(tls.cert, log);
@@ -69,6 +69,6 @@ async function main(): Promise<void> {
 }
 
 main().catch((err) => {
-  process.stderr.write(`Erro fatal: ${err}\n`);
+  process.stderr.write(`Fatal error: ${err}\n`);
   process.exit(1);
 });

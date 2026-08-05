@@ -122,7 +122,7 @@ public sealed unsafe class H264Decoder : IFrameDecoder, IDisposable
                 (int)SwsFlags.SWS_BILINEAR, null, null, null);
 
             if (_swsCtx == null)
-                throw new InvalidOperationException("Falha ao criar SwsContext.");
+                throw new InvalidOperationException("Failed to create SwsContext.");
 
             ffmpeg.av_frame_unref(_bgraFrame);
             _bgraFrame->width  = actualW;

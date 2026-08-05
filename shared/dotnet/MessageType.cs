@@ -60,7 +60,7 @@ public static class VideoFrameOffsets
     public const int Height    = 10;  // uint16 2B
     public const int Codec     = 12;  // uint8  1B
     public const int Flags     = 13;  // uint8  1B
-    public const int Data      = 14;  // início dos dados
+    public const int Data      = 14;  // start of encoded data
 
     public const byte CodecJpeg    = 0x01;
     public const byte CodecH264    = 0x02;
@@ -94,7 +94,7 @@ public static class AudioFrameOffsets
     public const int Channels     = 8;   // uint8 1B
     public const int SampleRateId = 9;   // uint8 1B (0 = 48000 Hz)
     public const int FrameSamples = 10;  // uint16 2B big-endian
-    public const int Data         = 12;  // início dos dados Opus
+    public const int Data         = 12;  // start of Opus data
 }
 
 public static class InputEventKind

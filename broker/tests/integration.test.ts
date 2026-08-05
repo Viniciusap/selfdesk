@@ -105,8 +105,8 @@ async function doHandshake(sock: tls.TLSSocket, role: 'sender' | 'receiver', age
   return result;
 }
 
-describe('Handshake completo', () => {
-  it('sender autentica com segredo correto → AUTH_OK', async () => {
+describe('Full handshake', () => {
+  it('sender authenticates with correct secret → AUTH_OK', async () => {
     const sock   = await tlsConnect();
     const result = await doHandshake(sock, 'sender', 'laptop-01', SECRET);
     expect(result.type).toBe(MessageType.AUTH_OK);
