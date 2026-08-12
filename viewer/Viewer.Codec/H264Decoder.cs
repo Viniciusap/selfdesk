@@ -34,7 +34,7 @@ public sealed unsafe class H264Decoder : IFrameDecoder, IDisposable
             codec = ffmpeg.avcodec_find_decoder(AVCodecID.AV_CODEC_ID_H264);
 
         if (codec == null)
-            throw new InvalidOperationException("Nenhum decoder H264 encontrado.");
+            throw new InvalidOperationException("No H264 decoder found.");
 
         _codecCtx = ffmpeg.avcodec_alloc_context3(codec);
         if (_codecCtx == null)
@@ -101,7 +101,7 @@ public sealed unsafe class H264Decoder : IFrameDecoder, IDisposable
             ffmpeg.av_frame_unref(_swFrame);
             int xfer = ffmpeg.av_hwframe_transfer_data(_swFrame, _hwFrame, 0);
             if (xfer < 0)
-                throw new InvalidOperationException($"av_hwframe_transfer_data falhou: {xfer}");
+                throw new InvalidOperationException($"av_hwframe_transfer_data failed: {xfer}");
             decodeFrame = _swFrame;
         }
         else

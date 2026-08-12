@@ -5,15 +5,18 @@ namespace SelfDesk.Viewer.ViewModels;
 
 public sealed partial class SenderViewModel : ObservableObject
 {
-    [ObservableProperty] private string           _agentId = string.Empty;
-    [ObservableProperty] private bool             _isConnected;
-    [ObservableProperty] private long             _lastRttMs = -1;
-    [ObservableProperty] private int              _frameWidth;
-    [ObservableProperty] private int              _frameHeight;
+    // Computed display properties are bound in the XAML; without NotifyPropertyChangedFor
+    // the generated setters raise only the backing property, so the UI would show a stale
+    // resolution/RTT/version and never re-evaluate the Wake button when a sender's state changes.
+    [ObservableProperty][NotifyPropertyChangedFor(nameof(DisplayName))] private string _agentId = string.Empty;
+    [ObservableProperty][NotifyPropertyChangedFor(nameof(CanWake))] private bool _isConnected;
+    [ObservableProperty][NotifyPropertyChangedFor(nameof(RttDisplay))] private long _lastRttMs = -1;
+    [ObservableProperty][NotifyPropertyChangedFor(nameof(ResolutionDisplay))] private int _frameWidth;
+    [ObservableProperty][NotifyPropertyChangedFor(nameof(ResolutionDisplay))] private int _frameHeight;
     [ObservableProperty] private string           _codec = string.Empty;
     [ObservableProperty] private string           _codecMismatch = string.Empty;
-    [ObservableProperty] private string           _macAddress = string.Empty;
-    [ObservableProperty] private string           _senderVersion = string.Empty;
+    [ObservableProperty][NotifyPropertyChangedFor(nameof(CanWake))] private string _macAddress = string.Empty;
+    [ObservableProperty][NotifyPropertyChangedFor(nameof(VersionDisplay))] private string _senderVersion = string.Empty;
     [ObservableProperty] private MonitorViewModel? _selectedMonitor;
 
     public ObservableCollection<MonitorViewModel> Monitors { get; }

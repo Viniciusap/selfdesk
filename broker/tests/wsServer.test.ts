@@ -177,6 +177,18 @@ describe('static file server', () => {
     expect(res.status).toBe(404);
   });
 
+  it('405s a non-GET request (only static GETs are served)', async () => {
+    const res = await new Promise<{ status: number }>((resolve, reject) => {
+      const req = https.request(
+        { host: '127.0.0.1', port, path: '/', method: 'POST', rejectUnauthorized: false },
+        (r) => { r.resume(); resolve({ status: r.statusCode ?? 0 }); },
+      );
+      req.on('error', reject);
+      req.end();
+    });
+    expect(res.status).toBe(405);
+  });
+
   it('429s once the IP is blocked (shared rate limiter, not just the WS path)', async () => {
     // Isolated server + limiters so tripping the block here doesn't affect the
     // other tests in this file, which all share the same 127.0.0.1 source IP.

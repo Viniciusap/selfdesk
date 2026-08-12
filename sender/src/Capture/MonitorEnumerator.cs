@@ -44,7 +44,7 @@ public static class MonitorEnumerator
             adapterI++;
         }
 
-        if (entries.Count == 0) throw new InvalidOperationException("Nenhum output DXGI");
+        if (entries.Count == 0) throw new InvalidOperationException("No DXGI output found");
 
         entries.Sort((a, b) =>
         {

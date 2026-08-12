@@ -72,3 +72,75 @@ describe('loadConfig — M6 TLS path containment', () => {
     expect(() => loadConfig(envFile)).toThrow(/resolves outside the allowed directory/);
   });
 });
+
+describe('loadConfig — validation errors', () => {
+  let tmpRoot: string;
+
+  beforeEach(() => {
+    tmpRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'selfdesk-cfgv-'));
+    // dotenv does not override already-set process.env, so clear every var
+    // loadConfig reads to keep these cases independent of each other.
+    for (const k of ['SHARED_SECRET', 'TLS_CERT_PATH', 'TLS_KEY_PATH',
+      'LISTEN_PORT', 'HEALTH_PORT', 'METRICS_PORT', 'WS_PORT']) {
+      delete process.env[k];
+    }
+  });
+
+  afterEach(() => {
+    fs.rmSync(tmpRoot, { recursive: true, force: true });
+  });
+
+  function writeLines(lines: string[]): string {
+    const envFile = path.join(tmpRoot, '.env');
+    fs.writeFileSync(envFile, lines.join('\n'));
+    return envFile;
+  }
+
+  function validCerts(): string[] {
+    fs.writeFileSync(path.join(tmpRoot, 'server-cert.pem'), 'cert');
+    fs.writeFileSync(path.join(tmpRoot, 'server-key.pem'), 'key');
+    return ['TLS_CERT_PATH=./server-cert.pem', 'TLS_KEY_PATH=./server-key.pem'];
+  }
+
+  it('throws on a non-numeric LISTEN_PORT', () => {
+    const envFile = writeLines([
+      'LISTEN_PORT=not-a-port',
+      'SHARED_SECRET=' + 'a'.repeat(32),
+      ...validCerts(),
+    ]);
+    expect(() => loadConfig(envFile)).toThrow(/Invalid LISTEN_PORT/);
+  });
+
+  it('throws on an out-of-range LISTEN_PORT', () => {
+    const envFile = writeLines([
+      'LISTEN_PORT=99999',
+      'SHARED_SECRET=' + 'a'.repeat(32),
+      ...validCerts(),
+    ]);
+    expect(() => loadConfig(envFile)).toThrow(/Invalid LISTEN_PORT/);
+  });
+
+  it('throws when SHARED_SECRET is missing', () => {
+    const envFile = writeLines([...validCerts()]);
+    expect(() => loadConfig(envFile)).toThrow(/SHARED_SECRET missing or too short/);
+  });
+
+  it('throws when SHARED_SECRET is shorter than 32 characters', () => {
+    const envFile = writeLines(['SHARED_SECRET=' + 'a'.repeat(31), ...validCerts()]);
+    expect(() => loadConfig(envFile)).toThrow(/SHARED_SECRET missing or too short/);
+  });
+
+  it('throws when TLS paths are missing', () => {
+    const envFile = writeLines(['SHARED_SECRET=' + 'a'.repeat(32)]);
+    expect(() => loadConfig(envFile)).toThrow(/TLS_CERT_PATH and TLS_KEY_PATH are required/);
+  });
+
+  it('throws when the TLS certificate file does not exist', () => {
+    const envFile = writeLines([
+      'SHARED_SECRET=' + 'a'.repeat(32),
+      'TLS_CERT_PATH=./missing-cert.pem',
+      'TLS_KEY_PATH=./missing-key.pem',
+    ]);
+    expect(() => loadConfig(envFile)).toThrow(/does not exist or is not a regular file/);
+  });
+});
